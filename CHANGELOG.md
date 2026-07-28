@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Post-MVP hardening sweep (2026-07-28)
+
+Landed tasks 003, 005, 010, 011, 012, and a follow-up security
+sweep in a single day. Test count 29 → 51 (0 fail, 0 ignored).
+
+**Task 010 — SOAP Fault detection**. HTTP 200 + `<soap:Fault>`
+now maps to a structured 502 `upstream_soap_fault` with
+`code` / `string` / `detail` top-level fields, instead of silently
+being translated as a successful response. Handles SOAP 1.1 and
+1.2 including namespace-prefixed variants and `xml:lang`-tagged
+Reason elements.
+
+**Task 011 — Request/response size caps + timeout config**. New
+`limits:` config section (`max_request_bytes` 1 MiB,
+`max_response_bytes` 16 MiB, `request_timeout_secs` 30). Inbound
+overflow → 413 `request_too_large`; upstream overflow → 502
+`upstream_body_too_large` with the connection torn down
+immediately. Outbound responses read chunk-by-chunk via a new
+`read_bounded` helper — bounded memory per request.
+
+**Task 012 — JSON type coercion**. Bare integer leaves become
+`Value::Number`; `true`/`false` become `Value::Bool`. Deliberate
+non-goals with enforcing tests: no float coercion (precision loss
+on `"3.10"`), no leading-zero coercion (`"007"` stays string —
+those are opaque IDs), no case-insensitive booleans, `i64`
+overflow keeps raw string, attributed-leaf `#text` stays string.
+
+**Task 005 — Explicit X-Road protocol version in config**. New
+`xroad_protocol_version: "4.0"` config field exposed as
+`{{generate.protocol_version}}` in the Handlebars auto-context.
+The two shipped X-Road DSL samples (`listMethods`,
+`allowedMethods`) migrated to the auto-context variable —
+protocol-version changes now require a single config line update
+instead of touching every DSL.
+
+**Task 003 — Content-Type + charset on outbound calls**. Closed
+as landed with task 002 Phase D — both executors already set
+`text/xml; charset=utf-8`; existing integration test already
+captured + asserted it. Marker added to `done/`.
+
+### Security sweep
+
+**quick-xml 0.36 → 0.41**. `cargo audit` flagged two
+high-severity DoS advisories (RUSTSEC-2026-0194 quadratic on
+duplicate attribute names, RUSTSEC-2026-0195 unbounded
+namespace-declaration allocation) — both fixed in 0.41. Both
+directly relevant since XTR parses untrusted upstream XML on
+every request; size caps alone don't help against the quadratic
+runtime.
+
+**XXE guard**. quick-xml 0.41 introduced `Event::GeneralRef`
+for entity references outside the XML-predefined set. Character
+references (`&#nnn;`, `&#xhh;`) resolve to Unicode codepoints
+via a new `decode_char_ref` helper. Custom entities
+(`&nbsp;`, `&copy;`) are rejected with an explicit
+`XmlParseError` mentioning XXE risk — accepting them would
+require a DOCTYPE, which is the XXE attack surface.
+
+**Nesting-depth cap (MAX_NESTING_DEPTH = 512)** on
+`parse_children`. Prior state: unbounded recursion — a document
+with hundreds of thousands of `<a><a><a>…` levels blew the
+stack. Real envelopes rarely exceed 10 levels; cap gives ~50x
+headroom.
+
+**Regression coverage** added: Handlebars single-pass re-render
+safety, malformed-body handling (7 shapes), percent-encoded-slash
+path traversal, XML nesting cap, hex character ref, custom
+entity XXE guard.
+
+Final audit posture: `cargo audit` 0 advisories, `cargo deny
+check` green on advisories/bans/licenses/sources.
+
 ### Added — Task 002 MVP (v0.2.0-rc.1 candidate)
 
 Working REST → SOAP → X-Road proxy per DESIGN.md §8. Implements
