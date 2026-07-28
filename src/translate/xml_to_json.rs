@@ -206,10 +206,14 @@ fn parse_children(
                         return Ok(if trimmed.is_empty() {
                             Value::Null
                         } else {
-                            Value::String(trimmed.to_string())
+                            coerce_leaf_value(trimmed)
                         });
                     }
                     if !trimmed.is_empty() {
+                        // Attributed leaves keep #text as a string to
+                        // preserve the raw payload verbatim — coercion
+                        // is only applied to bare leaves where the
+                        // consumer's expectation is clearest.
                         obj.insert("#text".into(), Value::String(trimmed.to_string()));
                     }
                     return Ok(Value::Object(obj));
@@ -235,6 +239,58 @@ fn parse_children(
             Err(e) => return Err(XtrError::XmlParseError(format!("{e}"))),
         }
     }
+}
+
+/// Task 012 — narrow, opt-in type coercion for bare-leaf text.
+/// Rules:
+///   - `"true"` / `"false"` (exact case) → boolean.
+///   - Pure-digit string that fits `i64` → number. Leading zeros
+///     preserved as string ("007", "01") — those are almost
+///     always identifiers, not numbers.
+///   - Everything else stays `Value::String`. In particular NO
+///     float coercion (precision loss on decimals is a footgun)
+///     and NO date parsing (locale-dependent).
+fn coerce_leaf_value(s: &str) -> Value {
+    if s == "true" {
+        return Value::Bool(true);
+    }
+    if s == "false" {
+        return Value::Bool(false);
+    }
+    if looks_like_int(s) {
+        if let Ok(n) = s.parse::<i64>() {
+            return Value::Number(n.into());
+        }
+        // Overflow (or any parse failure): keep the raw string so
+        // no digits are lost.
+    }
+    Value::String(s.to_string())
+}
+
+fn looks_like_int(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    if bytes.is_empty() {
+        return false;
+    }
+    let (sign_len, digits) = match bytes[0] {
+        b'-' | b'+' => (1, &bytes[1..]),
+        _ => (0, bytes),
+    };
+    if digits.is_empty() {
+        return false;
+    }
+    // Leading-zero guard: multi-digit values starting with '0' are
+    // opaque identifiers (registry codes, product SKUs) — keep as
+    // string.
+    if digits.len() > 1 && digits[0] == b'0' {
+        return false;
+    }
+    // "-0" is silly but not invalid; reject leading '-' followed
+    // by only '0's to keep behavior predictable.
+    if sign_len == 1 && bytes[0] == b'-' && digits.iter().all(|&b| b == b'0') {
+        return false;
+    }
+    digits.iter().all(|b| b.is_ascii_digit())
 }
 
 fn element_name(e: &BytesStart) -> String {
@@ -424,7 +480,8 @@ mod tests {
         match err {
             XtrError::UpstreamSoapFault { detail, .. } => {
                 let d = detail.expect("detail should be present");
-                assert_eq!(d["retry_after"], "30");
+                // Task 012 coercion: bare integer leaf → Number.
+                assert_eq!(d["retry_after"], 30);
             }
             other => panic!("expected UpstreamSoapFault, got {other:?}"),
         }
@@ -446,17 +503,86 @@ mod tests {
 
     #[test]
     fn namespaced_element_names_preserve_prefix() {
+        // Use a non-numeric value so this test focuses purely on
+        // namespace-prefix preservation, not the (separate) type
+        // coercion story.
         let xml = r#"<soap:Envelope><soap:Body>
-            <prod:keha><prod:reg_code>42</prod:reg_code></prod:keha>
+            <prod:keha><prod:name>foo</prod:name></prod:keha>
         </soap:Body></soap:Envelope>"#;
         let v = translate_soap(xml).unwrap();
         assert_eq!(
             body(&v),
             &json!({
                 "prod:keha": {
-                    "prod:reg_code": "42"
+                    "prod:name": "foo"
                 }
             })
         );
+    }
+
+    // ---------- Task 012: type coercion tests ----------
+
+    fn coerced(xml: &str) -> Value {
+        let v = translate_soap(&format!(
+            "<soap:Envelope><soap:Body>{xml}</soap:Body></soap:Envelope>"
+        ))
+        .unwrap();
+        body(&v).clone()
+    }
+
+    #[test]
+    fn coerce_int_leaf() {
+        assert_eq!(coerced("<n>42</n>"), json!({ "n": 42 }));
+        assert_eq!(coerced("<n>-42</n>"), json!({ "n": -42 }));
+        assert_eq!(coerced("<n>0</n>"), json!({ "n": 0 }));
+    }
+
+    #[test]
+    fn coerce_bool_leaf() {
+        assert_eq!(coerced("<b>true</b>"), json!({ "b": true }));
+        assert_eq!(coerced("<b>false</b>"), json!({ "b": false }));
+    }
+
+    #[test]
+    fn coerce_bool_is_case_sensitive() {
+        // "True", "TRUE", "yes", etc stay as strings — safer than
+        // guessing what the upstream meant.
+        assert_eq!(coerced("<b>True</b>"), json!({ "b": "True" }));
+        assert_eq!(coerced("<b>TRUE</b>"), json!({ "b": "TRUE" }));
+        assert_eq!(coerced("<b>yes</b>"), json!({ "b": "yes" }));
+    }
+
+    #[test]
+    fn leading_zero_stays_string_registry_code_safe() {
+        // "007" or "01" are opaque identifiers, not integers.
+        assert_eq!(coerced("<id>007</id>"), json!({ "id": "007" }));
+        assert_eq!(coerced("<id>01</id>"), json!({ "id": "01" }));
+        // But a bare "0" is a genuine number.
+        assert_eq!(coerced("<n>0</n>"), json!({ "n": 0 }));
+    }
+
+    #[test]
+    fn decimal_stays_string_no_float_precision_loss() {
+        assert_eq!(coerced("<x>3.14</x>"), json!({ "x": "3.14" }));
+        assert_eq!(coerced("<x>3.10</x>"), json!({ "x": "3.10" }));
+        assert_eq!(coerced("<x>0.5</x>"), json!({ "x": "0.5" }));
+    }
+
+    #[test]
+    fn i64_overflow_stays_string() {
+        // 20 nines — well over i64::MAX (~9.2e18). Must not lose
+        // digits by silently truncating to a float.
+        assert_eq!(
+            coerced("<big>99999999999999999999</big>"),
+            json!({ "big": "99999999999999999999" })
+        );
+    }
+
+    #[test]
+    fn attributed_leaf_text_still_string() {
+        // <#text> value under an attributed leaf keeps the raw
+        // string — coercion only fires on bare leaves.
+        let v = coerced(r#"<x kind="int">42</x>"#);
+        assert_eq!(v, json!({ "x": { "@kind": "int", "#text": "42" } }));
     }
 }
