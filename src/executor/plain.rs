@@ -48,6 +48,13 @@ impl PlainExecutor {
         let body = read_bounded(resp, self.max_response_bytes).await?;
 
         if !status.is_success() {
+            // Task 010 follow-up: some services (Ariregister among
+            // them) wrap SOAP Faults in HTTP 5xx rather than 200.
+            // Prefer the structured fault error if the body carries
+            // one; otherwise return the opaque HTTP error.
+            if let Some(fault) = crate::translate::xml_to_json::try_extract_soap_fault(&body) {
+                return Err(fault);
+            }
             return Err(XtrError::UpstreamHttpError {
                 status: status.as_u16(),
                 body: truncate(&body, 1024),

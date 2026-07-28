@@ -378,6 +378,59 @@ async fn upstream_response_over_limit_returns_502_structured() {
     assert_eq!(body["limit"], 1024);
 }
 
+/// Task 010 follow-up (surfaced by live Ariregister smoke test):
+/// SOAP Faults sometimes ride on HTTP 5xx, not HTTP 200. Fault
+/// detection must still fire and produce a structured error
+/// carrying the fault code/message, not the opaque
+/// upstream_http_error with the envelope shoved into the message.
+#[tokio::test]
+async fn soap_fault_inside_http_500_recognised_as_soap_fault() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mock_url = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        let mock = Router::new().route(
+            "/",
+            post(|| async {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    [("content-type", "text/xml; charset=utf-8")],
+                    r#"<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+                        <SOAP-ENV:Body>
+                            <SOAP-ENV:Fault>
+                                <faultcode>SOAP-ENV:Server</faultcode>
+                                <faultstring>Incorrect user name or password.</faultstring>
+                            </SOAP-ENV:Fault>
+                        </SOAP-ENV:Body>
+                    </SOAP-ENV:Envelope>"#,
+                )
+            }),
+        );
+        axum::serve(listener, mock).await.unwrap();
+    });
+
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!("params: []\nservice: {mock_url}\nmethod: POST\nenvelope: <x/>\n");
+    write_dsl(tmp.path(), "svc", "faulty500", &dsl);
+    let app = build_xtr(tmp.path()).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/svc/faulty500")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from("{}"))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 502);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "upstream_soap_fault");
+    assert_eq!(body["code"], "SOAP-ENV:Server");
+    assert_eq!(body["string"], "Incorrect user name or password.");
+}
+
 /// Task 010 regression: HTTP 200 + <soap:Fault> body must map
 /// to 502 + structured error, NOT a "successful" 200 with the
 /// fault silently embedded in the JSON body.

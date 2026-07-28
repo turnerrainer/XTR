@@ -47,6 +47,22 @@ pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
     }))
 }
 
+/// Best-effort SOAP-Fault extraction used by the executor to
+/// recognise faults on *non-2xx* responses (e.g. Ariregister
+/// wraps its faults in HTTP 500). Returns `Some(UpstreamSoapFault)`
+/// only when the bytes are a valid SOAP envelope containing a
+/// `<Body><Fault>…</Fault></Body>` subtree. Any parse failure or
+/// missing fault → `None`, letting the caller fall back to
+/// `UpstreamHttpError`.
+pub fn try_extract_soap_fault(xml: &str) -> Option<XtrError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+    let root = parse_element(&mut reader).ok()?;
+    let (_, body) = extract_header_and_body(&root);
+    let fault = find_child_endswith(&body, "Fault")?;
+    Some(fault_to_error(fault))
+}
+
 /// Convert a parsed `<Fault>` subtree into an `UpstreamSoapFault`
 /// error. Handles both SOAP 1.1 (`faultcode`/`faultstring`) and
 /// SOAP 1.2 (`Code/Value`/`Reason/Text`) shapes, along with
@@ -517,6 +533,44 @@ mod tests {
             }
             other => panic!("expected UpstreamSoapFault, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn try_extract_soap_fault_recognises_fault_regardless_of_wrapper() {
+        // Real Ariregister returns this shape inside HTTP 500.
+        let xml = r#"<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+            <SOAP-ENV:Header></SOAP-ENV:Header>
+            <SOAP-ENV:Body>
+                <SOAP-ENV:Fault>
+                    <faultcode>SOAP-ENV:Server</faultcode>
+                    <faultstring>Incorrect user name or password.</faultstring>
+                </SOAP-ENV:Fault>
+            </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>"#;
+        let err = try_extract_soap_fault(xml).expect("should extract fault");
+        match err {
+            XtrError::UpstreamSoapFault { code, string, .. } => {
+                assert_eq!(code, "SOAP-ENV:Server");
+                assert_eq!(string, "Incorrect user name or password.");
+            }
+            other => panic!("expected UpstreamSoapFault, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn try_extract_soap_fault_returns_none_on_non_fault_xml() {
+        // Ordinary success envelope → no fault present.
+        let xml = r#"<soap:Envelope><soap:Body><result>ok</result></soap:Body></soap:Envelope>"#;
+        assert!(try_extract_soap_fault(xml).is_none());
+    }
+
+    #[test]
+    fn try_extract_soap_fault_returns_none_on_garbage() {
+        // Random non-XML body must not blow up — just return None
+        // so the caller falls back to the opaque UpstreamHttpError.
+        assert!(try_extract_soap_fault("not xml at all").is_none());
+        assert!(try_extract_soap_fault("<unclosed").is_none());
+        assert!(try_extract_soap_fault("").is_none());
     }
 
     #[test]

@@ -64,6 +64,11 @@ impl SsExecutor {
         let body = read_bounded(resp, self.max_response_bytes).await?;
 
         if !status.is_success() {
+            // Task 010 follow-up (see plain.rs) — recognise SOAP
+            // Fault bodies on non-2xx responses.
+            if let Some(fault) = crate::translate::xml_to_json::try_extract_soap_fault(&body) {
+                return Err(fault);
+            }
             return Err(XtrError::UpstreamHttpError {
                 status: status.as_u16(),
                 body: truncate(&body, 1024),
