@@ -20,6 +20,7 @@
 - [Environment variables](./ops/env.md)
 - [Docker](./ops/docker.md)
 - [X-Road Security Server setup](./ops/xroad-security-server.md)
+- [WSDL folder-drop](./ops/wsdl-ingestion.md)
 - [Failure modes](./ops/failure-modes.md)
 
 # Reference

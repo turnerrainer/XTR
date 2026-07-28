@@ -271,31 +271,24 @@ credentials like the Ariregister password param).
 - [Failure modes](../ops/failure-modes.md) — every status code XTR
   can return and what causes it.
 
-## Coming soon — WSDL folder-drop
+## Prefer WSDL folder-drop when a WSDL exists
 
-Everything in this chapter describes the *hand-written* path.
-On the roadmap as
-[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-wsdl-folder-drop-generation.md):
-XTR will ingest WSDLs from a configured folder.
+For services with a published WSDL, XTR generates DSLs
+automatically — see [WSDL folder-drop](../ops/wsdl-ingestion.md).
+Drop the WSDL file under `<wsdl_watch_dir>/<group>/*.wsdl`,
+restart, and every `wsdl:operation` becomes a live endpoint.
+No hand-writing needed.
 
-Set `wsdl_watch_dir: /app/wsdl` in `xtr.yaml`, then drop WSDL
-files under `<wsdl_watch_dir>/<group>/*.wsdl`. On next boot,
-XTR generates `DSL/<group>/<operation>.yml` for every
-`wsdl:operation` — one file per operation, deterministic
-output. If ops wants URL-driven ingestion, they run `curl -o
-<wsdl_watch_dir>/<file>.wsdl <url>` from their
-config-management layer; XTR itself doesn't grow a
-management HTTP surface (admin and consumer surfaces stay
-separated at the infrastructure layer).
+Hand-writing (this chapter) is the fallback path — use it for:
 
-Generated files carry a marker header so subsequent
-regeneration overwrites them cleanly. Hand-written DSLs (no
-marker) always win on collision — this chapter's approach
-becomes the override mechanism for WSDL-less services or
-vendor-bug workarounds.
-
-Until task 013 lands, everything below is the current
-authoritative path.
+- Services without a public WSDL
+- WSDLs whose generated envelope is wrong (vendor bug, unusual
+  binding style)
+- DSLs needing custom Handlebars logic beyond what the
+  generator emits
+- Overrides — placing a hand-written `.yml` at the same
+  `DSL/<group>/<operation>.yml` slot shadows the generated
+  one (the generator SKIPS with a WARN log)
 
 ## What XTR does NOT do (today)
 

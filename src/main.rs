@@ -4,7 +4,7 @@
 //! router → axum server. Then serves on `0.0.0.0:<config.port>`.
 
 use std::sync::Arc;
-use xtr_on_rust::{config::AppConfig, dsl::loader, executor::Executor, openapi, router};
+use xtr_on_rust::{config::AppConfig, dsl::loader, executor::Executor, openapi, router, wsdl};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,6 +22,14 @@ async fn main() -> anyhow::Result<()> {
     match cfg_source {
         Some(p) => tracing::info!("loaded config from {}", p.display()),
         None => tracing::info!("using built-in defaults (no xtr.yaml found)"),
+    }
+
+    // Task 013: ingest WSDLs from wsdl_watch_dir (if configured)
+    // before the DSL loader runs — generated .yml files land under
+    // cfg.dsl_path and the loader picks them up alongside any
+    // hand-written DSLs.
+    if let Some(watch) = &cfg.wsdl_watch_dir {
+        wsdl::ingest_all(watch, &cfg.dsl_path)?;
     }
 
     let services = loader::load_all(&cfg.dsl_path)?;

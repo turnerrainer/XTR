@@ -60,6 +60,14 @@ pub struct AppConfig {
     /// 413 (inbound) or 502 (upstream) with a JSON error body.
     #[serde(default)]
     pub limits: Limits,
+
+    /// Task 013 — WSDL folder drop. When set, XTR scans this
+    /// directory at boot for `<group>/*.wsdl` files, parses each,
+    /// and writes generated DSLs into `dsl_path`. Generated files
+    /// carry a marker header; hand-written DSLs (no marker) win
+    /// any name collision.
+    #[serde(default)]
+    pub wsdl_watch_dir: Option<PathBuf>,
 }
 
 /// Resource ceilings. Defaults chosen for typical X-Road payload
@@ -150,6 +158,7 @@ impl Default for AppConfig {
             client_data: ClientData::default(),
             security_server: None,
             limits: Limits::default(),
+            wsdl_watch_dir: None,
         }
     }
 }

@@ -7,6 +7,51 @@
 design journey (kept here so future readers see why the final
 shape is what it is):
 
+## Landed
+
+2026-07-29 — v1 (boot-time only) landed in one commit under
+`src/wsdl/`. Full acceptance criteria satisfied:
+
+  * `wsdl_watch_dir` config field wired in AppConfig.
+  * `src/wsdl/parser.rs` — SOAP 1.1 document/literal subset
+    with `ElementDef { name, kind: Scalar | Complex }` split.
+    Rejects xsd:choice, xsd:import, named top-level
+    complexType. Preserves WSDL operation declaration order.
+    7 unit tests.
+  * `src/wsdl/generator.rs` — deterministic YAML emission,
+    plain-SOAP or X-Road-wrapped envelope depending on sidecar
+    presence. 6 unit tests including determinism (byte-equal
+    across runs), handlebars validation, dsl-loader
+    round-trip.
+  * `src/wsdl/pipeline.rs` — folder scan, sidecar loading,
+    marker-based collision rules (hand-written wins with
+    WARN), per-WSDL failure isolation (bad WSDL logs and
+    skips, doesn't abort boot). 6 integration tests.
+  * `src/main.rs` — ingest runs before `loader::load_all` so
+    generated files land under `dsl_path` and get picked up
+    normally.
+  * Live-verified: dropped a test WSDL into
+    `/tmp/xtr-wsdl-watch/ex/test.wsdl`, booted XTR with
+    `wsdl_watch_dir` set → 1 DSL generated with marker,
+    `/api` shows `/ex/myLookup` endpoint.
+  * `book/src/ops/wsdl-ingestion.md` — full operator docs.
+  * `book/src/dsl/adding-a-service.md` — reframed as the
+    override fallback path; WSDL-drop is the primary way.
+  * `SUMMARY.md` — WSDL folder-drop chapter linked under
+    Operations.
+  * `book/src/dsl/format.md` — unchanged (DSL format itself
+    unchanged, generator just produces DSLs in that format).
+
+Test count: 67 unit + 11 integration = 78 (up from 58).
+
+Total commits: 1 feat commit. Effort actual ~3 hours
+(vs 4-day estimate) — the design work done across the 5
+task reshapes translated well into implementation. Kept
+tight to the design; no scope creep.
+
+**v2 follow-up** (hot reload via `notify`) filed separately
+if/when needed. Restart-to-reload is fine for v1.
+
 | v | Shape | Dropped because |
 |---|---|---|
 | 1 | CLI scaffold — one-shot dev tool | Too dev-tool-y; doesn't solve the operator persona |

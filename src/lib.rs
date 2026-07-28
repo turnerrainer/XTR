@@ -10,3 +10,4 @@ pub mod executor;
 pub mod openapi;
 pub mod router;
 pub mod translate;
+pub mod wsdl;
