@@ -1,15 +1,58 @@
 # Adding a new service
 
-You want XTR to expose one more X-Road (or plain SOAP) service as a
-REST endpoint. This chapter walks the full loop: figuring out the
-SOAP shape → writing the DSL → verifying it loads → hitting it with
-curl → debugging when it doesn't work.
+## The simplest form
 
-If you've never touched XTR before, run through
-[Run it locally](../getting-started/run-locally.md) first so you have
-a working baseline. If you're adding a real X-Road service (not a
-public XML endpoint), you also need a running Security Server — see
-[X-Road Security Server setup](../ops/xroad-security-server.md).
+Three steps. No X-Road knowledge needed.
+
+**1. Drop a file at `DSL/<group>/<service>.yml`:**
+
+```yaml
+params:
+  - reg_code
+service: https://example.com/soap
+method: POST
+envelope: >
+  <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Body>
+      <lookup>
+        <reg_code>{{reg_code}}</reg_code>
+      </lookup>
+    </soapenv:Body>
+  </soapenv:Envelope>
+```
+
+**2. Restart XTR** — DSLs load at boot. Startup log confirms:
+
+```
+INFO xtr_on_rust::dsl::loader: loaded N DSL(s) from ./DSL
+```
+
+**3. Call it:**
+
+```bash
+curl -sX POST http://localhost:8080/<group>/<service> \
+  -H 'content-type: application/json' \
+  -d '{"reg_code": "42"}'
+```
+
+XTR returns `{"body": …, "headers": …}` — the translated SOAP
+response.
+
+That's it. The rest of this chapter is: how to figure out what
+goes in `envelope:`, how to add real X-Road header wrapping, and
+how to debug when it doesn't work.
+
+## The full walkthrough
+
+The rest of the chapter unpacks: how to figure out the envelope
+shape from a WSDL, how to wrap it for real X-Road (as opposed to
+public HTTPS), verification, calling, and debugging when it
+doesn't work.
+
+Prerequisite: have XTR running locally
+([run-locally.md](../getting-started/run-locally.md)). For real
+X-Road (not public HTTPS), also have a Security Server
+([xroad-security-server.md](../ops/xroad-security-server.md)).
 
 ## Step 0 — decide which path
 
