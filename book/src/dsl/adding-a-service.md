@@ -271,22 +271,24 @@ credentials like the Ariregister password param).
 - [Failure modes](../ops/failure-modes.md) — every status code XTR
   can return and what causes it.
 
-## Coming soon — XTR-native WSDL ingestion
+## Coming soon — WSDL folder-drop
 
 Everything in this chapter describes the *hand-written* path.
 On the roadmap as
-[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-xtr-native-wsdl-to-dsl-generation.md):
-XTR will ingest WSDLs two ways:
+[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-wsdl-folder-drop-generation.md):
+XTR will ingest WSDLs from a configured folder.
 
-- **Folder drop**: put `<wsdl_watch_dir>/<group>/*.wsdl` files
-  on disk → restart → XTR generates
-  `DSL/<group>/<operation>.yml` for every `wsdl:operation`.
-- **Gated admin endpoint**: `POST /admin/wsdl-from-url` (behind
-  API key + optional host allow-list) fetches a WSDL and drops
-  it into `wsdl_watch_dir`. Next restart materialises the
-  endpoints.
+Set `wsdl_watch_dir: /app/wsdl` in `xtr.yaml`, then drop WSDL
+files under `<wsdl_watch_dir>/<group>/*.wsdl`. On next boot,
+XTR generates `DSL/<group>/<operation>.yml` for every
+`wsdl:operation` — one file per operation, deterministic
+output. If ops wants URL-driven ingestion, they run `curl -o
+<wsdl_watch_dir>/<file>.wsdl <url>` from their
+config-management layer; XTR itself doesn't grow a
+management HTTP surface (admin and consumer surfaces stay
+separated at the infrastructure layer).
 
-Generated DSL files carry a marker header so subsequent
+Generated files carry a marker header so subsequent
 regeneration overwrites them cleanly. Hand-written DSLs (no
 marker) always win on collision — this chapter's approach
 becomes the override mechanism for WSDL-less services or
