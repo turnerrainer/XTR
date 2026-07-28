@@ -1,9 +1,13 @@
 # HANDOFF
 
 **Written**: 2026-07-28
-**Last verified green**: N/A — scaffold only, no CI runs yet.
-**Branch**: `dev` (initial commit).
-**Release**: 0.1.0 (Cargo.toml + CHANGELOG dated 2026-07-28).
+**Last verified green**: 2026-07-28 — cargo test 29/0/0
+(24 unit + 5 integration); fmt + clippy -D warnings clean;
+live smoke test loads all 6 shipped DSL samples and serves
+`/health` + `/api`.
+**Branch**: `dev` (task 002 phases A-H landed; I + J up next).
+**Release**: 0.1.0 shipped as scaffold; `v0.2.0-rc.1` cuts once
+task 002 phases I + J complete.
 
 This file is the entry point for the next contributor (human or
 agent). Read this, run the first-run checklist, then dive into the
@@ -11,19 +15,32 @@ specific files it points at.
 
 ## What this repo IS today
 
-A **standards-compliant scaffold** for the Rust re-implementation of
-[buerokratt/XTR](https://github.com/buerokratt/XTR). Every rule from
-Ruuter-on-Rust's hardening cycle is applied from day one — see
-[`STANDARDS.md`](./STANDARDS.md).
+A **working REST → SOAP → X-Road proxy in Rust**, plus the
+standards-compliant scaffold + CI + publish pipeline for it.
+Every rule from Ruuter-on-Rust's hardening cycle applies from
+day one — see [`STANDARDS.md`](./STANDARDS.md).
+
+Currently implements (per DESIGN.md §8):
+
+- `POST /:group/:service` — DSL lookup → Handlebars expand →
+  executor (plain HTTPS or mTLS to X-Road Security Server) →
+  XML → JSON translation → response
+- `GET /health` — `{"status":"ok"}`
+- `GET /api` — auto-generated OpenAPI 3.1 from loaded DSLs
+- 12 of the 17 JVM XTR bugs from DESIGN.md §7 fixed
+  (subsystem_code typo, single-pass Handlebars, system trust
+  store, structured errors, /:group/:service route, /health
+  endpoint, port 8080 everywhere, OpenAPI schema type
+  "string" not "String", etc.)
+- 6 shipped DSL samples imported from JVM XTR
 
 ## What this repo does NOT have yet
 
-- Domain code — the Rust binary prints a placeholder and exits.
-- Published container image — the publish workflow is wired up but
-  will fire the first time on `git push origin v0.2.0-rc.1` (or
-  whatever tag) after the first real domain feature lands.
-- Test suite — `cargo test` returns 0 pass / 0 fail. Grows with
-  each feature.
+- Published container image — the publish workflow is wired up
+  and passes locally; ships on `git push origin v0.2.0-rc.1`
+  after phase J of task 002.
+- Full Docker Hub / GHCR setup — see "Before the first tag
+  push" below (one-time operator setup).
 
 ## First-run checklist
 

@@ -16,8 +16,11 @@ First build is a few minutes; incremental builds are seconds.
 cargo test --no-fail-fast
 ```
 
-Expected on the 0.1.0 scaffold baseline: **0 pass / 0 failed / 0 ignored**
-(no tests yet — the scaffold ships an empty test surface).
+Expected on the pre-`v0.2.0-rc.1` baseline (task 002 in
+progress): **29 passed / 0 failed / 0 ignored** (24 unit tests
+across config, dsl loader, handlebars, translate, openapi + 5
+integration tests exercising the full HTTP surface with an
+in-process mock upstream).
 
 As XTR domain code lands, this count grows and the baseline in
 `HANDOFF.md` gets updated with each release.

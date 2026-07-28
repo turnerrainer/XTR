@@ -9,6 +9,10 @@
 - [Watch the automated tests pass](./getting-started/automated-tests.md)
 - [What to read next](./getting-started/next-steps.md)
 
+# DSL
+
+- [DSL format](./dsl/format.md)
+
 # Operations
 
 - [Docker](./ops/docker.md)

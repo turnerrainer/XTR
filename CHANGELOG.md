@@ -7,7 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added — Task 002 MVP (v0.2.0-rc.1 candidate)
+
+Working REST → SOAP → X-Road proxy per DESIGN.md §8. Implements
+the module tree, HTTP surface, DSL loader, Handlebars expansion,
+executor (plain + mTLS), XML → JSON translation, auto-generated
+OpenAPI, and integration tests. 12 of the 17 JVM XTR bugs from
+DESIGN.md §7 fixed:
+
+  #1  subsystem_code (correctly spelled)
+  #2  no @Value on statics — instance-field config
+  #3  Handlebars: single-pass render with merged context
+  #5  <xroad:client> element built correctly (no literal %s)
+  #6  system trust store (no trust-all X509TrustManager)
+  #7  response exposes both {body, headers}
+  #8  route pattern is /:group/:service (not wildcard)
+  #9  structured error responses ({error, message} + proper status)
+  #10 /health endpoint
+  #13 port 8080 everywhere (no 9010/9020/8080 confusion)
+  #14 OpenAPI param type "string" (not "String")
+  #15 no `Towarsd` typo
+  #16 keystore password from env var, never a default
+
+Modules added (src/*)
+  * config/        — AppConfig with load_or_default (--config /
+                     XTR_CONFIG / ./xtr.yaml search path)
+  * dsl/           — XRoadTemplate, ServiceMap, loader::load_all,
+                     handlebars::expand (unified single-pass render)
+  * executor/      — PlainExecutor (system trust), SsExecutor
+                     (mTLS via PKCS12 identity), Executor::dispatch
+  * translate/     — xml_to_json::translate_soap emits
+                     {body, headers} with namespaces preserved,
+                     attributes as @-keys, repeats as arrays
+  * router/        — axum routes + AppState wiring
+  * openapi.rs     — build_spec walks ServiceMap, emits stable
+                     OpenAPI 3.1 output
+  * error.rs       — XtrError with IntoResponse
+  * main.rs        — tokio + config load + assemble + serve
+
+Tests (29 pass, 0 fail, 0 ignored)
+  * 5 loader (walk, missing path, extensions, non-YAML skip,
+    parse error)
+  * 6 handlebars (allow-list filter, drop non-allowlist, auto
+    context, generate.client shape, generate.uuid validity,
+    single-pass regression guard)
+  * 8 xml_to_json (body/headers extraction with namespace
+    prefixes, UTF-8 Estonian chars, XML entity refs, repeat
+    → array, attributes → @-keys, empty → null, malformed
+    error, namespaced element names)
+  * 5 openapi (empty map, one service, "string" type regression,
+    requestBody.required toggle, response schema shape)
+  * 5 integration (health, /api lists loaded services,
+    end-to-end with mock upstream capturing outbound
+    Content-Type + body, unknown-service 404, params filter)
+
+DSL samples
+  * DSL/samples/ar/{lihtandmed_v3, detailandmed_v2,
+    ettevottegaSeotudIsikud_v1, tegelikudKasusaajad_v2}.yml
+  * DSL/samples/xroad/{listMethods, allowedMethods}.yml
+
+  Imported verbatim from buerokratt/XTR. Live smoke test loads
+  all six into GET /api as OpenAPI operations.
+
+Docs
+  * book/src/dsl/format.md — new. DSL format, params allow-list,
+    service field semantics, Handlebars auto-context, response
+    shape, end-to-end example.
+  * book/src/getting-started/run-locally.md — refreshed with
+    real /health + /api output; shipped-sample invocation
+    recipe.
+  * book/src/getting-started/automated-tests.md — baseline
+    updated to 29/0/0.
+  * book/src/SUMMARY.md — new DSL section.
+
+### Added — task epic system + follow-ups (earlier this cycle)
 
 - **`docs/DESIGN.md`** — the domain design derived from a direct
   read of the original [buerokratt/XTR](https://github.com/buerokratt/XTR).
