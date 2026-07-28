@@ -24,3 +24,12 @@ boost-paragraph = 1
 
 [output.html.playground]
 runnable = false
+
+# Doc tests: mdbook-linkcheck fails the build on broken internal
+# links (chapter-to-chapter). External URLs are skipped —
+# `follow-web-links = false` — since CI would flake on rate-limited
+# responses from github.com etc. Internal breakage is what matters
+# and this is the fast, reliable check for it.
+[output.linkcheck]
+follow-web-links = false
+warning-policy = "error"

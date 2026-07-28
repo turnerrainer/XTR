@@ -5,6 +5,56 @@
 2026-07-28 — follow-up to task 001 review. Filed under epic
 `operator-onboarding`.
 
+## Landed
+
+2026-07-28 — Ruuter-style ops chapters added:
+
+  * `book/src/ops/xroad-security-server.md` — the deep dive.
+    Covers what an SS is, the decision tree (public XML vs
+    ee-test vs production), full ee-test onboarding walkthrough
+    (VM prerequisites → NIIS apt package → anchor import →
+    self-service test certs → subsystem registration →
+    connectivity test), PKCS12 export, XTR wiring, common
+    failure modes, and honest limits on `EE` production
+    onboarding.
+  * `book/src/ops/configuration.md` — full annotated `xtr.yaml`
+    reference including the new `limits:` section.
+  * `book/src/ops/env.md` — every runtime env var + container
+    recipe with mounts.
+  * `book/src/ops/failure-modes.md` — every HTTP status XTR
+    can emit + the `error` code + cause, matching Ruuter's
+    equivalent chapter.
+  * `book/src/getting-started/prerequisites.md` — new
+    "For real X-Road use" section pointing at the SS chapter.
+  * `SUMMARY.md` restructured — Operations section now has
+    Configuration / Env vars / Docker / SS setup / Failure modes.
+
+Doc tests wired to CI:
+  * `tests.yml` new `docs-build` job runs `mdbook build book`
+    with `mdbook-linkcheck` — fails on any broken internal
+    link, on any push or PR to `dev` or `main`.
+  * `docs.yml` (deploy) mirrors the same install +
+    CHANGELOG-sync + linkcheck steps, matching Ruuter's docs
+    pipeline exactly.
+  * `book/book.toml` gained `[output.linkcheck]` with
+    `follow-web-links = false` (external URLs skipped — CI
+    would flake on rate-limited github.com responses; internal
+    breakage is the real value).
+
+Verified locally: `mdbook build book` with `mdbook-linkcheck
+0.7.7` + `mdBook 0.4.40` builds clean, HTML output at
+`book/book/html/`, linkcheck report at `book/book/linkcheck/`.
+CHANGELOG.md gained proper Keep-a-Changelog reference-link
+definitions for `[Unreleased]` / `[0.2.0-rc.1]` / `[0.1.0]`
+so linkcheck stops flagging them as broken.
+
+Non-goals were honored: no cert-acquisition automation (still
+a browser flow), no cert-management daemon, no realtime expiry
+monitoring. Also intentionally sparse on specific `apt`
+commands — NIIS revises those between releases; the chapter is
+structured as a map so readers can pair it with the current
+NIIS manual.
+
 ## Severity
 
 **Medium** — blocks first-time operator success. Every operator
