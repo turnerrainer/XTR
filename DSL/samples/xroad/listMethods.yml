@@ -1,0 +1,29 @@
+params:
+  - member_class
+  - subsystem_code
+  - subsystem_code
+
+method: POST
+
+envelope: >
+  <?xml version="1.0" encoding="utf-8"?>
+  <SOAP-ENV:Envelope
+          xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"
+          xmlns:xroad="http://x-road.eu/xsd/xroad.xsd"
+          xmlns:id="http://x-road.eu/xsd/identifiers">
+      <SOAP-ENV:Header>
+          {{generate.client}}
+          <xroad:service id:objectType="SERVICE">
+           <id:xRoadInstance>{{generate.instance}}</id:xRoadInstance>
+           <id:memberClass>{{member_class}}</id:memberClass>
+           <id:memberCode>{{member_code}}</id:memberCode>
+           <id:subsystemCode>{{subsystem_code}}</id:subsystemCode>
+           <id:serviceCode>listMethods</id:serviceCode>
+          </xroad:service>
+          <xroad:id>{{generate.uuid}}</xroad:id>
+          <xroad:protocolVersion>4.0</xroad:protocolVersion>
+      </SOAP-ENV:Header>
+      <SOAP-ENV:Body>
+          <xroad:listMethods/>
+      </SOAP-ENV:Body>
+  </SOAP-ENV:Envelope>

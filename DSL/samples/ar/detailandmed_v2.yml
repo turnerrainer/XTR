@@ -1,0 +1,26 @@
+params:
+  - reg_code
+  - username
+  - password
+
+service: https://ariregxmlv6.rik.ee/
+method: POST
+
+envelope: >
+
+  <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xro="http://x-road.eu/xsd/xroad.xsd" xmlns:iden="http://x-road.eu/xsd/identifiers" xmlns:prod="http://arireg.x-road.eu/producer/">
+  <soapenv:Body>
+  <prod:detailandmed_v2>
+  <prod:keha>
+  <prod:ariregister_kasutajanimi>{{username}}</prod:ariregister_kasutajanimi>
+  <prod:ariregister_parool>{{password}}</prod:ariregister_parool>
+  <prod:ariregistri_kood>{{reg_code}}</prod:ariregistri_kood>
+  <prod:yandmed>1</prod:yandmed>
+  <prod:iandmed>1</prod:iandmed>
+  <prod:kandmed>0</prod:kandmed>
+  <prod:dandmed>0</prod:dandmed>
+  <prod:maarused>0</prod:maarused>
+  </prod:keha>
+  </prod:detailandmed_v2>
+  </soapenv:Body>
+  </soapenv:Envelope>

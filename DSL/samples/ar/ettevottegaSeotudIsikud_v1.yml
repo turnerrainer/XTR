@@ -1,0 +1,17 @@
+params:
+  - reg_code
+
+service: https://ariregxmlv6.rik.ee/
+method: POST
+
+envelope: >
+  <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:prod="http://arireg.x-road.eu/producer/">
+  <soapenv:Header/>
+  <soapenv:Body>
+  <prod:ettevottegaSeotudIsikud_v1>
+  <prod:keha>
+  <prod:ariregistri_kood>{{reg_code}}</prod:ariregistri_kood>
+  </prod:keha>
+  </prod:ettevottegaSeotudIsikud_v1>
+  </soapenv:Body>
+  </soapenv:Envelope>
