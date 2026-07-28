@@ -172,6 +172,32 @@ mod tests {
     }
 
     #[test]
+    fn user_param_value_containing_handlebars_is_not_re_rendered() {
+        // Security regression: if a user param's *value* contains
+        // `{{...}}`, that value must NOT be reinterpreted as a
+        // Handlebars template on a second pass. Handlebars is
+        // single-pass, but this test locks in that behavior so a
+        // future "expand twice" mistake would be caught.
+        let mut params = HashMap::new();
+        params.insert(
+            "note".into(),
+            Value::String("hello {{generate.instance}}".into()),
+        );
+        let out = expand("<n>{{note}}</n>", &["note".to_string()], params, &cfg()).unwrap();
+        // The literal `{{generate.instance}}` inside the param value
+        // must appear (HTML-escaped by handlebars-rs default), NOT
+        // resolve to "ee-test".
+        assert!(
+            !out.contains("ee-test"),
+            "user param value must not be re-rendered as template — got {out}"
+        );
+        assert!(
+            out.contains("generate.instance"),
+            "literal placeholder should survive as escaped text — got {out}"
+        );
+    }
+
+    #[test]
     fn generate_protocol_version_from_config() {
         let mut c = cfg();
         c.xroad_protocol_version = "4.0".into();

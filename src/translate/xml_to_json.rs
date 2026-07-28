@@ -17,6 +17,12 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use serde_json::{json, Value};
 
+/// Hard cap on element nesting depth. Real X-Road envelopes rarely
+/// exceed 10 levels; 512 leaves plenty of headroom while stopping a
+/// pathological "billion laughs"-style nested-element DoS from
+/// blowing the stack via unbounded recursion in `parse_children`.
+const MAX_NESTING_DEPTH: u32 = 512;
+
 pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
@@ -129,7 +135,7 @@ fn parse_element(reader: &mut Reader<&[u8]>) -> Result<Value, XtrError> {
             Ok(Event::Decl(_)) | Ok(Event::Comment(_)) | Ok(Event::PI(_)) => continue,
             Ok(Event::Start(e)) => {
                 let name = element_name(&e);
-                let content = parse_children(reader, &name, attrs_to_object(&e))?;
+                let content = parse_children(reader, &name, attrs_to_object(&e), 1)?;
                 return Ok(json!({ name: content }));
             }
             Ok(Event::Empty(e)) => {
@@ -156,7 +162,13 @@ fn parse_children(
     reader: &mut Reader<&[u8]>,
     close_name: &str,
     attrs_seed: Value,
+    depth: u32,
 ) -> Result<Value, XtrError> {
+    if depth > MAX_NESTING_DEPTH {
+        return Err(XtrError::XmlParseError(format!(
+            "XML nesting depth exceeded ({MAX_NESTING_DEPTH})"
+        )));
+    }
     let mut obj = attrs_seed
         .as_object()
         .cloned()
@@ -169,7 +181,8 @@ fn parse_children(
         match reader.read_event() {
             Ok(Event::Start(e)) => {
                 let child_name = element_name(&e);
-                let child_content = parse_children(reader, &child_name, attrs_to_object(&e))?;
+                let child_content =
+                    parse_children(reader, &child_name, attrs_to_object(&e), depth + 1)?;
                 insert_merging(&mut obj, &child_name, child_content);
             }
             Ok(Event::Empty(e)) => {
@@ -638,6 +651,21 @@ mod tests {
         assert_eq!(
             coerced("<big>99999999999999999999</big>"),
             json!({ "big": "99999999999999999999" })
+        );
+    }
+
+    #[test]
+    fn deeply_nested_xml_bounded_by_depth_cap() {
+        // Build a document deeper than MAX_NESTING_DEPTH. Without
+        // the cap this would stack-overflow via unbounded recursion.
+        let depth = (super::MAX_NESTING_DEPTH as usize) + 20;
+        let opens: String = "<a>".repeat(depth);
+        let closes: String = "</a>".repeat(depth);
+        let xml = format!("<soap:Envelope><soap:Body>{opens}x{closes}</soap:Body></soap:Envelope>");
+        let err = translate_soap(&xml).unwrap_err();
+        assert!(
+            matches!(&err, XtrError::XmlParseError(m) if m.contains("nesting depth")),
+            "expected depth-cap error, got {err:?}"
         );
     }
 

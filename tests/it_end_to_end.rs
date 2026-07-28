@@ -221,6 +221,78 @@ async fn params_outside_allowlist_are_silently_dropped() {
     assert!(outbound.contains("<x>OK|</x>"), "outbound: {outbound}");
 }
 
+/// Regression: various malformed request bodies must NOT panic
+/// the handler. Missing/empty/null/non-object bodies are treated
+/// as "no params" (empty allow-list means the template renders
+/// with zero substitutions).
+#[tokio::test]
+async fn malformed_request_bodies_do_not_panic() {
+    let (mock_url, _capture) = spawn_mock().await;
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!("params: []\nservice: {mock_url}\nmethod: POST\nenvelope: <x/>\n");
+    write_dsl(tmp.path(), "svc", "noparams", &dsl);
+
+    let cases = [
+        (r#""#, "empty body"),
+        (r#"{}"#, "empty object"),
+        (r#"null"#, "JSON null"),
+        (r#"[]"#, "JSON array"),
+        (r#"42"#, "JSON number"),
+        (r#""just a string""#, "JSON string"),
+        (r#"{"broken: json}"#, "malformed JSON"),
+    ];
+
+    for (payload, label) in cases {
+        let app = build_xtr(tmp.path()).await;
+        let resp = axum_test(
+            app,
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/svc/noparams")
+                .header("content-type", "application/json")
+                .body(axum::body::Body::from(payload))
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(
+            resp.status, 200,
+            "expected 200 for {label} ({payload:?}), got {}",
+            resp.status
+        );
+    }
+}
+
+/// Regression: path traversal via percent-encoded slashes must not
+/// let a caller pivot from one DSL group into another. Axum's
+/// route matcher rejects encoded slashes in path segments; this
+/// test locks that in.
+#[tokio::test]
+async fn percent_encoded_slash_does_not_pivot_groups() {
+    let tmp = TempDir::new().unwrap();
+    write_dsl(
+        tmp.path(),
+        "secret",
+        "svc",
+        "params: []\nservice: https://x\nmethod: POST\nenvelope: <x/>\n",
+    );
+    let app = build_xtr(tmp.path()).await;
+    // "public%2Fsvc" — attempt to smuggle a slash into the group.
+    // The router should NOT match this to /secret/svc.
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/public%2Fsvc/x")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from("{}"))
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(resp.status, 404);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "template_not_found");
+}
+
 /// Task 011: inbound REST body exceeding max_request_bytes must
 /// return a structured 413 with the limit surfaced in the payload.
 #[tokio::test]
