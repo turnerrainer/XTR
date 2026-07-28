@@ -1,3 +1,75 @@
 //! X-Road Security Server executor — mTLS via PKCS12 keystore.
-//! Full implementation in Phase D.
-//! Fixes JVM bug #6 (trust-all TLS — we use the system trust store).
+//!
+//! Uses the system trust store (`reqwest` `native-tls` default) —
+//! fixes JVM bug #6 (Spring version installed a trust-all
+//! X509TrustManager, which silently accepts every cert).
+
+use crate::config::SecurityServer;
+use crate::error::XtrError;
+use reqwest::{Client, Identity};
+use std::time::Duration;
+
+use super::plain::{map_send_error, parse_method, truncate};
+
+#[derive(Clone)]
+pub struct SsExecutor {
+    client: Client,
+    url: String,
+}
+
+impl SsExecutor {
+    pub fn new(cfg: &SecurityServer, password: &str) -> Result<Self, XtrError> {
+        let pkcs12 = std::fs::read(&cfg.keystore_path).map_err(|e| {
+            XtrError::KeystoreLoadFailed(format!(
+                "reading keystore {}: {}",
+                cfg.keystore_path.display(),
+                e
+            ))
+        })?;
+        let identity = Identity::from_pkcs12_der(&pkcs12, password)
+            .map_err(|e| XtrError::KeystoreLoadFailed(format!("parsing PKCS12 keystore: {e}")))?;
+        let client = Client::builder()
+            .identity(identity)
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
+
+        tracing::info!(
+            "SS executor initialised (keystore={}, url={})",
+            cfg.keystore_path.display(),
+            cfg.url
+        );
+
+        Ok(Self {
+            client,
+            url: cfg.url.clone(),
+        })
+    }
+
+    pub async fn execute(&self, method: &str, envelope: String) -> Result<String, XtrError> {
+        let method = parse_method(method)?;
+        tracing::debug!("SS mTLS {} {}", method, self.url);
+        let resp = self
+            .client
+            .request(method, &self.url)
+            .header("content-type", "text/xml; charset=utf-8")
+            .body(envelope)
+            .send()
+            .await
+            .map_err(map_send_error)?;
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .map_err(|e| XtrError::Internal(format!("reading SS body: {e}")))?;
+
+        if !status.is_success() {
+            return Err(XtrError::UpstreamHttpError {
+                status: status.as_u16(),
+                body: truncate(&body, 1024),
+            });
+        }
+        Ok(body)
+    }
+}
