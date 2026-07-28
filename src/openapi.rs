@@ -15,6 +15,8 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
     let mut keys: Vec<&(String, String)> = services.keys().collect();
     keys.sort();
 
+    let error_ref = json!({ "$ref": "#/components/schemas/XtrError" });
+
     for (group, service) in keys {
         let template = &services[&(group.clone(), service.clone())];
         let path = format!("/{group}/{service}");
@@ -29,6 +31,15 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
                 }),
             );
         }
+
+        let err_response = |desc: &str| {
+            json!({
+                "description": desc,
+                "content": {
+                    "application/json": { "schema": error_ref }
+                }
+            })
+        };
 
         let operation = json!({
             "operationId": format!("post_{group}_{service}"),
@@ -60,9 +71,11 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
                         }
                     }
                 },
-                "404": {"description": "Template not found"},
-                "502": {"description": "Upstream error"},
-                "504": {"description": "Upstream timeout"},
+                "404": err_response("Template not found (unmapped group/service)"),
+                "413": err_response("Request body exceeds configured max_request_bytes"),
+                "502": err_response("Upstream error: upstream_http_error / upstream_soap_fault / upstream_xml_parse_error / upstream_body_too_large"),
+                "504": err_response("Upstream request timed out"),
+                "500": err_response("Internal error: template expansion failed, keystore load failed, etc."),
             }
         });
 
@@ -77,6 +90,30 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
             "description": "REST proxy for X-Road SOAP services.",
         },
         "paths": paths,
+        "components": {
+            "schemas": {
+                // Shape aligned with XtrError::into_response
+                // (src/error.rs). `error` + `message` are always
+                // present; `code`/`string`/`detail`/`limit` are
+                // populated for specific variants.
+                "XtrError": {
+                    "type": "object",
+                    "required": ["error", "message"],
+                    "properties": {
+                        "error":   { "type": "string",
+                                     "description": "Stable machine-readable error code." },
+                        "message": { "type": "string" },
+                        "code":    { "type": "string",
+                                     "description": "SOAP Fault code (only for upstream_soap_fault)." },
+                        "string":  { "type": "string",
+                                     "description": "SOAP Fault message (only for upstream_soap_fault)." },
+                        "detail":  { "description": "SOAP Fault detail body (only for upstream_soap_fault)." },
+                        "limit":   { "type": "integer",
+                                     "description": "Byte cap that was exceeded (request_too_large / upstream_body_too_large)." },
+                    }
+                }
+            }
+        }
     })
 }
 
@@ -137,6 +174,39 @@ mod tests {
             spec["paths"]["/g/no_params"]["post"]["requestBody"]["required"],
             false
         );
+    }
+
+    #[test]
+    fn error_responses_include_413_and_reference_shared_schema() {
+        let mut m = ServiceMap::new();
+        m.insert(("g".into(), "s".into()), tpl(&[]));
+        let spec = build_spec(&m, "0.1.0");
+        let responses = &spec["paths"]["/g/s"]["post"]["responses"];
+        // Task 011 — 413 must be advertised now that the router
+        // enforces max_request_bytes.
+        assert!(
+            responses.get("413").is_some(),
+            "413 response should be documented"
+        );
+        // All error responses reference the shared XtrError
+        // schema — consumers can codegen one error type.
+        for code in ["404", "413", "502", "504", "500"] {
+            let schema = &responses[code]["content"]["application/json"]["schema"];
+            assert_eq!(
+                schema["$ref"], "#/components/schemas/XtrError",
+                "expected XtrError $ref on {code}"
+            );
+        }
+        // The shared schema itself exists and declares the fields
+        // that at least one variant of XtrError populates.
+        let xtr_err = &spec["components"]["schemas"]["XtrError"];
+        assert_eq!(xtr_err["type"], "object");
+        for field in ["error", "message", "code", "string", "detail", "limit"] {
+            assert!(
+                xtr_err["properties"].get(field).is_some(),
+                "XtrError.properties.{field} missing"
+            );
+        }
     }
 
     #[test]

@@ -12,7 +12,7 @@ envelope: >
           xmlns:xroad="http://x-road.eu/xsd/xroad.xsd"
           xmlns:id="http://x-road.eu/xsd/identifiers">
       <SOAP-ENV:Header>
-          {{generate.client}}
+          {{{generate.client}}}
           <xroad:service id:objectType="SERVICE">
            <id:xRoadInstance>{{generate.instance}}</id:xRoadInstance>
            <id:memberClass>{{member_class}}</id:memberClass>
