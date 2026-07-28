@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-07-28
+
+First publishable release candidate. Working REST → SOAP →
+X-Road proxy in Rust, live-verified against public Ariregister
+endpoints. Everything below in this section is what ships in
+this tag.
+
 ### Added — Post-MVP hardening sweep (2026-07-28)
 
 Landed tasks 003, 005, 010, 011, 012, and a follow-up security

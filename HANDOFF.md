@@ -1,13 +1,18 @@
 # HANDOFF
 
 **Written**: 2026-07-28
-**Last verified green**: 2026-07-28 — cargo test 29/0/0
-(24 unit + 5 integration); fmt + clippy -D warnings clean;
-live smoke test loads all 6 shipped DSL samples and serves
-`/health` + `/api`.
-**Branch**: `dev` (task 002 phases A-H landed; I + J up next).
-**Release**: 0.1.0 shipped as scaffold; `v0.2.0-rc.1` cuts once
-task 002 phases I + J complete.
+**Last verified green**: 2026-07-28 — cargo test 58/0/0
+(47 unit + 11 integration); fmt + clippy -D warnings clean;
+cargo audit clean (0 advisories); cargo deny check clean.
+Live smoke test loads all 6 shipped DSL samples, serves
+`/health` + `/api` (with the enhanced XtrError schema), and
+handles a real Ariregister SOAP Fault as `upstream_soap_fault`.
+**Branch**: `dev` — task 002 done, hardening sweep landed
+(tasks 003, 005, 010, 011, 012 + follow-ups). `v0.2.0-rc.1`
+release-prep landed 2026-07-28; awaits tag push.
+**Release**: `v0.2.0-rc.1` prepared. Cargo.toml, VERSION,
+docker-compose.yml, README, book, HANDOFF, CHANGELOG all
+bumped. Tag push is the operator's move.
 
 This file is the entry point for the next contributor (human or
 agent). Read this, run the first-run checklist, then dive into the

@@ -5,6 +5,28 @@
 2026-07-28 — follows task 002 (which shipped the MVP domain
 slice). Next actionable on the roadmap.
 
+## Landed
+
+2026-07-28 — metadata-only bump commit. `Cargo.toml`,
+`Cargo.lock`, `VERSION`, `docker-compose.yml`, `README.md`,
+`book/src/introduction.md`, `HANDOFF.md`, `CHANGELOG.md` all
+flipped to `0.2.0-rc.1`. The release wraps everything landed
+in this cycle: task 002 MVP, task 003 (Content-Type — closed
+as already-done in Phase D), task 005 (X-Road protocol version
+in config), task 010 (SOAP Fault detection incl. non-2xx
+follow-up), task 011 (request/response size caps +
+configurable timeout), task 012 (JSON type coercion), the
+security-audit sweep (quick-xml CVE upgrade + XXE guard +
+nesting-depth cap), plus DSL loader startup validation, DSL
+sample escape/whitespace bug fixes surfaced by that validation,
+and the OpenAPI XtrError schema + 413/500 advertisement.
+
+Verified: 58/0/0 tests, fmt/clippy clean, `cargo audit` 0
+advisories, `cargo deny check` green. Live smoke test against
+real Ariregister returned `upstream_soap_fault` for bad creds.
+
+Actual tag push is the operator's move.
+
 ## Scope
 
 Metadata-only release-prep PR that flips XTR-on-Rust from

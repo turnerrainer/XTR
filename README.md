@@ -2,22 +2,25 @@
 
 Rust re-implementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
 
-**Version:** 0.1.0 (scaffold — no shipped functionality yet) · **License:** Apache-2.0 · **Author:** Rainer Türner
+**Version:** 0.2.0-rc.1 (first publishable release candidate) · **License:** Apache-2.0 · **Author:** Rainer Türner
 
 ## Status
 
-**Standards-compliant scaffold + finished domain design.** The
-Rust crate, CI pipelines, container hardening posture, publish
-workflow, and mdBook documentation are all wired to the same bar
-as [Ruuter-on-Rust](https://github.com/turnerrainer/Ruuter). The
-**domain design** — what XTR-on-Rust must do — is documented in
-[`docs/DESIGN.md`](./docs/DESIGN.md), derived from a direct read
-of the original [buerokratt/XTR](https://github.com/buerokratt/XTR):
-MVP scope for `v0.2.0-rc.1`, list of correctness fixes over the
-JVM version, non-goals, module layout, roadmap.
+**Working REST → SOAP → X-Road proxy**, live-verified against
+public Ariregister endpoints. MVP per
+[`docs/DESIGN.md`](./docs/DESIGN.md) §8 delivered by task 002.
+Post-MVP hardening sweep landed tasks 003 / 005 / 010 / 011 / 012:
+SOAP Fault detection (200 *and* non-2xx), request+response size
+caps, opt-in JSON type coercion, explicit X-Road protocol
+version, quick-xml CVE upgrade with XXE guard, XML nesting-depth
+cap, DSL loader startup-time Handlebars validation, OpenAPI
+error-response schema.
 
-Implementation of the v0.2.0-rc.1 slice is the next step. See
-[`HANDOFF.md`](./HANDOFF.md).
+CI pipelines, container hardening posture, publish workflow, and
+mdBook documentation match the [Ruuter-on-Rust](https://github.com/turnerrainer/Ruuter) bar.
+
+Test count: **58 passed / 0 failed / 0 ignored**.
+`cargo audit`: 0 advisories. `cargo deny check`: green.
 
 The bar this project meets from day one is documented in
 [`STANDARDS.md`](./STANDARDS.md).
@@ -28,7 +31,7 @@ Multi-arch image (linux/amd64 + linux/arm64) on Docker Hub and GHCR:
 
 ```bash
 docker run -d --name xtr -p 8080:8080 \
-    turnerrainer/xtr:latest
+    turnerrainer/xtr:0.2.0-rc.1
 ```
 
 Every published digest is signed keyless via cosign — verify with the

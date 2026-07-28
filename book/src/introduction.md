@@ -7,7 +7,7 @@ the v0.2.0-rc.1 MVP slice implements it. The scaffold gives you
 the standards, the CI pipeline, and the release process from day
 one.
 
-**Version:** 0.1.0 (scaffold — no shipped functionality yet) · **License:** Apache-2.0 · **Repository:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
+**Version:** 0.2.0-rc.1 (first publishable release candidate) · **License:** Apache-2.0 · **Repository:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
 
 ## What ships in the scaffold
 
