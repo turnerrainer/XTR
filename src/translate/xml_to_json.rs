@@ -183,16 +183,21 @@ fn parse_children(
                 insert_merging(&mut obj, &child_name, val);
             }
             Ok(Event::Text(t)) => {
-                let text = t
-                    .unescape()
+                // quick-xml 0.41 dropped BytesText::unescape() —
+                // manually decode UTF-8 then run the entity
+                // unescape from the escape module.
+                let decoded = t
+                    .decode()
+                    .map_err(|e| XtrError::XmlParseError(format!("text decode: {e}")))?;
+                let text = quick_xml::escape::unescape(&decoded)
                     .map_err(|e| XtrError::XmlParseError(format!("text unescape: {e}")))?;
                 text_buf.push_str(&text);
             }
             Ok(Event::CData(t)) => {
-                text_buf.push_str(
-                    std::str::from_utf8(&t)
-                        .map_err(|e| XtrError::XmlParseError(format!("cdata utf-8: {e}")))?,
-                );
+                let cdata = t
+                    .decode()
+                    .map_err(|e| XtrError::XmlParseError(format!("cdata decode: {e}")))?;
+                text_buf.push_str(&cdata);
             }
             Ok(Event::End(e)) => {
                 let name = String::from_utf8_lossy(e.name().as_ref()).into_owned();
@@ -236,6 +241,24 @@ fn parse_children(
             | Ok(Event::DocType(_)) => {
                 continue;
             }
+            // quick-xml 0.41 emits GeneralRef for entity references
+            // that aren't in the XML-predefined set. Two flavours:
+            //   * Character references (&#228;, &#xE4;) — always
+            //     resolve to a Unicode codepoint. Standard XML.
+            //   * Custom entities (&nbsp;, &copy;) — require a
+            //     DOCTYPE, which we don't accept (XXE risk).
+            //     Rejected explicitly.
+            Ok(Event::GeneralRef(g)) => {
+                let name = String::from_utf8_lossy(g.as_ref()).into_owned();
+                if let Some(ch) = decode_char_ref(&name) {
+                    text_buf.push(ch);
+                    continue;
+                }
+                return Err(XtrError::XmlParseError(format!(
+                    "unresolved general entity &{}; — custom entities are not supported (XXE risk)",
+                    name
+                )));
+            }
             Err(e) => return Err(XtrError::XmlParseError(format!("{e}"))),
         }
     }
@@ -265,6 +288,19 @@ fn coerce_leaf_value(s: &str) -> Value {
         // no digits are lost.
     }
     Value::String(s.to_string())
+}
+
+/// Resolves an XML character reference of the form `#nnn` (decimal)
+/// or `#xhh` / `#Xhh` (hex) into a Unicode `char`. Anything else
+/// (custom entity name) → None.
+fn decode_char_ref(name: &str) -> Option<char> {
+    let rest = name.strip_prefix('#')?;
+    let code_point = if let Some(hex) = rest.strip_prefix(['x', 'X']) {
+        u32::from_str_radix(hex, 16).ok()?
+    } else {
+        rest.parse::<u32>().ok()?
+    };
+    char::from_u32(code_point)
 }
 
 fn looks_like_int(s: &str) -> bool {
@@ -301,9 +337,13 @@ fn attrs_to_object(e: &BytesStart) -> Value {
     let mut out = serde_json::Map::new();
     for attr in e.attributes().flatten() {
         let key = format!("@{}", String::from_utf8_lossy(attr.key.as_ref()));
-        let val = attr
-            .unescape_value()
-            .map(|c| c.into_owned())
+        // quick-xml 0.41: `unescape_value` is deprecated;
+        // `normalized_value` requires an XmlVersion so is a
+        // heavier API change. Do the same manual dance as text:
+        // decode UTF-8 → run entity unescape.
+        let val = std::str::from_utf8(&attr.value)
+            .ok()
+            .and_then(|s| quick_xml::escape::unescape(s).ok().map(|c| c.into_owned()))
             .unwrap_or_default();
         out.insert(key, Value::String(val));
     }
@@ -369,6 +409,29 @@ mod tests {
             "<soap:Envelope><soap:Body><name>Peeter K&#228;rp</name></soap:Body></soap:Envelope>";
         let v = translate_soap(xml).unwrap();
         assert_eq!(body(&v), &json!({ "name": "Peeter Kärp" }));
+    }
+
+    #[test]
+    fn xml_hex_char_ref_decoded() {
+        // Hex form of &#228; (U+00E4) — Estonian ä.
+        let xml =
+            "<soap:Envelope><soap:Body><name>Peeter K&#xE4;rp</name></soap:Body></soap:Envelope>";
+        let v = translate_soap(xml).unwrap();
+        assert_eq!(body(&v), &json!({ "name": "Peeter Kärp" }));
+    }
+
+    #[test]
+    fn custom_entity_rejected_no_xxe() {
+        // A custom entity (e.g. &nbsp;) requires a DOCTYPE, which
+        // opens the door to XXE. quick-xml already refuses DOCTYPE
+        // entity resolution; we double-down by rejecting any
+        // unresolved GeneralRef with an explicit error.
+        let xml = "<soap:Envelope><soap:Body><n>hello&nbsp;world</n></soap:Body></soap:Envelope>";
+        let err = translate_soap(xml).unwrap_err();
+        assert!(
+            matches!(&err, XtrError::XmlParseError(m) if m.contains("nbsp") && m.contains("XXE")),
+            "expected XXE-guard message, got: {err:?}"
+        );
     }
 
     #[test]

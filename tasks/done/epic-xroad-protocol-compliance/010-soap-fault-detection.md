@@ -5,6 +5,17 @@
 2026-07-26 — surfaced during task 002 MVP live smoke test against
 Ariregister. Filed under epic `xroad-protocol-compliance`.
 
+## Landed
+
+2026-07-28 — commit `b3b56ad` (combined with task 011).
+`translate_soap` now detects SOAP 1.1 and 1.2 Fault bodies and
+maps them to `XtrError::UpstreamSoapFault { code, string, detail }`
+→ HTTP 502 with a structured JSON error payload carrying the
+fault code, message and detail body as top-level fields. 4 new
+unit tests + 1 integration test cover both SOAP versions, the
+detail extraction, and the regression case where an ordinary
+element named "not_a_fault" must NOT trip the path.
+
 ## Severity
 
 **Medium**. Correctness bug in disguise: a `<soap:Fault>` body

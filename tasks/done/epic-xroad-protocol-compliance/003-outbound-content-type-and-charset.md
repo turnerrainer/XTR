@@ -5,6 +5,20 @@
 2026-07-28 — follow-up to task 001 review. Filed under epic
 `xroad-protocol-compliance`.
 
+## Landed
+
+2026-07-28 — as part of task 002 Phase D (commit `752efe5`).
+Both executors (`src/executor/plain.rs:36`,
+`src/executor/ss.rs:55`) set
+`content-type: text/xml; charset=utf-8` unconditionally on every
+outbound request. DSL authors cannot override — as the task
+scope specified. Integration test
+`end_to_end_request_hits_upstream_and_translates_response`
+(tests/it_end_to_end.rs) captures the outbound Content-Type on
+the mock upstream and asserts it starts with `text/xml`; that
+was already in place from Phase H. No follow-up needed except
+the book note (deferred until the ops chapter is expanded).
+
 ## Severity
 
 **Medium**. Some Security Servers accept requests without an

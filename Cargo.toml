@@ -25,7 +25,7 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "nat
 
 # Domain
 handlebars = "6"
-quick-xml = { version = "0.36", features = ["serialize"] }
+quick-xml = { version = "0.41", features = ["serialize"] }
 uuid = { version = "1", features = ["v4"] }
 
 # Observability

@@ -5,6 +5,16 @@
 2026-07-26 — surfaced during task 002 MVP live smoke test.
 Filed under epic `xroad-protocol-compliance`.
 
+## Landed
+
+2026-07-28 — commit `9c303fc`. Added a narrow `coerce_leaf_value`
+step in `parse_children`: bare-leaf integers → `Value::Number`,
+`true`/`false` → `Value::Bool`, everything else stays
+`Value::String`. Explicit non-goals (decimals, dates, leading-
+zero opaque IDs, case-insensitive booleans, i64 overflow) each
+have an enforcing regression test. Attributed leaves keep
+`#text` as string. 7 new unit tests.
+
 ## Severity
 
 **Low**. Not a correctness bug — every response *is* valid JSON

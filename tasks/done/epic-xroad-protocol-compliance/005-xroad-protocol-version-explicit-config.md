@@ -5,6 +5,15 @@
 2026-07-28 — follow-up to task 001 review. Filed under epic
 `xroad-protocol-compliance`.
 
+## Landed
+
+2026-07-28 — commit `5ca6ad6`. Added `xroad_protocol_version` to
+AppConfig (default: "4.0"), exposed as
+`{{generate.protocol_version}}` in the Handlebars auto-context.
+Both shipped X-Road samples (listMethods, allowedMethods)
+migrated to reference the auto-context variable. 2 new unit
+tests (default + override).
+
 ## Severity
 
 **Low** — matters only when X-Road pushes a new protocol version.

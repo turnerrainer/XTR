@@ -5,6 +5,22 @@
 2026-07-26 — surfaced during task 002 MVP review. Filed under
 new epic `operational-hardening`.
 
+## Landed
+
+2026-07-28 — commit `b3b56ad` (combined with task 010). New
+`Limits` config section with defaults (`max_request_bytes` 1 MiB,
+`max_response_bytes` 16 MiB, `request_timeout_secs` 30). Inbound
+cap enforced via a byte-exact check in the router handler +
+`DefaultBodyLimit` transport backstop, producing structured 413
+`XtrError::RequestTooLarge { limit }`. Outbound cap enforced via
+a new `read_bounded` streaming reader shared between plain and
+SS executors, producing structured 502
+`XtrError::UpstreamBodyTooLarge { limit }` and tearing down the
+connection immediately. Timeout hoisted from hardcoded 30s to
+`Limits.request_timeout_secs`. 2 new integration tests
+(oversized inbound + oversized upstream). Book note deferred to
+a later docs sweep.
+
 ## Severity
 
 **Medium**. Not exploitable today under a trusted Security Server,
