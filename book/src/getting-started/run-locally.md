@@ -21,9 +21,13 @@ First build is 2–3 minutes; incremental builds are seconds.
 
 ## What's running
 
-XTR loads DSLs from `./DSL` at boot. The shipped `DSL/samples/`
-tree ships as an example — 6 X-Road service mappings from the
-original JVM XTR (Ariregister + X-Road meta services).
+XTR loads DSLs from `./DSL` at boot. The shipped `DSL/` tree
+contains 6 X-Road service mappings (Ariregister + X-Road meta
+services). Once task 013 lands, these will be auto-generated
+from vendor WSDLs by CI and re-committed on every WSDL change.
+Today they're hand-written and match the original JVM XTR
+sample set byte-for-byte modulo the fixes documented in
+DESIGN.md §7.
 
 ## Health check
 

@@ -9,10 +9,10 @@ X-Road SOAP calls. One file per service.
 becomes the URL's `group` segment, the filename stem becomes
 `service`. `POST /<group>/<service>` invokes it.
 
-The shipped `DSL/samples/` folder demonstrates the convention:
+The shipped `DSL/` folder demonstrates the convention:
 
 ```
-DSL/samples/
+DSL/
 ├── ar/
 │   ├── lihtandmed_v3.yml                → POST /ar/lihtandmed_v3
 │   ├── detailandmed_v2.yml              → POST /ar/detailandmed_v2
@@ -97,7 +97,7 @@ the floor; this is a deliberate fix — see
 
 ## Example — end to end
 
-`DSL/samples/ar/ettevottegaSeotudIsikud_v1.yml`:
+`DSL/ar/ettevottegaSeotudIsikud_v1.yml`:
 
 ```yaml
 params:

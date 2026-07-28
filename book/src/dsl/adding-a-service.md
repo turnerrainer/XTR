@@ -67,7 +67,7 @@ member class / code / subsystem code as JSON body.
 
 Create `<dsl_path>/<group>/<service>.yml`. The `<group>` becomes the
 first URL segment; `<service>` (the filename stem) becomes the
-second. So a file at `DSL/samples/ar/my_lookup.yml` responds at
+second. So a file at `DSL/ar/my_lookup.yml` responds at
 `POST /ar/my_lookup`.
 
 Minimum viable DSL:
@@ -228,18 +228,25 @@ credentials like the Ariregister password param).
 - [Failure modes](../ops/failure-modes.md) — every status code XTR
   can return and what causes it.
 
-## Coming soon — auto-generation from WSDLs
+## Coming soon — CI-generated DSLs from WSDLs
 
 Everything in this chapter describes the *hand-written* path.
-Runtime WSDL-driven DSL auto-generation is on the roadmap as
-[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-runtime-wsdl-driven-auto-generation.md):
-you'll declare `wsdl_sources:` in `xtr.yaml`, XTR fetches each
-WSDL at boot, parses operations, and materialises live endpoints
-with the correct envelopes, params, and target URLs — no
-hand-written YAML required for anything covered by a WSDL. The
-hand-written path (this chapter) then becomes the *override
-mechanism* for the cases where a WSDL is wrong, missing, or
-needs custom Handlebars logic.
+On the roadmap as
+[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-ci-wsdl-driven-dsl-generation.md):
+a repo-root `wsdl-sources.yaml` manifest lists the WSDLs XTR
+wraps; CI regenerates `DSL/<group>/*.yml` from those WSDLs on
+every push, drift-detects against the committed files, and
+publishes the tested output as the canonical shipped content.
+The XTR runtime doesn't change — it still just loads `.yml`
+files from disk. What changes is that most of those `.yml`
+files stop being hand-written and become CI-generated,
+version-controlled artifacts you review in PRs.
+
+The hand-written path (this chapter) then becomes the
+*override mechanism* for services where a WSDL is missing,
+wrong, or needs custom Handlebars logic. The generator
+skips (never overwrites) files that already exist as
+hand-written.
 
 Until task 013 lands, everything below is the current
 authoritative path.
