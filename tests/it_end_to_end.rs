@@ -17,7 +17,10 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 use xtr_on_rust::{
-    config::AppConfig, dsl::loader, executor::Executor, openapi,
+    config::AppConfig,
+    dsl::loader,
+    executor::Executor,
+    openapi,
     router::{self, AppState},
 };
 
@@ -94,12 +97,15 @@ async fn build_xtr(dsl_root: &std::path::Path) -> Router {
 async fn health_returns_ok() {
     let tmp = TempDir::new().unwrap();
     let app = build_xtr(tmp.path()).await;
-    let resp = axum_test(app, axum::http::Request::builder()
-        .method("GET")
-        .uri("/health")
-        .body(axum::body::Body::empty())
-        .unwrap())
-        .await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("GET")
+            .uri("/health")
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )
+    .await;
     assert_eq!(resp.status, 200);
     assert_eq!(resp.json.unwrap(), json!({"status": "ok"}));
 }
@@ -114,12 +120,15 @@ async fn openapi_lists_loaded_services() {
         "params: [reg_code]\nservice: https://x\nmethod: POST\nenvelope: <x/>\n",
     );
     let app = build_xtr(tmp.path()).await;
-    let resp = axum_test(app, axum::http::Request::builder()
-        .method("GET")
-        .uri("/api")
-        .body(axum::body::Body::empty())
-        .unwrap())
-        .await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("GET")
+            .uri("/api")
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )
+    .await;
     assert_eq!(resp.status, 200);
     let spec = resp.json.unwrap();
     assert!(spec["paths"]["/ar/svc"]["post"].is_object());
@@ -135,13 +144,16 @@ async fn end_to_end_request_hits_upstream_and_translates_response() {
     write_dsl(tmp.path(), "ar", "lookup", &dsl);
     let app = build_xtr(tmp.path()).await;
 
-    let resp = axum_test(app, axum::http::Request::builder()
-        .method("POST")
-        .uri("/ar/lookup")
-        .header("content-type", "application/json")
-        .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
-        .unwrap())
-        .await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/ar/lookup")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
+            .unwrap(),
+    )
+    .await;
 
     assert_eq!(resp.status, 200);
     let body = resp.json.unwrap();
@@ -161,13 +173,16 @@ async fn end_to_end_request_hits_upstream_and_translates_response() {
 async fn unknown_service_returns_404_with_structured_error() {
     let tmp = TempDir::new().unwrap();
     let app = build_xtr(tmp.path()).await;
-    let resp = axum_test(app, axum::http::Request::builder()
-        .method("POST")
-        .uri("/nope/nothing")
-        .header("content-type", "application/json")
-        .body(axum::body::Body::from("{}"))
-        .unwrap())
-        .await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/nope/nothing")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from("{}"))
+            .unwrap(),
+    )
+    .await;
     assert_eq!(resp.status, 404);
     let body = resp.json.unwrap();
     assert_eq!(body["error"], "template_not_found");
@@ -184,13 +199,16 @@ async fn params_outside_allowlist_are_silently_dropped() {
     write_dsl(tmp.path(), "svc", "test", &dsl);
     let app = build_xtr(tmp.path()).await;
 
-    let resp = axum_test(app, axum::http::Request::builder()
-        .method("POST")
-        .uri("/svc/test")
-        .header("content-type", "application/json")
-        .body(axum::body::Body::from(r#"{"safe": "OK", "evil": "PWN"}"#))
-        .unwrap())
-        .await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/svc/test")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"safe": "OK", "evil": "PWN"}"#))
+            .unwrap(),
+    )
+    .await;
     assert_eq!(resp.status, 200);
 
     // Envelope sent upstream: safe=OK, evil= (dropped)

@@ -7,9 +7,13 @@
 //! port: 8080
 //! xroad_instance: ee-test
 //! client_data:
+//!   # These MUST reflect YOUR organisation's actual X-Road
+//!   # registration — never inherit example values from another
+//!   # project. See docs/DESIGN.md §2.7 and task 006 for how to
+//!   # register with RIA and obtain your codes.
 //!   member_class: GOV
-//!   member_code: "70006317"
-//!   subsystem_code: byrokratt          # correctly spelled
+//!   member_code: "<your-registry-code>"
+//!   subsystem_code: <your-subsystem>   # correctly spelled
 //! security_server:
 //!   url: "https://out.test.x-tee.ee:443/"
 //!   keystore_path: /app/ssl/keystore.p12

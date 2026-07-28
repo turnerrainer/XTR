@@ -100,12 +100,15 @@ mod tests {
     use crate::config::ClientData;
 
     fn cfg() -> AppConfig {
+        // Test fixture values, not real X-Road registration.
+        // subsystem_code is a placeholder — see docs/DESIGN.md §2.7
+        // and task 006 for real-org onboarding.
         AppConfig {
             xroad_instance: "ee-test".into(),
             client_data: ClientData {
                 member_class: "GOV".into(),
-                member_code: "70006317".into(),
-                subsystem_code: "byrokratt".into(),
+                member_code: "70000000".into(),
+                subsystem_code: "test-subsystem".into(),
             },
             ..Default::default()
         }
@@ -146,8 +149,8 @@ mod tests {
         let out = expand("<h>{{{generate.client}}}</h>", &[], HashMap::new(), &cfg()).unwrap();
         assert!(out.contains("<xroad:client"));
         assert!(out.contains("<id:memberClass>GOV</id:memberClass>"));
-        assert!(out.contains("<id:memberCode>70006317</id:memberCode>"));
-        assert!(out.contains("<id:subsystemCode>byrokratt</id:subsystemCode>"));
+        assert!(out.contains("<id:memberCode>70000000</id:memberCode>"));
+        assert!(out.contains("<id:subsystemCode>test-subsystem</id:subsystemCode>"));
     }
 
     #[test]

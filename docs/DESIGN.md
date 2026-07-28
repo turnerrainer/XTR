@@ -492,8 +492,9 @@ dsl_path: /DSL
 xroad_instance: ee-test
 client_data:
   member_class: GOV
-  member_code: "70006317"
-  subsystem_code: byrokratt          # correctly spelled (fixes JVM bug #1)
+  member_code: "<your-registry-code>"      # operator supplies
+  subsystem_code: <your-subsystem>         # operator supplies — see §2.7
+                                           # + task 006 (onboarding docs)
 
 security_server:
   url: "https://out.test.x-tee.ee:443/"
