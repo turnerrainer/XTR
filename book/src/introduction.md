@@ -1,9 +1,11 @@
 # XTR-on-Rust
 
 Rust re-implementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
-Domain semantics land as the project matures — this scaffold gives
-you the standards, the CI pipeline, and the release process from
-day one.
+Domain design lives in
+[`docs/DESIGN.md`](https://github.com/turnerrainer/XTR/blob/dev/docs/DESIGN.md);
+the v0.2.0-rc.1 MVP slice implements it. The scaffold gives you
+the standards, the CI pipeline, and the release process from day
+one.
 
 **Version:** 0.1.0 (scaffold — no shipped functionality yet) · **License:** Apache-2.0 · **Repository:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
 

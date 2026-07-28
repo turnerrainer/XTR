@@ -5,6 +5,48 @@
 2026-07-28 — first task on the XTR-on-Rust roadmap. Precedes any
 Rust implementation of domain code.
 
+## Landed
+
+2026-07-28 — [`docs/DESIGN.md`](../../docs/DESIGN.md) shipped.
+Direct read of `github.com/buerokratt/XTR` at its then-current
+`main`. Sections:
+
+1. Executive summary
+2. Anatomy of the JVM XTR (endpoints, DSL format, Handlebars
+   context, request lifecycle, config, deployment)
+3. Buerostack dependencies (external — Security Server + X-Road
+   services; internal — none today)
+4. Non-goals from reading the code
+5. WORK-IN-PROGRESS pieces in the JVM (WSDL introspection —
+   deferred)
+6. Auto-generated OpenAPI shape
+7. **17 known bugs and rough edges** documented so XTR-on-Rust
+   doesn't reimplement them
+8. **XTR-on-Rust MVP design (v0.2.0-rc.1)** — crate layout, HTTP
+   surface, DSL format, Handlebars context (unified into one
+   apply), response shape, executor (plain + mTLS), config,
+   error handling, OpenAPI generation, observability, ports,
+   container mount for the keystore
+9. Roadmap for v0.3+ (hot-reload, richer JSON types, WSDL
+   introspection, cross-DSL composition, v1.0 stability
+   commitment)
+10. Explicit v0.2.0-rc.1 non-goals
+11. Cross-references
+12. Two open questions for first-PR review
+
+Cross-linked from:
+- `HANDOFF.md` — replaces "read task 001" with "read `docs/DESIGN.md`"
+- `README.md` — Status section + Documentation list
+- `book/src/introduction.md` — first paragraph
+
+## Notes for the next task
+
+Task 002 should implement the v0.2.0-rc.1 MVP slice per
+`docs/DESIGN.md` §8. Start with the crate layout in §8.1, wire up
+the executor + Handlebars expansion + XML→JSON translation, add
+integration tests using the shipped DSL samples with a mock
+upstream (mockito or wiremock-rs).
+
 ## Severity
 
 **Foundational** — no downstream domain work can start meaningfully

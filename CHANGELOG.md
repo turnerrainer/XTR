@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`docs/DESIGN.md`** — the domain design derived from a direct
+  read of the original [buerokratt/XTR](https://github.com/buerokratt/XTR).
+  Documents the JVM XTR's public surface, DSL format, config,
+  request lifecycle, and 17 known bugs. Defines the XTR-on-Rust
+  MVP scope (`v0.2.0-rc.1`), correctness fixes applied, non-goals,
+  crate layout, roadmap to v1.0. Cross-linked from README,
+  HANDOFF, and the book's introduction.
+- **`tasks/backlog/002-implement-mvp-v0.2.0-rc.1.md`** — next
+  task on the roadmap: implement DESIGN.md §8 (the MVP slice).
+
+### Changed
+
+- `HANDOFF.md` roadmap updated: task 001 marked done, task 002 is
+  the next actionable.
+- `README.md` Status section now surfaces the domain design.
+- `book/src/introduction.md` first paragraph points at DESIGN.md.
+
+### Task tracking
+
+- Task 001 (deep-dive) moved from `backlog/` to `done/` with a
+  Landed note.
+
 ## [0.1.0] - 2026-07-28
 
 Initial scaffold. Standards-compliant repo skeleton — no shipped

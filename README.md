@@ -6,13 +6,18 @@ Rust re-implementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
 
 ## Status
 
-This repo is currently a **standards-compliant scaffold**. The Rust
-crate, CI pipelines, container hardening posture, publish workflow,
-and mdBook documentation are all wired up to the same bar as
-[Ruuter-on-Rust](https://github.com/turnerrainer/Ruuter). Domain
-semantics (what XTR actually does) land as follow-up tasks after
-the original XTR is analysed. See
-[`HANDOFF.md`](./HANDOFF.md) and [`tasks/backlog/`](./tasks/backlog/).
+**Standards-compliant scaffold + finished domain design.** The
+Rust crate, CI pipelines, container hardening posture, publish
+workflow, and mdBook documentation are all wired to the same bar
+as [Ruuter-on-Rust](https://github.com/turnerrainer/Ruuter). The
+**domain design** — what XTR-on-Rust must do — is documented in
+[`docs/DESIGN.md`](./docs/DESIGN.md), derived from a direct read
+of the original [buerokratt/XTR](https://github.com/buerokratt/XTR):
+MVP scope for `v0.2.0-rc.1`, list of correctness fixes over the
+JVM version, non-goals, module layout, roadmap.
+
+Implementation of the v0.2.0-rc.1 slice is the next step. See
+[`HANDOFF.md`](./HANDOFF.md).
 
 The bar this project meets from day one is documented in
 [`STANDARDS.md`](./STANDARDS.md).
@@ -39,7 +44,8 @@ docker compose up -d --build
 
 ## Documentation
 
-- [Book (mdBook)](./book/src/SUMMARY.md) — full LLM-oriented reference. Build locally with `mdbook serve book`; browses at `http://localhost:3000`. Auto-deployed to GitHub Pages on push to `main` (see `.github/workflows/docs.yml`).
+- [`docs/DESIGN.md`](./docs/DESIGN.md) — the domain design: what XTR does, what the MVP ships, what's deferred.
+- [Book (mdBook)](./book/src/SUMMARY.md) — user-facing reference. Build locally with `mdbook serve book`; browses at `http://localhost:3000`. Auto-deployed to GitHub Pages on push to `main` (see `.github/workflows/docs.yml`).
 - [STANDARDS.md](./STANDARDS.md) — every generic build/docs/test/publish rule this project meets.
 - [CHANGELOG.md](./CHANGELOG.md)
 - Original JVM XTR: <https://github.com/buerokratt/XTR>

@@ -45,15 +45,23 @@ Ruuter-on-Rust's hardening cycle is applied from day one — see
 
 ## Roadmap (planned order)
 
-1. **Task 001**: analyse original XTR (JVM) — endpoints, message
-   shapes, config surface, non-goals. Produces a design doc that
-   the Rust implementation follows.
-2. **First domain PR**: implement the minimal viable slice of XTR
-   in Rust — enough to serve `/health` + one canonical endpoint.
-3. **First release cut**: `v0.2.0-rc.1` once the minimal slice
-   ships with tests.
+1. ✅ **Task 001 (done)**: analysed original XTR (JVM). See
+   [`docs/DESIGN.md`](./docs/DESIGN.md) — MVP scope, fixes,
+   non-goals, module layout, roadmap.
+2. **First domain PR**: implement the v0.2.0-rc.1 slice per
+   `docs/DESIGN.md` §8. Deliverables:
+   - `GET /health` returning `{"status":"ok"}`
+   - `POST /:group/:service` routing to a Handlebars-expanded
+     SOAP envelope, sent either plain-HTTPS or via mTLS to the
+     Security Server
+   - `GET /api` — auto-generated OpenAPI 3.1 from loaded DSLs
+   - Integration tests using shipped DSL samples + mock upstream
+3. **First release cut**: `v0.2.0-rc.1` once the domain slice
+   ships with tests. Same PR-flow-to-`dev`-then-tag process as
+   Ruuter-on-Rust.
 4. **Iterate** in `0.x` line on `dev`. `main` reserved for
-   `v1.0.0`.
+   `v1.0.0`. Roadmap for v0.3+ lives in
+   [`docs/DESIGN.md`](./docs/DESIGN.md#9-roadmap-beyond-mvp).
 
 ## Before the first tag push
 
@@ -74,8 +82,8 @@ Same one-time setup as Ruuter-on-Rust required (see STANDARDS.md §11):
 
 | Topic | File |
 |---|---|
+| **Domain design — what XTR-on-Rust must do (v0.2.0-rc.1 MVP scope + roadmap)** | [`docs/DESIGN.md`](./docs/DESIGN.md) |
 | Every generic rule this project follows | [`STANDARDS.md`](./STANDARDS.md) |
-| First real task | [`tasks/backlog/001-domain-deep-dive-original-xtr.md`](./tasks/backlog/001-domain-deep-dive-original-xtr.md) |
 | CI security gate | [`.github/workflows/security.yml`](./.github/workflows/security.yml), [`deny.toml`](./deny.toml), [`.cargo/audit.toml`](./.cargo/audit.toml) |
 | Publish workflow | [`.github/workflows/publish.yml`](./.github/workflows/publish.yml) |
 | Private security disclosure | [`SECURITY.md`](./SECURITY.md) |
