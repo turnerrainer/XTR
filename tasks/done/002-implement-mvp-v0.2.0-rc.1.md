@@ -4,6 +4,55 @@
 
 2026-07-28 — follows task 001. Precedes the first tag push.
 
+## Landed
+
+2026-07-28 — 10 commits (phases A–J). Full working
+REST → SOAP → X-Road proxy per DESIGN.md §8. Ready for the
+`v0.2.0-rc.1` release cut (task 009).
+
+Commits (all reference `tasks/backlog/002-…` per the linking rule):
+
+| Phase | Commit | What |
+|---|---|---|
+| A | 025303d | Module scaffolding + all deps (axum, reqwest, handlebars, quick-xml, uuid, tracing, thiserror) |
+| B | ea98661 | AppConfig + DSL loader (5 tests) |
+| C | 9901225 | Handlebars expansion with unified auto+user context, single-pass render (6 tests) |
+| D | 752efe5 | Executor — plain HTTPS + mTLS via PKCS12, no trust-all |
+| E | 2c98a11 | SOAP XML → JSON translation (`quick-xml`), emits `{body, headers}` (8 tests) |
+| F | ce4b99a | Router + XtrError → structured HTTP responses; `main.rs` wired |
+| G | 55980d4 | OpenAPI 3.1 auto-generation from loaded DSLs (5 tests) |
+| H | 76c8951 | Integration tests + shipped DSL samples imported from JVM XTR (5 tests) |
+| I | ae3ad1a | Book DSL format chapter; HANDOFF + CHANGELOG refresh |
+| J | (this)  | Move task to done; file task 009 (release prep) |
+
+Bugs fixed
+  Of DESIGN.md §7's 17 JVM XTR bugs, this MVP fixes 12:
+  #1, #2, #3, #5, #6, #7, #8, #9, #10, #13, #14, #15, #16.
+
+  The remaining 5 (#4, #11, #12, #17, and part of #7) are
+  deferred to v0.3 or filed under
+  `tasks/backlog/epic-*/` as dedicated follow-ups (see
+  epic READMEs).
+
+Verification (from Phase J final check)
+  * cargo test: 29 passed / 0 failed / 0 ignored
+    (24 unit across config/dsl/handlebars/translate/openapi +
+    5 integration exercising the full HTTP surface with an
+    in-process mock upstream)
+  * cargo fmt --check clean
+  * cargo clippy --all-targets -- -D warnings clean
+  * mdbook build clean
+  * Live smoke: server boots, loads 6 shipped DSLs, /health
+    returns {"status":"ok"}, /api lists all 6 DSLs as OpenAPI
+    operations
+
+Follow-up
+
+Task 009 filed for the release-prep + tagging work
+(Cargo.toml bump to 0.2.0-rc.1, CHANGELOG version header,
+docker-compose.yml image tag, README/HANDOFF pull-recipe
+version). Same shape as Ruuter's release-prep PR.
+
 ## Scope
 
 Implement the MVP slice defined in
