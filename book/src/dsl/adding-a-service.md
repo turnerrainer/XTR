@@ -271,25 +271,26 @@ credentials like the Ariregister password param).
 - [Failure modes](../ops/failure-modes.md) — every status code XTR
   can return and what causes it.
 
-## Coming soon — CI-generated DSLs from WSDLs
+## Coming soon — XTR-native WSDL ingestion
 
 Everything in this chapter describes the *hand-written* path.
 On the roadmap as
-[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-ci-wsdl-driven-dsl-generation.md):
-a repo-root `wsdl-sources.yaml` manifest lists the WSDLs XTR
-wraps; CI regenerates `DSL/<group>/*.yml` from those WSDLs on
-every push, drift-detects against the committed files, and
-publishes the tested output as the canonical shipped content.
-The XTR runtime doesn't change — it still just loads `.yml`
-files from disk. What changes is that most of those `.yml`
-files stop being hand-written and become CI-generated,
-version-controlled artifacts you review in PRs.
+[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-xtr-native-wsdl-to-dsl-generation.md):
+XTR will ingest WSDLs two ways:
 
-The hand-written path (this chapter) then becomes the
-*override mechanism* for services where a WSDL is missing,
-wrong, or needs custom Handlebars logic. The generator
-skips (never overwrites) files that already exist as
-hand-written.
+- **Folder drop**: put `<wsdl_watch_dir>/<group>/*.wsdl` files
+  on disk → restart → XTR generates
+  `DSL/<group>/<operation>.yml` for every `wsdl:operation`.
+- **Gated admin endpoint**: `POST /admin/wsdl-from-url` (behind
+  API key + optional host allow-list) fetches a WSDL and drops
+  it into `wsdl_watch_dir`. Next restart materialises the
+  endpoints.
+
+Generated DSL files carry a marker header so subsequent
+regeneration overwrites them cleanly. Hand-written DSLs (no
+marker) always win on collision — this chapter's approach
+becomes the override mechanism for WSDL-less services or
+vendor-bug workarounds.
 
 Until task 013 lands, everything below is the current
 authoritative path.
