@@ -5,15 +5,40 @@ edition = "2021"
 rust-version = "1.88"
 authors = ["Rainer Türner"]
 license = "Apache-2.0"
-description = "XTR — Rust implementation. Domain semantics forthcoming."
+description = "XTR — Rust implementation. REST proxy for X-Road SOAP services."
 repository = "https://github.com/turnerrainer/XTR"
 
-# Domain crate deps go here as XTR's implementation lands.
-# Kept minimal at scaffold time so `cargo check` is fast and the
-# license/audit posture stays clean.
 [dependencies]
+# Web framework + async runtime
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+tower = "0.4"
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml_ng = "0.10"
+
+# HTTP client (native-tls for PKCS12 identity support required by
+# the X-Road Security Server mTLS path — see DESIGN.md §8.6)
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
+
+# Domain
+handlebars = "6"
+quick-xml = { version = "0.36", features = ["serialize"] }
+uuid = { version = "1", features = ["v4"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+thiserror = "2"
+anyhow = "1"
+once_cell = "1"
 
 [dev-dependencies]
+tempfile = "3"
 
 [[bin]]
 name = "xtr-on-rust"
@@ -21,5 +46,4 @@ path = "src/main.rs"
 
 # Clippy posture — matches Ruuter-on-Rust and STANDARDS.md §2.
 # `cargo clippy --all-targets -- -D warnings` is the CI gate.
-# Any allow-listed lint MUST carry a reason inline.
 [lints.clippy]

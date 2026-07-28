@@ -1,9 +1,13 @@
 //! XTR-on-Rust entry point.
 //!
-//! Scaffold — domain semantics land in follow-up tasks after the
-//! original XTR (github.com/buerokratt/XTR) is analysed. See
-//! HANDOFF.md and tasks/backlog/ for the roadmap.
+//! Assembles config → DSL loader → router → axum server.
+//! Full wiring in Phase F (router) — this scaffold prints a boot
+//! line and exits.
 
 fn main() {
-    println!("xtr-on-rust: scaffold. See HANDOFF.md.");
+    tracing_subscriber::fmt::init();
+    tracing::info!(
+        "xtr-on-rust v{} — scaffold. Router wiring lands in Phase F.",
+        env!("CARGO_PKG_VERSION")
+    );
 }
