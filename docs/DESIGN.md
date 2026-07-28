@@ -145,6 +145,74 @@ runs `generate-keystore.sh` at entrypoint).
 - Mounts `./DSL` read-write (should be `:ro`)
 - Attaches to `bykstack` docker network (Buerostack shared network)
 
+### 2.7 X-Road protocol context (things beyond mechanical translation)
+
+The JVM XTR treats X-Road as an opaque HTTP endpoint. In practice
+there's a small set of protocol-specific behaviours a REST-to-SOAP
+proxy for X-Road should either respect or explicitly opt out of.
+Each item below has a follow-up task filed under
+`tasks/backlog/epic-*/` — this section is the narrative context,
+those tasks are the actionable units.
+
+**Wire-level things the MVP must get right**:
+
+- **Content-Type on the outbound envelope.** X-Road Security
+  Servers expect `text/xml; charset=utf-8` (or
+  `application/soap+xml; charset=utf-8`). JVM XTR relies on
+  Spring's default. Rust `reqwest` won't guess — set explicitly.
+  → **Task 003** (`epic-xroad-protocol-compliance/`).
+
+- **Response `<xroad:requestHash>` verification.** Every X-Road
+  response echoes a hash of the request headers. Verifying it
+  proves the response is genuinely a reply to *our* request and
+  wasn't swapped by a compromised path segment. JVM XTR skips
+  this. Perimeter-trust assumption keeps it out of the MVP but
+  it's worth filing.
+  → **Task 004** (`epic-xroad-protocol-compliance/`).
+
+- **X-Road protocol version.** JVM XTR's sample DSLs hardcode
+  `<xroad:protocolVersion>4.0</xroad:protocolVersion>` inside
+  each envelope. That's a real X-Road wire protocol identifier
+  (currently `4.0` for the SOAP-based flavour; X-Road REST is
+  a different protocol version entirely). Making the version
+  explicit in config (or per-DSL) prevents accidental drift
+  when real deployments upgrade.
+  → **Task 005** (`epic-xroad-protocol-compliance/`).
+
+**Deployment / ops things**:
+
+- **Certificate environments.** `ee-test` (staging X-Road
+  instance) and `ee-prod` (production) require certificates
+  issued by different roots. The PKCS12 keystore for one won't
+  authenticate against the other. Operators need clear
+  instructions on: obtaining a test cert (there's a public
+  self-service registration flow), obtaining a production cert
+  (regulated), managing rotation, and picking the right
+  Security Server URL per environment.
+  → **Task 006** (`epic-operator-onboarding/`).
+
+**Testing things**:
+
+- **No real X-Road in CI.** Integration tests must run against
+  a mock Security Server that returns fixture SOAP responses.
+  `wiremock-rs` or an axum-based fixture server can host the
+  fixtures. Every shipped DSL sample gets a corresponding
+  fixture + request/response assertion.
+  → **Task 007** (`epic-testing-infrastructure/`).
+
+- **UTF-8 / Estonian character fidelity.** Real X-Road payloads
+  routinely carry `ä ö ü õ Š Ž` in person names, company names,
+  and addresses. XML → JSON translation must round-trip these
+  cleanly. `quick-xml` handles this correctly if configured with
+  UTF-8, but the test explicitly exercising it is what stops
+  a future refactor from silently breaking it.
+  → **Task 008** (`epic-testing-infrastructure/`).
+
+None of these gate the v0.2.0-rc.1 MVP itself — the MVP is about
+the mechanical translation working — but they all block a claim
+of "production-ready for real X-Road integrations". Track them
+under the epics linked above.
+
 ---
 
 ## 3. Dependencies on other Buerostack services

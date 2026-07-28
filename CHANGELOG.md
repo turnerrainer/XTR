@@ -14,17 +14,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Documents the JVM XTR's public surface, DSL format, config,
   request lifecycle, and 17 known bugs. Defines the XTR-on-Rust
   MVP scope (`v0.2.0-rc.1`), correctness fixes applied, non-goals,
-  crate layout, roadmap to v1.0. Cross-linked from README,
-  HANDOFF, and the book's introduction.
+  crate layout, roadmap to v1.0. Now includes **§2.7 X-Road
+  protocol context** — the domain gotchas beyond mechanical
+  translation, each cross-linked to a follow-up task.
 - **`tasks/backlog/002-implement-mvp-v0.2.0-rc.1.md`** — next
   task on the roadmap: implement DESIGN.md §8 (the MVP slice).
+- **Task epic system** in `tasks/backlog/epic-*/`. Three epics
+  filed after the task 001 review, each with its own README:
+  - `epic-xroad-protocol-compliance/` — 3 open tasks (003, 004,
+    005: Content-Type, response requestHash verification,
+    explicit protocol version in config).
+  - `epic-operator-onboarding/` — 1 open task (006: X-Road cert
+    acquisition + keystore setup docs).
+  - `epic-testing-infrastructure/` — 2 open tasks (007, 008:
+    mock X-Road Security Server for CI, UTF-8 / Estonian
+    charset round-trip test).
+- **Empty `main` branch** — orphan commit with a README
+  redirecting to `dev`. Reserved for the future `v1.0.0`.
 
 ### Changed
 
-- `HANDOFF.md` roadmap updated: task 001 marked done, task 002 is
-  the next actionable.
+- `HANDOFF.md` — roadmap section rewritten. Task 001 marked
+  done; task 002 up next. New "Open backlog" table listing
+  top-level tasks + epics.
 - `README.md` Status section now surfaces the domain design.
-- `book/src/introduction.md` first paragraph points at DESIGN.md.
+- `book/src/introduction.md` first paragraph points at
+  `docs/DESIGN.md`.
+- **`STANDARDS.md` §13 extended** — task tracking now allows
+  optional epic subdirectories (`tasks/backlog/epic-<slug>/`
+  mirrored to `done/` on completion). New "Linking rule"
+  clause: every commit must reference at least one task file.
 
 ### Task tracking
 

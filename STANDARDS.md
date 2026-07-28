@@ -373,12 +373,47 @@ Carried from `CLAUDE.md`. Apply to every fix, not just Ruuter:
 
 ## 13. Task tracking
 
-- `tasks/backlog/NNN-slug.md` — sequential ID, kebab-case slug
-- `tasks/done/NNN-slug.md` — moved on completion, with a **`## Landed`**
-  section appended (date + summary of what shipped + any deferred
-  parts)
-- The original proposal body is preserved as historical record
-- HANDOFF.md's "Open backlog" table is refreshed with each release
+- `tasks/backlog/NNN-slug.md` — sequential ID, kebab-case slug.
+  IDs are unique per project (not restarted per epic).
+- `tasks/done/NNN-slug.md` — moved on completion, with a
+  **`## Landed`** section appended (date + summary of what shipped +
+  any deferred parts). The original proposal body is preserved as
+  historical record.
+
+### Epics (optional grouping)
+
+Related tasks may be grouped under an epic subdirectory:
+`tasks/backlog/epic-<slug>/NNN-<slug>.md`. On completion, the task
+moves to `tasks/done/epic-<slug>/NNN-<slug>.md` (same epic subdir
+mirrored under `done/`) so historical grouping survives.
+
+Rules:
+
+- **Epic membership is optional.** A task with no natural grouping
+  goes straight in `tasks/backlog/NNN-<slug>.md`.
+- **Epic subdirs are named `epic-<kebab-case-slug>`.** The
+  `epic-` prefix makes them visually distinct from tasks.
+- **Task IDs stay globally sequential** — epic 1 tasks might be
+  003, 005, 009; epic 2 might be 004, 006. Numbers reflect filing
+  order across the whole project, not position within an epic.
+- **Epic README (optional).** Each epic subdir may contain a
+  `README.md` describing what the epic is for, what "done" looks
+  like, and what triggers closing the whole epic.
+
+### HANDOFF.md
+
+- The "Open backlog" table (or equivalent section) lists top-level
+  backlog tasks + epics with a one-line summary. Refreshed with
+  each release.
+
+### Linking rule
+
+**Every commit must reference at least one task file** — either
+one being landed, one being filed, or one whose deliverable is
+being iterated on. Commit message states the task path explicitly
+(e.g. `follow-up on tasks/done/001-…`, `files
+tasks/backlog/epic-<slug>/NNN-…`). This keeps arbitrary work off
+the tree.
 
 ---
 

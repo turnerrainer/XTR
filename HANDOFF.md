@@ -40,28 +40,42 @@ Ruuter-on-Rust's hardening cycle is applied from day one — see
    ```
 3. **Read [`STANDARDS.md`](./STANDARDS.md)** front-to-back. That's
    the contract every future change follows.
-4. **Read [`tasks/backlog/001-domain-deep-dive-original-xtr.md`](./tasks/backlog/001-domain-deep-dive-original-xtr.md)** —
-   the first real task on the roadmap.
+4. **Read [`docs/DESIGN.md`](./docs/DESIGN.md)** — what
+   XTR-on-Rust must do. Produced by task 001.
 
 ## Roadmap (planned order)
 
 1. ✅ **Task 001 (done)**: analysed original XTR (JVM). See
    [`docs/DESIGN.md`](./docs/DESIGN.md) — MVP scope, fixes,
    non-goals, module layout, roadmap.
-2. **First domain PR**: implement the v0.2.0-rc.1 slice per
-   `docs/DESIGN.md` §8. Deliverables:
+2. **Task 002 — the first domain PR**: implement the
+   v0.2.0-rc.1 slice per `docs/DESIGN.md` §8. Deliverables:
    - `GET /health` returning `{"status":"ok"}`
    - `POST /:group/:service` routing to a Handlebars-expanded
      SOAP envelope, sent either plain-HTTPS or via mTLS to the
      Security Server
    - `GET /api` — auto-generated OpenAPI 3.1 from loaded DSLs
    - Integration tests using shipped DSL samples + mock upstream
-3. **First release cut**: `v0.2.0-rc.1` once the domain slice
-   ships with tests. Same PR-flow-to-`dev`-then-tag process as
+3. **First release cut**: `v0.2.0-rc.1` once task 002 ships
+   with tests. Same PR-flow-to-`dev`-then-tag process as
    Ruuter-on-Rust.
 4. **Iterate** in `0.x` line on `dev`. `main` reserved for
-   `v1.0.0`. Roadmap for v0.3+ lives in
-   [`docs/DESIGN.md`](./docs/DESIGN.md#9-roadmap-beyond-mvp).
+   `v1.0.0`. Post-MVP work is organised into **epics** under
+   `tasks/backlog/epic-*/` (see below). v0.3+ roadmap lives
+   in [`docs/DESIGN.md`](./docs/DESIGN.md#9-roadmap-beyond-mvp).
+
+## Open backlog
+
+| Task | Location | Status |
+|---|---|---|
+| **002** — implement MVP v0.2.0-rc.1 | [`tasks/backlog/002-implement-mvp-v0.2.0-rc.1.md`](./tasks/backlog/002-implement-mvp-v0.2.0-rc.1.md) | Next up |
+| **Epic — X-Road protocol compliance** | [`tasks/backlog/epic-xroad-protocol-compliance/`](./tasks/backlog/epic-xroad-protocol-compliance/) | 3 open tasks (003, 004, 005) |
+| **Epic — Operator onboarding** | [`tasks/backlog/epic-operator-onboarding/`](./tasks/backlog/epic-operator-onboarding/) | 1 open task (006) |
+| **Epic — Testing infrastructure** | [`tasks/backlog/epic-testing-infrastructure/`](./tasks/backlog/epic-testing-infrastructure/) | 2 open tasks (007, 008) |
+
+Each epic directory has its own `README.md` explaining scope +
+closing criteria. See STANDARDS.md §13 for the epic filing
+convention.
 
 ## Before the first tag push
 

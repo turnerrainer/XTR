@@ -1,0 +1,70 @@
+# 003 — Content-Type + charset on outbound X-Road calls
+
+## Filed
+
+2026-07-28 — follow-up to task 001 review. Filed under epic
+`xroad-protocol-compliance`.
+
+## Severity
+
+**Medium**. Some Security Servers accept requests without an
+explicit charset and infer UTF-8; others don't. Getting this
+wrong produces sporadic HTTP 415 responses that are hard to
+attribute.
+
+## Motivation
+
+X-Road Security Servers expect the outbound SOAP envelope with:
+
+```
+Content-Type: text/xml; charset=utf-8
+```
+
+or the equivalent SOAP 1.2 media type:
+
+```
+Content-Type: application/soap+xml; charset=utf-8
+```
+
+The JVM XTR relies on Spring's default, which happens to set an
+acceptable value most of the time. Rust `reqwest` sends no
+Content-Type by default when you pass a string body — it'll
+be empty. That would produce 400 / 415 from the SS immediately.
+
+## Fix
+
+In the executor step of the request path (DESIGN.md §8.6):
+
+- **Direct HTTPS path** (`RequestExecutor::plain`): explicitly set
+  `Content-Type: text/xml; charset=utf-8` on the outbound request
+  regardless of the DSL. Some upstream services (public XML
+  endpoints like Ariregister) may accept `application/xml` too,
+  but `text/xml` is the safe default.
+- **mTLS path via SS** (`RequestExecutor::ss`): same header.
+- Emit the outbound Content-Type in the WARN/ERROR log line when
+  the upstream returns 4xx, so misconfiguration is diagnosable.
+
+Do NOT let DSL authors override Content-Type in the MVP —
+providing a hook for that is a v0.3 concern if a real use case
+appears.
+
+## Acceptance
+
+- Integration test that captures the outbound request headers on
+  the mock SS (via task 007's mock server) and asserts
+  `content-type: text/xml; charset=utf-8`.
+- Same assertion for the direct-HTTPS path against a mock upstream.
+- Documentation note in `book/src/ops/` explaining this is
+  hardcoded and why.
+
+## Estimated effort
+
+Half a day including the test. Trivial code change; the value is
+in the CI regression test.
+
+## Dependencies
+
+- Task 007 (mock X-Road SS fixtures) provides the wire-capture
+  hook that makes the assertion cheap. If task 007 isn't ready,
+  this task can still land using an ad-hoc `axum` capture server
+  in the test.
