@@ -228,16 +228,30 @@ credentials like the Ariregister password param).
 - [Failure modes](../ops/failure-modes.md) — every status code XTR
   can return and what causes it.
 
-## What XTR does NOT do (that a naive reader might expect)
+## Coming soon — auto-generation from WSDLs
 
-- **Auto-generate DSLs from WSDL.** Every DSL is hand-written. A
-  `xtr scaffold` CLI that ingests a WSDL and emits a candidate DSL
-  is a filed feature request — see
-  [task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-wsdl-to-dsl-scaffold-generator.md).
-- **Hot-reload DSL files.** Restart the process to pick up changes.
+Everything in this chapter describes the *hand-written* path.
+Runtime WSDL-driven DSL auto-generation is on the roadmap as
+[task 013](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-developer-experience/013-runtime-wsdl-driven-auto-generation.md):
+you'll declare `wsdl_sources:` in `xtr.yaml`, XTR fetches each
+WSDL at boot, parses operations, and materialises live endpoints
+with the correct envelopes, params, and target URLs — no
+hand-written YAML required for anything covered by a WSDL. The
+hand-written path (this chapter) then becomes the *override
+mechanism* for the cases where a WSDL is wrong, missing, or
+needs custom Handlebars logic.
+
+Until task 013 lands, everything below is the current
+authoritative path.
+
+## What XTR does NOT do (today)
+
+- **Hot-reload DSL files.** Restart the process to pick up
+  changes.
 - **Validate response schemas.** XTR translates whatever the
   upstream returned; it doesn't check that it matches the WSDL's
-  response type.
+  response type. (Not planned — response shapes vary too much in
+  practice.)
 - **Discover services automatically.** You point XTR at services
   you know exist. `listMethods` is a manual step you take when
   building a new DSL.
