@@ -68,14 +68,22 @@ fn build_auto_context(cfg: &AppConfig) -> HashMap<String, Value> {
         "generate.client".into(),
         Value::String(build_client_element(cfg)),
     );
+    // Task 005: expose the X-Road protocol version so DSL samples
+    // don't have to hardcode "4.0". Available as both dotted-key
+    // and nested-object forms.
+    ctx.insert(
+        "generate.protocol_version".into(),
+        Value::String(cfg.xroad_protocol_version.clone()),
+    );
     // Also expose the fields flat so DSLs can access them
     // individually without going through generate.client:
     ctx.insert(
         "generate".into(),
         json!({
-            "uuid":     Uuid::new_v4().to_string(),
-            "instance": cfg.xroad_instance.clone(),
-            "client":   build_client_element(cfg),
+            "uuid":              Uuid::new_v4().to_string(),
+            "instance":          cfg.xroad_instance.clone(),
+            "client":            build_client_element(cfg),
+            "protocol_version":  cfg.xroad_protocol_version.clone(),
         }),
     );
     ctx
@@ -161,6 +169,34 @@ mod tests {
             .and_then(|s| s.strip_suffix("</u>"))
             .unwrap();
         Uuid::parse_str(inner).expect("generate.uuid should render a valid UUID");
+    }
+
+    #[test]
+    fn generate_protocol_version_from_config() {
+        let mut c = cfg();
+        c.xroad_protocol_version = "4.0".into();
+        let out = expand(
+            "<v>{{generate.protocol_version}}</v>",
+            &[],
+            HashMap::new(),
+            &c,
+        )
+        .unwrap();
+        assert_eq!(out, "<v>4.0</v>");
+    }
+
+    #[test]
+    fn generate_protocol_version_honors_override() {
+        let mut c = cfg();
+        c.xroad_protocol_version = "4.1".into();
+        let out = expand(
+            "<v>{{generate.protocol_version}}</v>",
+            &[],
+            HashMap::new(),
+            &c,
+        )
+        .unwrap();
+        assert_eq!(out, "<v>4.1</v>");
     }
 
     #[test]

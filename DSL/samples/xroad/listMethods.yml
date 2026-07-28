@@ -21,7 +21,7 @@ envelope: >
            <id:serviceCode>listMethods</id:serviceCode>
           </xroad:service>
           <xroad:id>{{generate.uuid}}</xroad:id>
-          <xroad:protocolVersion>4.0</xroad:protocolVersion>
+          <xroad:protocolVersion>{{generate.protocol_version}}</xroad:protocolVersion>
       </SOAP-ENV:Header>
       <SOAP-ENV:Body>
           <xroad:listMethods/>

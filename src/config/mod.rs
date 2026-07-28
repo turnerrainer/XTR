@@ -41,6 +41,14 @@ pub struct AppConfig {
     #[serde(default = "default_xroad_instance")]
     pub xroad_instance: String,
 
+    /// X-Road SOAP protocol version. Sent as
+    /// `{{generate.protocol_version}}` in every envelope's
+    /// `<xroad:protocolVersion>` element. Task 005 — before this,
+    /// each shipped DSL hardcoded "4.0"; when X-Road moves
+    /// versions, only this line changes.
+    #[serde(default = "default_xroad_protocol_version")]
+    pub xroad_protocol_version: String,
+
     #[serde(default)]
     pub client_data: ClientData,
 
@@ -125,6 +133,9 @@ fn default_port() -> u16 {
 fn default_xroad_instance() -> String {
     "ee-test".to_string()
 }
+fn default_xroad_protocol_version() -> String {
+    "4.0".to_string()
+}
 fn default_password_env() -> String {
     "XTR_KEYSTORE_PASSWORD".to_string()
 }
@@ -135,6 +146,7 @@ impl Default for AppConfig {
             dsl_path: default_dsl_path(),
             port: default_port(),
             xroad_instance: default_xroad_instance(),
+            xroad_protocol_version: default_xroad_protocol_version(),
             client_data: ClientData::default(),
             security_server: None,
             limits: Limits::default(),
