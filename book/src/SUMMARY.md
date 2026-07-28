@@ -12,6 +12,7 @@
 # DSL
 
 - [DSL format](./dsl/format.md)
+- [Adding a new service](./dsl/adding-a-service.md)
 
 # Operations
 
