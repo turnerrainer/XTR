@@ -54,8 +54,22 @@ fn walk(dir: &Path, out: &mut ServiceMap) -> Result<(), XtrError> {
         } else if is_dsl_file(&path) {
             if let Some((group, service)) = derive_key(&path) {
                 let template = parse_file(&path)?;
-                tracing::debug!("loaded DSL: {}/{}", group, service);
-                out.insert((group, service), Arc::new(template));
+                // Fail fast on unparseable Handlebars — turns a
+                // future first-request 500 into a startup error the
+                // operator can fix before deploying.
+                validate_template(&path, &template)?;
+                let key = (group, service);
+                if out.contains_key(&key) {
+                    tracing::warn!(
+                        "duplicate DSL {}/{} — the file at {} overrides an earlier load. \
+                         Check for both .yml and .yaml, or a rename gone wrong.",
+                        key.0,
+                        key.1,
+                        path.display()
+                    );
+                }
+                tracing::debug!("loaded DSL: {}/{}", key.0, key.1);
+                out.insert(key, Arc::new(template));
             } else {
                 tracing::warn!(
                     "skipping {}: could not derive (group, service) key",
@@ -64,6 +78,19 @@ fn walk(dir: &Path, out: &mut ServiceMap) -> Result<(), XtrError> {
             }
         }
     }
+    Ok(())
+}
+
+/// Try to compile the DSL's Handlebars envelope so a bad template
+/// blows up at startup, not on the first live request.
+fn validate_template(path: &Path, tpl: &XRoadTemplate) -> Result<(), XtrError> {
+    ::handlebars::Template::compile(&tpl.envelope).map_err(|e| {
+        XtrError::Internal(format!(
+            "DSL {}: envelope failed Handlebars validation: {}",
+            path.display(),
+            e
+        ))
+    })?;
     Ok(())
 }
 
@@ -149,5 +176,42 @@ mod tests {
         write(tmp.path(), "svc/broken.yml", "not: valid: yaml: :");
         let err = load_all(tmp.path()).unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
+    }
+
+    #[test]
+    fn broken_handlebars_envelope_fails_at_load_time() {
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "svc/bad.yml",
+            "params: []\nmethod: POST\nenvelope: <x>{{ unclosed </x>\n",
+        );
+        let err = load_all(tmp.path()).unwrap_err();
+        assert!(
+            matches!(&err, XtrError::Internal(m) if m.contains("Handlebars")),
+            "expected Handlebars-validation error, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn duplicate_group_service_across_yml_yaml_warns() {
+        // Same group + stem in two files (one .yml, one .yaml).
+        // The second load wins silently today; we just want to
+        // exercise the code path so a warning is emitted.
+        let tmp = TempDir::new().unwrap();
+        write(
+            tmp.path(),
+            "svc/foo.yml",
+            "params: []\nmethod: POST\nenvelope: <a/>\n",
+        );
+        write(
+            tmp.path(),
+            "svc/foo.yaml",
+            "params: []\nmethod: POST\nenvelope: <b/>\n",
+        );
+        let map = load_all(tmp.path()).unwrap();
+        // Only one entry survives — the warning is behavioural
+        // documentation; the last read wins by HashMap semantics.
+        assert_eq!(map.len(), 1);
     }
 }
