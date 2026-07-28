@@ -46,6 +46,48 @@ pub struct AppConfig {
 
     #[serde(default)]
     pub security_server: Option<SecurityServer>,
+
+    /// Task 011 — request/response size caps + timeout.
+    /// Applied to every request path; overrun becomes a structured
+    /// 413 (inbound) or 502 (upstream) with a JSON error body.
+    #[serde(default)]
+    pub limits: Limits,
+}
+
+/// Resource ceilings. Defaults chosen for typical X-Road payload
+/// sizes: real-world envelopes are single-digit KB, responses under
+/// 1 MB. Ceilings are conservative but generous to survive the
+/// occasional bulky business response without a config change.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Limits {
+    #[serde(default = "default_max_request_bytes")]
+    pub max_request_bytes: usize,
+
+    #[serde(default = "default_max_response_bytes")]
+    pub max_response_bytes: usize,
+
+    #[serde(default = "default_request_timeout_secs")]
+    pub request_timeout_secs: u64,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            max_request_bytes: default_max_request_bytes(),
+            max_response_bytes: default_max_response_bytes(),
+            request_timeout_secs: default_request_timeout_secs(),
+        }
+    }
+}
+
+fn default_max_request_bytes() -> usize {
+    1_048_576 // 1 MiB
+}
+fn default_max_response_bytes() -> usize {
+    16_777_216 // 16 MiB
+}
+fn default_request_timeout_secs() -> u64 {
+    30
 }
 
 /// Client identity injected into every X-Road envelope's
@@ -95,6 +137,7 @@ impl Default for AppConfig {
             xroad_instance: default_xroad_instance(),
             client_data: ClientData::default(),
             security_server: None,
+            limits: Limits::default(),
         }
     }
 }

@@ -13,7 +13,8 @@ use crate::dsl::loader::ServiceMap;
 use crate::error::XtrError;
 use crate::executor::Executor;
 use crate::translate::xml_to_json;
-use axum::extract::{Path, State};
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, State};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -29,10 +30,21 @@ pub struct AppState {
 }
 
 pub fn build(state: AppState) -> Router {
+    let limit = state.cfg.limits.max_request_bytes;
     Router::new()
         .route("/health", get(health))
         .route("/api", get(openapi))
-        .route("/:group/:service", post(invoke))
+        // Task 011: cap inbound REST body size at the extractor.
+        // Overflow surfaces via `handle_body_rejection` as a
+        // structured `RequestTooLarge` error (413 + JSON).
+        // We give Axum's DefaultBodyLimit a slightly-larger ceiling
+        // so its "connection kill" path only fires on truly
+        // pathological uploads; the precise cap check lives in the
+        // handler below.
+        .route(
+            "/:group/:service",
+            post(invoke).layer(DefaultBodyLimit::max(limit.saturating_add(4096))),
+        )
         .with_state(state)
 }
 
@@ -47,8 +59,16 @@ async fn openapi(State(state): State<AppState>) -> impl IntoResponse {
 async fn invoke(
     State(state): State<AppState>,
     Path((group, service)): Path<(String, String)>,
-    body: Option<Json<Value>>,
+    body: Bytes,
 ) -> Result<Json<Value>, XtrError> {
+    // Task 011: enforce the byte-exact request cap here — the
+    // DefaultBodyLimit layer is a coarse backstop; this is the
+    // authoritative check that produces the structured 413.
+    let limit = state.cfg.limits.max_request_bytes;
+    if body.len() > limit {
+        return Err(XtrError::RequestTooLarge { limit });
+    }
+
     let template = state
         .services
         .get(&(group.clone(), service.clone()))
@@ -58,13 +78,17 @@ async fn invoke(
             service: service.clone(),
         })?;
 
-    // Extract params from the request body. Missing body = empty
-    // object. For MVP: object body = params; anything else = empty.
-    // v0.3 (task filed under epic-response-mapping when needed)
-    // will allow richer JSON types.
-    let user_params = match body {
-        Some(Json(Value::Object(map))) => map.into_iter().collect(),
-        _ => std::collections::HashMap::new(),
+    // Empty body → empty params (matches JVM XTR: an empty POST is
+    // a valid request against a zero-param service). Non-empty
+    // body: must parse as a JSON object; anything else is treated
+    // as no params (task 012 tightens this contract).
+    let user_params = if body.is_empty() {
+        std::collections::HashMap::new()
+    } else {
+        match serde_json::from_slice::<Value>(&body) {
+            Ok(Value::Object(map)) => map.into_iter().collect(),
+            _ => std::collections::HashMap::new(),
+        }
     };
 
     let envelope = expand(

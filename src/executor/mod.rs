@@ -27,13 +27,13 @@ pub struct Executor {
 
 impl Executor {
     pub fn new(cfg: &AppConfig) -> Result<Self, XtrError> {
-        let plain = plain::PlainExecutor::new()?;
+        let plain = plain::PlainExecutor::new(&cfg.limits)?;
         let ss = match &cfg.security_server {
             Some(ss_cfg) => {
                 let password = cfg
                     .keystore_password()?
                     .expect("security_server configured but keystore_password returned None");
-                Some(ss::SsExecutor::new(ss_cfg, &password)?)
+                Some(ss::SsExecutor::new(ss_cfg, &password, &cfg.limits)?)
             }
             None => None,
         };

@@ -4,21 +4,22 @@
 //! fixes JVM bug #6 (Spring version installed a trust-all
 //! X509TrustManager, which silently accepts every cert).
 
-use crate::config::SecurityServer;
+use crate::config::{Limits, SecurityServer};
 use crate::error::XtrError;
 use reqwest::{Client, Identity};
 use std::time::Duration;
 
-use super::plain::{map_send_error, parse_method, truncate};
+use super::plain::{map_send_error, parse_method, read_bounded, truncate};
 
 #[derive(Clone)]
 pub struct SsExecutor {
     client: Client,
     url: String,
+    max_response_bytes: usize,
 }
 
 impl SsExecutor {
-    pub fn new(cfg: &SecurityServer, password: &str) -> Result<Self, XtrError> {
+    pub fn new(cfg: &SecurityServer, password: &str, limits: &Limits) -> Result<Self, XtrError> {
         let pkcs12 = std::fs::read(&cfg.keystore_path).map_err(|e| {
             XtrError::KeystoreLoadFailed(format!(
                 "reading keystore {}: {}",
@@ -30,7 +31,7 @@ impl SsExecutor {
             .map_err(|e| XtrError::KeystoreLoadFailed(format!("parsing PKCS12 keystore: {e}")))?;
         let client = Client::builder()
             .identity(identity)
-            .timeout(Duration::from_secs(30))
+            .timeout(Duration::from_secs(limits.request_timeout_secs))
             .build()
             .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
 
@@ -43,6 +44,7 @@ impl SsExecutor {
         Ok(Self {
             client,
             url: cfg.url.clone(),
+            max_response_bytes: limits.max_response_bytes,
         })
     }
 
@@ -59,10 +61,7 @@ impl SsExecutor {
             .map_err(map_send_error)?;
 
         let status = resp.status();
-        let body = resp
-            .text()
-            .await
-            .map_err(|e| XtrError::Internal(format!("reading SS body: {e}")))?;
+        let body = read_bounded(resp, self.max_response_bytes).await?;
 
         if !status.is_success() {
             return Err(XtrError::UpstreamHttpError {

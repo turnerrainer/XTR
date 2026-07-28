@@ -4,6 +4,7 @@
 //! `reqwest`'s `native-tls` feature backing the default TLS
 //! implementation).
 
+use crate::config::Limits;
 use crate::error::XtrError;
 use reqwest::{Client, Method};
 use std::time::Duration;
@@ -11,15 +12,19 @@ use std::time::Duration;
 #[derive(Clone)]
 pub struct PlainExecutor {
     client: Client,
+    max_response_bytes: usize,
 }
 
 impl PlainExecutor {
-    pub fn new() -> Result<Self, XtrError> {
+    pub fn new(limits: &Limits) -> Result<Self, XtrError> {
         let client = Client::builder()
-            .timeout(Duration::from_secs(30))
+            .timeout(Duration::from_secs(limits.request_timeout_secs))
             .build()
             .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            max_response_bytes: limits.max_response_bytes,
+        })
     }
 
     pub async fn execute(
@@ -40,10 +45,7 @@ impl PlainExecutor {
             .map_err(map_send_error)?;
 
         let status = resp.status();
-        let body = resp
-            .text()
-            .await
-            .map_err(|e| XtrError::Internal(format!("reading upstream body: {e}")))?;
+        let body = read_bounded(resp, self.max_response_bytes).await?;
 
         if !status.is_success() {
             return Err(XtrError::UpstreamHttpError {
@@ -53,6 +55,27 @@ impl PlainExecutor {
         }
         Ok(body)
     }
+}
+
+/// Streams the upstream body chunk-by-chunk, refusing as soon as
+/// the cumulative size crosses `limit`. Prevents a malicious or
+/// misbehaving upstream from pinning arbitrary memory per request.
+pub(crate) async fn read_bounded(
+    mut resp: reqwest::Response,
+    limit: usize,
+) -> Result<String, XtrError> {
+    let mut buf: Vec<u8> = Vec::new();
+    while let Some(chunk) = resp
+        .chunk()
+        .await
+        .map_err(|e| XtrError::Internal(format!("reading upstream body chunk: {e}")))?
+    {
+        if buf.len() + chunk.len() > limit {
+            return Err(XtrError::UpstreamBodyTooLarge { limit });
+        }
+        buf.extend_from_slice(&chunk);
+    }
+    String::from_utf8(buf).map_err(|e| XtrError::XmlParseError(format!("upstream not UTF-8: {e}")))
 }
 
 pub(crate) fn parse_method(s: &str) -> Result<Method, XtrError> {

@@ -17,7 +17,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 use xtr_on_rust::{
-    config::AppConfig,
+    config::{AppConfig, Limits},
     dsl::loader,
     executor::Executor,
     openapi,
@@ -77,9 +77,14 @@ fn write_dsl(dsl_root: &std::path::Path, group: &str, service: &str, body: &str)
 /// Assemble the XTR router with a given DSL directory. No SS
 /// configured — every DSL must have `service:` set.
 async fn build_xtr(dsl_root: &std::path::Path) -> Router {
+    build_xtr_with_limits(dsl_root, Limits::default()).await
+}
+
+async fn build_xtr_with_limits(dsl_root: &std::path::Path, limits: Limits) -> Router {
     let cfg = AppConfig {
         dsl_path: dsl_root.to_path_buf(),
         xroad_instance: "ee-test".into(),
+        limits,
         ..Default::default()
     };
     let services = loader::load_all(&cfg.dsl_path).unwrap();
@@ -214,6 +219,149 @@ async fn params_outside_allowlist_are_silently_dropped() {
     // Envelope sent upstream: safe=OK, evil= (dropped)
     let outbound = capture.body.lock().unwrap().clone().unwrap();
     assert!(outbound.contains("<x>OK|</x>"), "outbound: {outbound}");
+}
+
+/// Task 011: inbound REST body exceeding max_request_bytes must
+/// return a structured 413 with the limit surfaced in the payload.
+#[tokio::test]
+async fn inbound_body_over_limit_returns_413_structured() {
+    let tmp = TempDir::new().unwrap();
+    write_dsl(
+        tmp.path(),
+        "svc",
+        "echo",
+        "params: [x]\nservice: http://127.0.0.1:1\nmethod: POST\nenvelope: <x>{{x}}</x>\n",
+    );
+    let limits = Limits {
+        max_request_bytes: 128,
+        ..Limits::default()
+    };
+    let app = build_xtr_with_limits(tmp.path(), limits).await;
+
+    // Body payload well over 128 bytes.
+    let oversized = format!(r#"{{"x":"{}"}}"#, "A".repeat(1024));
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/svc/echo")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(oversized))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 413);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "request_too_large");
+    assert_eq!(body["limit"], 128);
+}
+
+/// Task 011: an upstream that streams past max_response_bytes must
+/// be torn down with a structured 502 and NOT buffered to memory.
+#[tokio::test]
+async fn upstream_response_over_limit_returns_502_structured() {
+    // Mock upstream returns a body larger than the cap.
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mock_url = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        let mock = Router::new().route(
+            "/",
+            post(|| async {
+                // 100 KB body — dwarfs the 1 KB cap we'll set.
+                let big = "X".repeat(100 * 1024);
+                (
+                    axum::http::StatusCode::OK,
+                    [("content-type", "text/xml; charset=utf-8")],
+                    format!("<soap:Envelope><soap:Body>{big}</soap:Body></soap:Envelope>"),
+                )
+            }),
+        );
+        axum::serve(listener, mock).await.unwrap();
+    });
+
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!("params: []\nservice: {mock_url}\nmethod: POST\nenvelope: <x/>\n");
+    write_dsl(tmp.path(), "svc", "huge", &dsl);
+    let limits = Limits {
+        max_response_bytes: 1024,
+        ..Limits::default()
+    };
+    let app = build_xtr_with_limits(tmp.path(), limits).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/svc/huge")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from("{}"))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 502);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "upstream_body_too_large");
+    assert_eq!(body["limit"], 1024);
+}
+
+/// Task 010 regression: HTTP 200 + <soap:Fault> body must map
+/// to 502 + structured error, NOT a "successful" 200 with the
+/// fault silently embedded in the JSON body.
+#[tokio::test]
+async fn soap_fault_from_upstream_becomes_502_structured_error() {
+    let capture = Capture::default();
+    let app_state = capture.clone();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let mock_url = format!("http://{}", listener.local_addr().unwrap());
+    tokio::spawn(async move {
+        let mock = Router::new()
+            .route(
+                "/",
+                post(|| async {
+                    (
+                        axum::http::StatusCode::OK,
+                        [("content-type", "text/xml; charset=utf-8")],
+                        r#"<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+                            <soap:Body>
+                                <soap:Fault>
+                                    <faultcode>Client.MissingParam</faultcode>
+                                    <faultstring>reg_code required</faultstring>
+                                </soap:Fault>
+                            </soap:Body>
+                        </soap:Envelope>"#,
+                    )
+                }),
+            )
+            .with_state(app_state);
+        axum::serve(listener, mock).await.unwrap();
+    });
+
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!(
+        "params: [reg_code]\nservice: {mock_url}\nmethod: POST\nenvelope: <x>{{{{reg_code}}}}</x>\n"
+    );
+    write_dsl(tmp.path(), "ar", "fault", &dsl);
+    let app = build_xtr(tmp.path()).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/ar/fault")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 502);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "upstream_soap_fault");
+    assert_eq!(body["code"], "Client.MissingParam");
+    assert_eq!(body["string"], "reg_code required");
+    let _ = capture;
 }
 
 // ---------- Test harness helpers ----------

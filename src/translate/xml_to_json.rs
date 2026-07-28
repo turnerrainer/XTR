@@ -27,10 +27,69 @@ pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
     // both under stable keys. If neither present, return the raw
     // parsed shape under `body` for tolerance.
     let (headers, body) = extract_header_and_body(&root);
+
+    // Task 010: a <Fault> child in <Body> is a *business* error
+    // that rides on HTTP 200 — reject it explicitly instead of
+    // silently translating it as a successful response.
+    if let Some(fault) = find_child_endswith(&body, "Fault") {
+        return Err(fault_to_error(fault));
+    }
+
     Ok(json!({
         "headers": headers,
         "body": body,
     }))
+}
+
+/// Convert a parsed `<Fault>` subtree into an `UpstreamSoapFault`
+/// error. Handles both SOAP 1.1 (`faultcode`/`faultstring`) and
+/// SOAP 1.2 (`Code/Value`/`Reason/Text`) shapes, along with
+/// namespace-prefixed variants (`env:faultcode` etc).
+fn fault_to_error(fault: &Value) -> XtrError {
+    let code = pluck_soap12_code(fault)
+        .or_else(|| pluck_string(fault, "faultcode"))
+        .unwrap_or_else(|| "unknown".to_string());
+    let string = pluck_soap12_reason(fault)
+        .or_else(|| pluck_string(fault, "faultstring"))
+        .unwrap_or_else(|| "no faultstring".to_string());
+    let detail = find_child_endswith(fault, "detail")
+        .or_else(|| find_child_endswith(fault, "Detail"))
+        .cloned();
+    XtrError::UpstreamSoapFault {
+        code,
+        string,
+        detail,
+    }
+}
+
+/// SOAP 1.2: `<Code><Value>env:Sender</Value></Code>`
+fn pluck_soap12_code(fault: &Value) -> Option<String> {
+    let code_node = find_child_endswith(fault, "Code")?;
+    let val = find_child_endswith(code_node, "Value")?;
+    val.as_str().map(str::to_string)
+}
+
+/// SOAP 1.2: `<Reason><Text xml:lang="en">…</Text></Reason>`
+fn pluck_soap12_reason(fault: &Value) -> Option<String> {
+    let reason = find_child_endswith(fault, "Reason")?;
+    let text = find_child_endswith(reason, "Text")?;
+    // Text element may be a bare string OR an object with `#text`
+    // (when it has attributes like xml:lang).
+    text.as_str().map(str::to_string).or_else(|| {
+        text.get("#text")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    })
+}
+
+fn pluck_string(fault: &Value, suffix: &str) -> Option<String> {
+    let child = find_child_endswith(fault, suffix)?;
+    child.as_str().map(str::to_string).or_else(|| {
+        child
+            .get("#text")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    })
 }
 
 /// Walk the top-level `<Envelope>` and pull out `<Header>` +
@@ -301,6 +360,88 @@ mod tests {
     fn malformed_xml_returns_parse_error() {
         let err = translate_soap("<soap:Envelope><unclosed>").unwrap_err();
         assert!(matches!(err, XtrError::XmlParseError(_)));
+    }
+
+    #[test]
+    fn soap_1_1_fault_returns_upstream_soap_fault_error() {
+        let xml = r#"<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+            <soap:Body>
+                <soap:Fault>
+                    <faultcode>Client.MissingParam</faultcode>
+                    <faultstring>reg_code required</faultstring>
+                </soap:Fault>
+            </soap:Body>
+        </soap:Envelope>"#;
+        let err = translate_soap(xml).unwrap_err();
+        match err {
+            XtrError::UpstreamSoapFault {
+                code,
+                string,
+                detail,
+            } => {
+                assert_eq!(code, "Client.MissingParam");
+                assert_eq!(string, "reg_code required");
+                assert!(detail.is_none());
+            }
+            other => panic!("expected UpstreamSoapFault, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn soap_1_2_fault_returns_upstream_soap_fault_error() {
+        let xml = r#"<env:Envelope xmlns:env="http://www.w3.org/2003/05/soap-envelope">
+            <env:Body>
+                <env:Fault>
+                    <env:Code><env:Value>env:Sender</env:Value></env:Code>
+                    <env:Reason><env:Text xml:lang="en">Bad payload</env:Text></env:Reason>
+                </env:Fault>
+            </env:Body>
+        </env:Envelope>"#;
+        let err = translate_soap(xml).unwrap_err();
+        match err {
+            XtrError::UpstreamSoapFault { code, string, .. } => {
+                assert_eq!(code, "env:Sender");
+                assert_eq!(string, "Bad payload");
+            }
+            other => panic!("expected UpstreamSoapFault, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn soap_1_1_fault_with_detail_preserves_detail_body() {
+        let xml = r#"<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+            <soap:Body>
+                <soap:Fault>
+                    <faultcode>Server.BackendDown</faultcode>
+                    <faultstring>backend unavailable</faultstring>
+                    <detail>
+                        <retry_after>30</retry_after>
+                    </detail>
+                </soap:Fault>
+            </soap:Body>
+        </soap:Envelope>"#;
+        let err = translate_soap(xml).unwrap_err();
+        match err {
+            XtrError::UpstreamSoapFault { detail, .. } => {
+                let d = detail.expect("detail should be present");
+                assert_eq!(d["retry_after"], "30");
+            }
+            other => panic!("expected UpstreamSoapFault, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn non_fault_body_still_translates_as_success() {
+        // Regression guard: only a real <Fault> child should trip
+        // the new code path. Ordinary <result> etc should not.
+        let xml = r#"<soap:Envelope><soap:Body>
+            <not_a_fault><faultcode>looks like it</faultcode></not_a_fault>
+        </soap:Body></soap:Envelope>"#;
+        let v = translate_soap(xml).unwrap();
+        assert_eq!(
+            body(&v),
+            &json!({ "not_a_fault": { "faultcode": "looks like it" } })
+        );
     }
 
     #[test]
