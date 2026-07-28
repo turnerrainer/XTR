@@ -1,0 +1,13 @@
+# cargo-audit configuration.
+#
+# Advisory IDs listed under `ignore` are downgraded to soft warnings
+# so `cargo audit --deny warnings` still passes. Every entry MUST
+# carry a rationale and a review date; unreviewed entries are a
+# code smell.
+#
+# NOTE: any exception here MUST be mirrored in `deny.toml`'s
+# `[advisories].ignore` — cargo-audit and cargo-deny do NOT share
+# this file. See STANDARDS.md §5.
+
+[advisories]
+ignore = []

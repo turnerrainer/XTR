@@ -1,0 +1,42 @@
+name: tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Both amd64 and native arm64 (free `ubuntu-24.04-arm` runners on
+# public repos since 2025-04). Catches arch-specific bugs BEFORE
+# publish.yml ships an arm64 container image. See STANDARDS.md §6.
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # Namespace by arch — amd64 and arm64 target/ can't share.
+          key: cargo-${{ matrix.runner }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ matrix.runner }}-
+      - name: fmt check
+        run: cargo fmt --check
+      - name: clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: build
+        run: cargo build --release --bin xtr-on-rust
+      - name: cargo test
+        run: cargo test --release --no-fail-fast

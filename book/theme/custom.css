@@ -1,0 +1,211 @@
+/* Light-on-white theme override — modelled on
+   https://arrow.apache.org/docs/format/Columnar.html (Furo/Sphinx look).
+   Overrides mdBook's "light" theme variables without touching templates. */
+
+:root,
+.light {
+  /* Pure white page + content backgrounds */
+  --bg: #ffffff;
+  --fg: #24292f;
+
+  /* Sidebar — subtle off-white with clear separation */
+  --sidebar-bg: #f8f9fa;
+  --sidebar-fg: #24292f;
+  --sidebar-non-existant: #aab1bb;
+  --sidebar-active: #0969da;
+  --sidebar-spacer: #e5e7eb;
+
+  /* Scrollbar */
+  --scrollbar: #d0d7de;
+
+  /* Icons, top bar */
+  --icons: #57606a;
+  --icons-hover: #24292f;
+
+  /* Links — GitHub blue, similar to Arrow docs */
+  --links: #0969da;
+
+  /* Inline code + code block backgrounds — light gray, no yellow tint */
+  --inline-code-color: #0550ae;
+  --theme-popup-bg: #ffffff;
+  --theme-popup-border: #d0d7de;
+  --theme-hover: #eef2f6;
+
+  --quote-bg: #f6f8fa;
+  --quote-border: #d0d7de;
+
+  --warning-border: #f0b429;
+
+  --table-border-color: #d0d7de;
+  --table-header-bg: #f6f8fa;
+  --table-alternate-bg: #fbfcfd;
+
+  --searchbar-border-color: #d0d7de;
+  --searchbar-bg: #ffffff;
+  --searchbar-fg: #24292f;
+  --searchbar-shadow-color: rgba(0, 0, 0, 0.06);
+  --searchresults-header-fg: #57606a;
+  --searchresults-border-color: #d0d7de;
+  --searchresults-li-bg: #ffffff;
+  --search-mark-bg: #fff3b0;
+
+  --color-scheme: light;
+}
+
+html,
+body {
+  background-color: #ffffff;
+}
+
+/* Body typography — clean sans-serif stack, comfortable line height */
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.content {
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  color: #1f2328;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.8em;
+  margin-bottom: 0.6em;
+}
+
+.content h1 {
+  border-bottom: 1px solid #d0d7de;
+  padding-bottom: 0.3em;
+}
+
+.content h2 {
+  border-bottom: 1px solid #eaeef2;
+  padding-bottom: 0.25em;
+}
+
+/* Links */
+.content a,
+.content a:visited {
+  color: var(--links);
+  text-decoration: none;
+}
+.content a:hover {
+  text-decoration: underline;
+}
+
+/* Inline code */
+code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 0.9em;
+  background-color: #f6f8fa;
+  border-radius: 4px;
+  padding: 0.15em 0.35em;
+  color: #0550ae;
+}
+
+/* Code blocks — bordered, subtle gray fill, no rounded shadow */
+pre {
+  background-color: #f6f8fa !important;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre > code {
+  background-color: transparent !important;
+  color: #1f2328;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.9em;
+}
+
+/* Tables — Arrow-docs style: thin borders, subtle header shade */
+.content table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  display: table;
+  width: auto;
+  max-width: 100%;
+}
+
+.content table th,
+.content table td {
+  border: 1px solid var(--table-border-color);
+  padding: 6px 12px;
+}
+
+.content table th {
+  background-color: var(--table-header-bg);
+  font-weight: 600;
+  text-align: left;
+}
+
+.content table tbody tr:nth-child(even) td {
+  background-color: var(--table-alternate-bg);
+}
+
+/* Blockquotes */
+.content blockquote {
+  border-left: 3px solid var(--quote-border);
+  background-color: var(--quote-bg);
+  color: #57606a;
+  padding: 8px 14px;
+  margin-left: 0;
+}
+
+/* Sidebar */
+.sidebar {
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid #e5e7eb;
+}
+
+.sidebar .sidebar-scrollbox {
+  padding: 12px 14px;
+}
+
+.chapter li.chapter-item {
+  line-height: 1.5;
+  padding: 2px 0;
+}
+
+.chapter li a {
+  color: var(--sidebar-fg);
+}
+
+.chapter li a.active {
+  color: var(--sidebar-active);
+  font-weight: 600;
+}
+
+/* Top menu bar — clean white */
+.menu-bar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Page navigation buttons */
+.nav-chapters {
+  color: var(--icons);
+}
+.nav-chapters:hover {
+  color: var(--icons-hover);
+}
+
+/* Search */
+#searchresults a {
+  color: var(--links);
+}

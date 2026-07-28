@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Rust
+target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Documentation (not needed in image)
+book/
+docs/
+README.md
+CHANGELOG.md
+STANDARDS.md
+HANDOFF.md
+SECURITY.md
+LICENSE
+NOTICE
+
+# Task tracking
+tasks/
+
+# Claude
+.claude/

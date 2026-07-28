@@ -1,0 +1,8 @@
+XTR-on-Rust
+Copyright 2026 Rainer Türner
+
+This product includes software developed at
+turnerrainer / Buerostack (https://github.com/turnerrainer).
+
+Rust re-implementation of the original XTR
+(https://github.com/buerokratt/XTR).

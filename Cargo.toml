@@ -1,0 +1,25 @@
+[package]
+name = "xtr-on-rust"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+authors = ["Rainer Türner"]
+license = "Apache-2.0"
+description = "XTR — Rust implementation. Domain semantics forthcoming."
+repository = "https://github.com/turnerrainer/XTR"
+
+# Domain crate deps go here as XTR's implementation lands.
+# Kept minimal at scaffold time so `cargo check` is fast and the
+# license/audit posture stays clean.
+[dependencies]
+
+[dev-dependencies]
+
+[[bin]]
+name = "xtr-on-rust"
+path = "src/main.rs"
+
+# Clippy posture — matches Ruuter-on-Rust and STANDARDS.md §2.
+# `cargo clippy --all-targets -- -D warnings` is the CI gate.
+# Any allow-listed lint MUST carry a reason inline.
+[lints.clippy]
