@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:rmr="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+    
+    <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+	<element name="RMRmahuaru" type="rmr:RMRmahuaruRequestType">
+		<annotation>
+			<appinfo>
+				<xrd:title>Maavaravaru mahu aruande edastamise teenus</xrd:title>
+			</appinfo>
+		</annotation>
+	</element>
+	
+	<element name="RMRmahuaruResponse" type="rmr:RMRmahuaruResponseType"/>
+
+	<complexType name="RMRmahuaruResponseType">
+		<sequence>
+			<element name="RMRmahuaruResult" type="rmr:RMRmahuaruVastusType"/>
+		</sequence>
+	</complexType>
+	
+	<complexType name="RMRmahuaruRequestType">
+		<sequence>
+			<element minOccurs="0" maxOccurs="1" name="aruParam">
+				<complexType>
+					<sequence>
+						<element name="isikukood" minOccurs="0" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Isikukood</xrd:title>
+									<xrd:notes>Juriidilise isiku registrinumber</xrd:notes>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="loa_nr" minOccurs="1" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Loa number</xrd:title>
+									<xrd:notes>Kaevandusloa number</xrd:notes>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="dekl_nr" minOccurs="1" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Deklaratsiooni number</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="dekl_vers_nr" minOccurs="1" type="integer">
+							<annotation>
+								<appinfo>
+									<xrd:title>Deklaratsiooni versiooni number</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="periood_algus" minOccurs="1" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Aruandlusperioodi algus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="periood_lopp" minOccurs="1" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Aruandlusperioodi lõpp</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="moodistamine" minOccurs="0" type="boolean">
+							<annotation>
+								<appinfo>
+									<xrd:title>Instrumentaalmõõdistamine</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="dekl_kinnit_kuup" minOccurs="0" type="dateTime">
+							<annotation>
+								<appinfo>
+									<xrd:title>Deklaratsiooni kinnitamise kuupäev</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="dekl_esit_kuup" minOccurs="0" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Deklaratsiooni esitamise kuupäev</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="kasutaja" minOccurs="0" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Süsteemi sisestaja isikukood</xrd:title>
+									<xrd:notes>
+										Iseteeninduse korral klient, paberdeklaratsiooni puhul ametnik
+									</xrd:notes>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="mahud">
+							<complexType>
+								<sequence>
+									<element name="plokk" minOccurs="1" maxOccurs="unbounded">
+										<complexType>
+											<sequence>
+												<element name="registrikaart" type="string">
+													<annotation>
+														<appinfo>
+															<xrd:title>Registrikaart</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="ploki_nimi" type="string" minOccurs="1">
+													<annotation>
+														<appinfo>
+															<xrd:title>Ploki nimi</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="kasutusala_nimetus" type="string" minOccurs="0">
+													<annotation>
+														<appinfo>
+															<xrd:title>Kasutusala nimetus</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="mootyhik" type="rmr:yhikKlassif" minOccurs="1">
+													<annotation>
+														<appinfo>
+															<xrd:title>Mõõtühik</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="kaevandatud" type="decimal" minOccurs="1">
+													<annotation>
+														<appinfo>
+															<xrd:title>Kaevandatud</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="kasutatud" type="decimal" minOccurs="1">
+													<annotation>
+														<appinfo>
+															<xrd:title>Kasutatud ja kasutuskõlbmatuks muudetud
+															</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+												<element name="selgitus" type="string" minOccurs="0">
+													<annotation>
+														<appinfo>
+															<xrd:title>Selgitus</xrd:title>
+														</appinfo>
+													</annotation>
+												</element>
+											</sequence>
+										</complexType>
+									</element>
+								</sequence>
+							</complexType>
+						</element>
+					</sequence>
+				</complexType>
+			</element>
+		</sequence>
+	</complexType>
+	<complexType name="RMRmahuaruVastusType">
+		<sequence>
+			<element name="tulem" type="string"/>
+		</sequence>
+	</complexType>
+	<simpleType name="yhikKlassif">
+		<restriction base="string">
+			<enumeration value="tuh.m3">
+				<annotation>
+					<appinfo>
+						<xrd:title>tuh.m3</xrd:title>
+					</appinfo>
+				</annotation>
+			</enumeration>
+			<enumeration value="tuh.t">
+				<annotation>
+					<appinfo>
+						<xrd:title>tuh.t</xrd:title>
+					</appinfo>
+				</annotation>
+			</enumeration>
+		</restriction>
+	</simpleType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="RMRmahuaru">
+        <wsdl:part name="body" element="tns:RMRmahuaru"/>
+    </wsdl:message>
+    <wsdl:message name="RMRmahuaruResponse">
+        <wsdl:part name="body" element="tns:RMRmahuaruResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="RMRmahuaru">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Maavaravaru mahu aruande edastamise teenus</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:RMRmahuaru"/>
+            <wsdl:output message="tns:RMRmahuaruResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="RMRmahuaru">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

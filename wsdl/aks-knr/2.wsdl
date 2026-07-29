@@ -1,0 +1,789 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:ads="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="https://x-road.eu/xsd/xroad.xsd"/>
+  <include schemaLocation="https://www.maaamet.ee/schemas/xtee6/ads_types.xsd"/>
+  <element name="KNRnimeobjektiMuudatusedV1">
+    <complexType>
+      <annotation>
+        <appinfo>
+          <xrd:title>Nimeobjekti muudatuste päring(KNRnimeobjektiMuudatusedV1)</xrd:title>
+        </appinfo>
+      </annotation>
+      <sequence>
+        <element name="muudetudAlates" type="date" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kuupäev alates millest (k.a) registreeritud muudatusi soovitakse leida</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="muudetudKuni" type="date" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kuupäev milleni (k.a) registreeritud muudatusi soovitakse leida</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="logId" type="integer" minOccurs="0" default="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Millisest logId väärtusest suuremaid kirjeid otsitakse</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="noOid" type="string" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Nimeobjektile KNR süsteemis omistatud identifikaator</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="noLiigid" type="string" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Nimeobjekti liikide koodid</xrd:title>
+              <xrd:notes>Tagastusse soovitud nimeobjekti liikide koodide hulk.
+                Eraldatud komadega.
+                Otsing toimub nii primaarsete kui sekundaarsete liikide hulgast
+                ainult objekti viimase versiooniga seotud andmetest.
+              </xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="register" type="string" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Register</xrd:title>
+              <xrd:notes>Seosregistri kood KNR klassifikaatoris.
+                Otsing toimub nii primaarsete kui sekundaarsete seoste hulgast.
+              </xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="muudatusvektor" type="string" minOccurs="0" default="111111">
+          <annotation>
+            <appinfo>
+              <xrd:title>milliste andmete muudatustega seotud logisid teenuse tagastusse soovitakse</xrd:title>
+              <xrd:notes>
+                Pos 1 – nimeobjekti versioon,
+                Pos 2 – kohanimed,
+                Pos 3 – rühmad,
+                Pos 4 – aadressid,
+                Pos 5 – seosed teistes registrites,
+                Pos 6 – nimeobjekti sekundaarsed liigid
+              </xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+
+        <element name="maxArv" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagastatav kirjete max arv</xrd:title>
+            </appinfo>
+          </annotation>
+          <simpleType>
+            <restriction base="integer">
+              <maxInclusive value="100"/>
+            </restriction>
+          </simpleType>
+        </element>
+        <element name="kohanimed" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada nimeobjektiga seotud kohanimed</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="kohanimeAlused" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada kohanimede alusdokumendid</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="ryhmad" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada nimeobjektiga seotud rühmad</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="aadressid" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada nimeobjekti asukoha-aadressi</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="seosed" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada nimeobjekti seosed teistes registrites koos ruumikujudega</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="liigid" type="boolean" default="false" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Kas tagastada nimeobjekti sekundaarsed liigid</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="ruumiAndmeteFormaat" type="ads:kujuGeomeetriaFormaatType" default="GML" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Millises formaadis (WKT, GML, GeoJSON) tagastada objekti kuju geomeetria</xrd:title>
+              <xrd:notes>GML versioon 3.1.1</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+      </sequence>
+    </complexType>
+  </element>
+  <element name="KNRnimeobjektiMuudatusedV1Response">
+    <complexType>
+      <sequence>
+        <element name="nimeobjektiMuudatusedTulem">
+          <complexType>
+            <sequence>
+              <element name="muudatus" maxOccurs="unbounded">
+                <complexType>
+                  <sequence>
+                    <element name="logId" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Logikirje ID</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="logStamp" type="dateTime">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Logikirje tekkimise aeg</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="muudatusvektor" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Millised andmegrupid on muutunud</xrd:title>
+                          <xrd:notes>Eraldi positsioonis sümbolid väljendavad,
+                            millised andmegrupid on muudatuse käigus muutunud.
+                            Pos 1 – nimeobjekti versioon,
+                            Pos 2 – kohanimed,
+                            Pos 3 – rühmad,
+                            Pos 4 – aadressid,
+                            Pos 5 – seosed teistes registrites,
+                            Pos 6 – nimeobjekti sekundaarsed liigid.
+                          </xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noOid" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjektile KNR süsteemis omistatud identifikaator</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noLiikKood" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti liigi kood</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noLiikNimi" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti liigi nimetus</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="edastatakseAdsi" type="boolean" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kas nimeobjekt edastatakse ADS-i</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noSeisundKood" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti seisundi kood logi tegemise hetkel</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noSeisundNimi" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti seisundi nimi</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noSeisundAktuaalne" type="boolean" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kas on aktuaalne nimeobjekt</xrd:title>
+                          <xrd:notes>
+                            true - tegemist on aktuaalse nimeobjektiga.
+                            null või false - tegemist on mitteaktuaalse nimeobjektiga
+                          </xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noRegister" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Peamise kuju seosregistri kood</xrd:title>
+                          <xrd:notes>KNR, kui on tegemist KNR süsteemis digitud kujuga</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noRegisterNimi" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Peamise kuju seosregistri nimetus</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noTunnusRegistris" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Peamise kuju tunnus seosregistris</xrd:title>
+                          <xrd:notes>Tühi, kui on tegemist KNR-s digitud kujuga</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noObjektiOsa" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekt, mille osa vaadeldav objekt on</xrd:title>
+                          <xrd:notes>Puudub, kui on tavaline nimeobjekt</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="adsOid" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti identifikaator ADS süsteemis</xrd:title>
+                          <xrd:notes>Olemas kui objektil on seos ADS-iga (esitatakse ADS-i või päritakse ADS-ist)
+                          </xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="nimeViitepunktX" type="double">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kohanime viitepunkti X-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="nimeViitepunktY" type="double">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kohanime viitepunkti Y-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="viitepunktAdrId" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Viitepunkti aadressi versiooni identifikaator ADS süsteemis (ADR_ID)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="viitepunktKoodaadress" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Viitepunkti koodaadress (33 kohta)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="viitepunktAadress" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Viitepunkti aadress tekstina</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noRuumikuju" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti peamine kuju</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="nimeKeskpunktX" type="double">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Peamise kuju keskpunkti X-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="nimeKeskpunktY" type="double">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Peamise kuju keskpunkti Y-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noKoondnimi" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kõigist nimeobjektile määratud kohanimedest ärireeglite alusel kokku moodustatud
+                            ühend
+                          </xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noValikNimi" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjektile omistatud kõige tähtsama staatusega nimi</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noVersiooniAlus" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti versiooni tekkimise alusdokument</xrd:title>
+                          <xrd:notes>Võib puududa, kui ei versiooni põhjustanud menetlusel ei olnud alusdokumenti.
+                          </xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="versAlates" type="dateTime">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Versiooni tekkimise algusaeg KNR süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="versKuni" type="dateTime" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Versiooni kehtivuse lõppaeg KNR süsteemis</xrd:title>
+                          <xrd:notes>On täidetud ainult juhul kui on tegemist mitteaktuaalse nimeobjektiga</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="noVersId" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti versiooni identifikaator</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="versNr" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Nimeobjekti versiooni järjekorranumber</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="kohanimed" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="kohanimi" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="taisnimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime täiskuju</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="lyhinimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime lühikuju</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="keel" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime keele ISO 639-1 kood</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="staatus" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime staatus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="staatusNimetus" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime staatuse nimetus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="pyhendusnimi" type="boolean" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kas tegemist on pühendusnimega</xrd:title>
+                                      <xrd:notes>
+                                        True – tegemist on pühendusnimega.
+                                        null või false – ei ole pühendusnimi.
+                                      </xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmanimi" type="boolean" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kas tegemist on rühmanimega</xrd:title>
+                                      <xrd:notes>
+                                        True – tegemist on rühmanimega.
+                                        null või false – ei ole rühmanimi.
+                                      </xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="versAlates" type="dateTime">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Kohanime versiooni tekkimise algusaeg KNR süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="kohanimeAlused" minOccurs="0">
+                                  <complexType>
+                                    <sequence>
+                                      <element name="alus" maxOccurs="unbounded">
+                                        <complexType>
+                                          <sequence>
+                                            <element name="dokNimetus" type="string">
+                                              <annotation>
+                                                <appinfo>
+                                                  <xrd:title>Alusdokumendi nimetus</xrd:title>
+                                                </appinfo>
+                                              </annotation>
+                                            </element>
+                                            <element name="dokKoostaja" type="string">
+                                              <annotation>
+                                                <appinfo>
+                                                  <xrd:title>Alusdokumendi koostaja</xrd:title>
+                                                </appinfo>
+                                              </annotation>
+                                            </element>
+                                            <element name="dokJoustunudKp" type="date">
+                                              <annotation>
+                                                <appinfo>
+                                                  <xrd:title>Alusdokumendi jõustumise kuupäev</xrd:title>
+                                                </appinfo>
+                                              </annotation>
+                                            </element>
+                                            <element name="alates" type="dateTime">
+                                              <annotation>
+                                                <appinfo>
+                                                  <xrd:title>Alusdokumendi kohanimele määramise aeg süsteemis</xrd:title>
+                                                </appinfo>
+                                              </annotation>
+                                            </element>
+                                          </sequence>
+                                        </complexType>
+                                      </element>
+                                    </sequence>
+                                  </complexType>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="ryhmad" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="ryhm" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="ryhmaTunnus" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühma tunnus, kuhu nimeobjekt kuulub</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmaNimeViitepunktX" type="double">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühma nimede viitepunkti X-koordinaat L-Est süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmaNimeViitepunktY" type="double">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühma nimede viitepunkti Y-koordinaat L-Est süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="versAlates" type="dateTime">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti rühma kuulumise algusaeg KNR süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmaLiikmed" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Samasse rühma kuuluvate nimeobjektide noOid massiiv</xrd:title>
+                                      <xrd:notes>Vaadeldav nimeobjekt kuvatakse ka siia massiiv</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmanimeKuva" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühmanimede kuvamise määrang kaardil (ALAM, YLEM, KOIK)</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmaKoondNimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühma koondnimi</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="ryhmaLiik" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Rühma liik</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="kohanimeAadressid" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="aadress" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="ulatus" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Asukoha ulatuse määrang</xrd:title>
+                                      <xrd:notes>
+                                        Kas asukoht on Eesti, välismaa või konkreetse aadressi täpsusega
+                                        E – Eesti, V – välismaa, A -aadress
+                                      </xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="aadress" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Aadress tekstina</xrd:title>
+                                      <xrd:notes>On täidetud, kui ulatus on aadress</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="koodaadress" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Koodaadress (33 kohta)</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adrId" type="integer">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Aadressi versiooni identifikaator ADS süsteemis (ADR_ID)</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="versAlates" type="dateTime">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjektile asukoha-aadressi määramise algusaeg KNR süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="seosed" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="seos" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="noRegister" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud registri kood</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="noRegisterNimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud registri nimetus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="noTunnusRegistris" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Objekti tunnus seotud registris</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="noRuumikuju" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti sekundaarkuju, kuju seotud registris</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="versAlates" type="dateTime">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti sekundaarse seose tekkimise algusaeg KNR süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="liigid" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="liik" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="noLiikKood" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti liigi kood</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="noLiikNimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti liigi nimetus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="versAlates" type="dateTime">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Nimeobjekti liigi määramise algusaeg KNR süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                  </sequence>
+                </complexType>
+              </element>
+            </sequence>
+          </complexType>
+        </element>
+        <element name="fault">
+          <complexType>
+            <sequence>
+              <element name="faultCode" type="string">
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Vea kood</xrd:title>
+                  </appinfo>
+                </annotation>
+              </element>
+              <element name="faultString" type="string">
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Vea kirjeldus</xrd:title>
+                  </appinfo>
+                </annotation>
+              </element>
+            </sequence>
+          </complexType>
+        </element>
+      </sequence>
+    </complexType>
+  </element>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="KNRnimeobjektiMuudatusedV1">
+        <wsdl:part name="body" element="tns:KNRnimeobjektiMuudatusedV1"/>
+    </wsdl:message>
+    <wsdl:message name="KNRnimeobjektiMuudatusedV1Response">
+        <wsdl:part name="body" element="tns:KNRnimeobjektiMuudatusedV1Response"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="KNRnimeobjektiMuudatusedV1">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Nimeobjekti muudatuste päring</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:KNRnimeobjektiMuudatusedV1"/>
+            <wsdl:output message="tns:KNRnimeobjektiMuudatusedV1Response"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="KNRnimeobjektiMuudatusedV1">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,2449 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch0="http://metsaregister.x-road.eu" xmlns:sch1="http://rm-v6.x-road.eu/treasury/customer" xmlns:sch2="http://dumonitor.x-road.eu/producer" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://metsaregister.x-road.eu" xmlns:xroad="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://metsaregister.x-road.eu">
+  <wsdl:types>
+    <xs:schema xmlns:gml="http://www.opengis.net/gml" xmlns:mets="http://metsaregister.x-road.eu" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://metsaregister.x-road.eu"><xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+	<xs:import namespace="http://www.opengis.net/gml" schemaLocation="http://schemas.opengis.net/gml/3.1.1/base/gml.xsd"/>
+	<xs:import namespace="http://www.w3.org/2005/05/xmlmime" schemaLocation="https://www.w3.org/2005/05/xmlmime"/>
+	<xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+	<xs:element name="eraldisEsitamine" type="mets:eraldisEsitamineParing"/>
+	
+	<xs:element name="eraldisEsitamineResponse" type="mets:eraldisEsitamineVastus"/>
+
+	<xs:element name="eraldisStaatus" type="mets:eraldisStaatusParing"/>
+	<xs:element name="eraldisStaatusResponse" type="mets:eraldisStaatusVastus"/>
+
+	<xs:element name="eraldisKustutamine" type="mets:eraldisKustutamineParing"/>
+	<xs:element name="eraldisKustutamineResponse" type="mets:eraldisKustutamineVastus"/>
+
+	<xs:element name="teatisEsitamine" type="mets:teatisEsitamineParing"/>
+	
+	<xs:element name="teatisEsitamineResponse" type="mets:teatisEsitamineVastus"/>
+
+	<xs:element name="teatisOlek" type="mets:teatisOlekParing"/>
+	
+	<xs:element name="teatisOlekResponse" type="mets:teatisOlekVastus"/>
+
+	<xs:element name="teatisRiigiloivJaak" type="mets:teatisRiigiloivParing"/>
+	
+	<xs:element name="teatisRiigiloivJaakResponse" type="mets:teatisRiigiloivVastus"/>
+
+	<xs:element name="teatisTyhistamine" type="mets:teatisTyhistamineParing"/>
+	
+	<xs:element name="teatisTyhistamineResponse" type="mets:teatisTyhistamineVastus"/>
+
+	<xs:element name="yksusEraldised" type="mets:yksusEraldisedParing"/>
+	<xs:element name="yksusEraldisedResponse" type="mets:yksusEraldisedVastus"/>
+
+	<xs:element name="teatisAllalaadimine" type="mets:teatisAllalaadimineVastus"/>
+
+	<xs:element name="mkeAndmed" type="mets:mkeAndmedParing"/>
+	
+	<xs:element name="mkeAndmedResponse" type="mets:mkeAndmedVastus"/>
+
+	<xs:element name="muPikendamine" type="mets:muPikendamineParing"/>
+	
+	<xs:element name="muPikendamineResponse" type="mets:muPikendamineVastus"/>
+
+	<xs:element name="muTaotlusOtsus" type="mets:muTaotlusOtsusParing"/>
+	
+	<xs:element name="muTaotlusOtsusResponse" type="mets:muTaotlusOtsusVastus"/>
+
+	<!-- Eraldis esitamine -->
+	<xs:complexType name="eraldisEsitamineParing">
+		<xs:annotation>
+			<xs:documentation>Esitatavad inventeerimisandmed</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ettevote" type="mets:registrikoodType">
+				<xs:annotation>
+					<xs:documentation>Metsakorraldusettevõte registrikood</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="epost" type="mets:epostType">
+				<xs:annotation>
+					<xs:documentation>E-post millele saadetakse teavitusi esitatud eraldiste kohta.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="yksused">
+				<xs:annotation>
+					<xs:documentation>Eraldiste andmed kinnistute või RMK metskondade kaupa. Kohustuslik esitada vähemalt ühe üksuse eraldis(t)e andmed.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="yksus" type="mets:yksusEsitamine"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="yksusEsitamine">
+		<xs:complexContent>
+			<xs:extension base="mets:yksusAndmedAbstact">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="dokument" type="mets:manus"/>
+					<xs:element name="eraldised">
+						<xs:annotation>
+							<xs:documentation>Eraldiste inventeerimise andmed</xs:documentation>
+						</xs:annotation>
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="eraldis" type="mets:eraldisEsitamine"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType abstract="true" name="yksusAndmedAbstact">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="kinnistuNimi" type="mets:nimetusType">
+				<xs:annotation>
+					<xs:documentation>Kinnistu nimi.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice>
+				<xs:element minOccurs="0" name="kinnistuNr" type="mets:kinnistuNrType">
+					<xs:annotation>
+						<xs:documentation>Kinnistu number. Erametsa korral on vaja täita. Kohustuslik, kui metskond ei ole täidetud.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element minOccurs="0" name="metskond" type="mets:nimetusType">
+					<xs:annotation>
+						<xs:documentation>Metskond. RMK täidab metskonna välja. Kohustuslik, kui kinnistu nr ei ole täidetud.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="eraldisEsitamine">
+		<xs:complexContent>
+			<xs:extension base="mets:eraldisAndmedAbstract">
+				<xs:sequence>
+					<xs:element name="inventKuup" type="xs:date">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Inventeerimise kuupäev</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="vKood" type="mets:ehakKoodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Valla või linna kood. EHAK kood</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="mKood" type="mets:ehakKoodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Maakonna kood. EHAK kood</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="takseerija" type="mets:isikukoodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Metsakorraldaja/takseerija isikukood</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="pindala" type="mets:eraldisePindalaType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Eraldise pindala</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="kuivendatud" type="mets:tunnusType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Kuivenduse tunnus. Lubatud väärtused 1 ja 0 (1 - kuivendatud). MK juhendi lisa 6</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="kasvukoht" type="mets:koodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Kasvukohatüüp. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="peapuuliik" type="mets:koodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 14</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="korgusIndeks" type="mets:korgusType">
+						<xs:annotation>
+							<xs:documentation>Kõrgusindeks. MK juhendi lisa 10</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="boniteet" type="mets:koodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Boniteediklass. Väärtus peab leiduma klassifikaatoris. MK juhendi lisad 2 ja 10. Edastatakse kood kujul 0,1,2 jne</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="tuleohuklass" type="mets:koodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Tuleohuklass. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 4</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="arenguklass" type="mets:koodType">
+						<xs:annotation>
+							<xs:documentation>Kohustuslik. Arenguklass. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 3</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="kkVanus" type="mets:vanusType">
+						<xs:annotation>
+							<xs:documentation>Kaalutud keskmine vanus. Metsa majandamise eeskiri §3</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="kkRaievanus" type="mets:vanusType">
+						<xs:annotation>
+							<xs:documentation>Kaalutud keskmine raievanus. Metsa majandamise eeskiri §3</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="juurdekasv" type="mets:juurdekasvType">
+						<xs:annotation>
+							<xs:documentation>Tagavara juurdekasv. MK juhendi lisa 12</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="rPindala1" type="mets:rpindalaType">
+						<xs:annotation>
+							<xs:documentation>Esimese rinde rinnaspindala.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="taius1" type="mets:taiusType">
+						<xs:annotation>
+							<xs:documentation>Esimese rinde täius. MK juhendi lisa 11 punkt 2</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="rPindala2" type="mets:rpindalaType">
+						<xs:annotation>
+							<xs:documentation>Teise rinde rinnaspindala</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="taius2" type="mets:taiusType">
+						<xs:annotation>
+							<xs:documentation>Teise rinde täius. MK juhendi lisa 11 punkt 2</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="tagavara1Ha" type="mets:tagavaraType">
+						<xs:annotation>
+							<xs:documentation>Esimese rinde hektaritagavara. MK juhendi lisa 11 punkt 1</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="tagavara2Ha" type="mets:tagavaraType">
+						<xs:annotation>
+							<xs:documentation>Teise rinde hektaritagavara. MK juhendi lisa 11 punkt 1</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="tagavaraYHa" type="mets:tagavaraType">
+						<xs:annotation>
+							<xs:documentation>Üksikpuude rinde hektaritagavara. MK juhendi lisa 11 punkt 1</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="puudeArv" type="mets:puudeArvType">
+						<xs:annotation>
+							<xs:documentation>Puude arv. Täidetakse arenguklassi S ja N korral hektari kohta</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="jPuudeArv" type="mets:puudeArvType">
+						<xs:annotation>
+							<xs:documentation>Järelkasvu puude arv</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="yPuudeArv" type="mets:puudeArvType">
+						<xs:annotation>
+							<xs:documentation>Üksikpuude arv</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="tagavaraS" type="mets:tagavaraType">
+						<xs:annotation>
+							<xs:documentation>Surnud puude hektaritagavara</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="tagavaraL" type="mets:tagavaraType">
+						<xs:annotation>
+							<xs:documentation>Lamapuidu hektaritagavara</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="prLiitus" type="mets:protsentType">
+						<xs:annotation>
+							<xs:documentation>Põõsarinde liitus</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="geomeetria" type="gml:MultiPolygonType">
+						<xs:annotation>
+							<xs:documentation>Eralduse ruumikuju koordinaadid GML formaadis</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="elemendid">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="element" type="mets:eraldisElement"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element minOccurs="0" name="isearasused">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="isearasus" type="mets:koodType">
+									<xs:annotation>
+										<xs:documentation>Iseärasuse kood. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 9</xs:documentation>
+									</xs:annotation>
+								</xs:element>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element minOccurs="0" name="kahjustused">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="kahjustus" type="mets:eraldisKahjustus"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element minOccurs="0" name="tood">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="too" type="mets:eraldisToo"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+					<xs:element minOccurs="0" name="tekst" type="xs:string">
+						<xs:annotation>
+							<xs:documentation>Reserveeritud tuleviku vajaduste jaoks</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType abstract="true" name="eraldisAndmedAbstract">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="katastriNr" type="mets:katastriNrType">
+				<xs:annotation>
+					<xs:documentation>Katastritunnus kujul xxxxx:xxx:xxxx. Kohustuslik, kui esitaja ei ole RMK. RMK puhul soovituslik.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kvartaliNr" type="mets:kvartaliNrType">
+				<xs:annotation>
+					<xs:documentation>Kvartali number</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="1" name="eraldiseNr" type="mets:erldiseNrType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik. Eraldise number</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="eraldisElement">
+		<xs:sequence>
+			<xs:element name="rinne" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik. Väärtus peab leiduma klassifikaatoris</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="puuliik" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik. Väärtus peab leiduma klassifikaatoris</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="paritolu" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Väärtus peab leiduma klassifikaatoris
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="osakaal" type="mets:protsentType">
+				<xs:annotation>
+					<xs:documentation>Osakaal</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="vanus" type="mets:vanusType">
+				<xs:annotation>
+					<xs:documentation>Vanus</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="synniaasta" type="xs:gYear">
+				<xs:annotation>
+					<xs:documentation>Sünniaasta</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="korgus" type="mets:korgusType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik. Kõrgus meetrites</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="diameeter" type="mets:diameeterType">
+				<xs:annotation>
+					<xs:documentation>Sentimeetrites</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="rinnaspindala" type="mets:rpindalaType">
+				<xs:annotation>
+					<xs:documentation>Rinnaspindala</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="tagavara" type="mets:tagavaraType">
+				<xs:annotation>
+					<xs:documentation>Tagavara</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="arv" type="mets:puudeArvType">
+				<xs:annotation>
+					<xs:documentation>Puude arv</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="enamus" type="mets:tunnusType">
+				<xs:annotation>
+					<xs:documentation>Peapuuliigi tunnus. Lubatud väärtused 1 või 0</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="eraldisToo">
+		<xs:sequence>
+			<xs:element name="too" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik. Töö liik.Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 17</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="jarjekord" type="mets:tunnusType">
+				<xs:annotation>
+					<xs:documentation>Järjekord. Võimalikud väärtused 0, 1, 2, 3, 8, 9</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="rRinne" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Raiutava puuliigi rinne. Võib olla täidetud, kui kavandatud töö on raie.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="rPuuliik" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Raiutav puuliik. Peab ühtima puuliigiga tabelis element. Võib olla täidetud, kui kavandatud töö on raie.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="rVanus" type="mets:vanusType">
+				<xs:annotation>
+					<xs:documentation>Raiutava puuliigi vanus. Võib olla täidetud, kui kavandatud töö on raie.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="rprotsent" type="mets:protsentType">
+				<xs:annotation>
+					<xs:documentation>Väljaraie protsent. Väärtus 0..100. Võib olla täidetud, kui kavandatud töö on raie.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="uPuuliik" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Uuendatav puuliik. Väärtus peab leiduma klassifikaatoris.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="tooAasta" type="xs:gYear">
+				<xs:annotation>
+					<xs:documentation>Töö aasta</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="eraldisKahjustus">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="kPuuliik" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Kahjustatud puuliik. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 9</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kVanus" type="mets:vanusType">
+				<xs:annotation>
+					<xs:documentation>Kahjustatud puuliigi vanus. Vanus peab ühtima puuliigi vanusega tabelis element.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="1" name="kPohjus" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Kahjustuse põhjus. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 16</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kOsakaal" type="mets:protsentType">
+				<xs:annotation>
+					<xs:documentation>Kahjustuse osakaal</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kRinne" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Rinne. Väärtus peab leiduma klassifikaatoris</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Eraldis vastus -->
+	<xs:complexType name="eraldisEsitamineVastus">
+		<xs:sequence>
+			<xs:element name="yldineStaatus" type="mets:staatusEnum">
+				<xs:annotation>
+					<xs:documentation>Üldine staatus. Võimalikud väärtused OK/NOK</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="eraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="eraldis" type="mets:eraldisVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="eraldisVastus">
+		<xs:complexContent>
+			<xs:extension base="mets:eraldisAndmedAbstract">
+				<xs:sequence>
+					<xs:element name="staatus" type="mets:staatusEnum"/>
+					<xs:element minOccurs="0" name="eraldisId" type="mets:registerIdType"/>
+					<xs:element minOccurs="0" name="vead">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="viga">
+		<xs:sequence>
+			<xs:element name="veaLiik" type="mets:veaLiikEnum"/>
+			<xs:element name="veaKood" type="mets:veaKoodType"/>
+			<xs:element name="veaKirjeldus" type="mets:veaKirjeldusType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Kustutamine -->
+	<xs:complexType name="eraldisKustutamineParing">
+		<xs:sequence>
+			<xs:element name="eraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="eraldisId" type="mets:registerIdType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Kustutamine vastus -->
+	<xs:complexType name="eraldisKustutamineVastus">
+		<xs:sequence>
+			<xs:element name="eraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="eraldis" type="mets:kustutamineVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="kustutamineVastus">
+		<xs:sequence>
+			<xs:element name="eraldisId" type="mets:registerIdType"/>
+			<xs:element name="staatus" type="mets:staatusEnum"/>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Staatuse pärimine -->
+	<xs:complexType name="eraldisStaatusParing">
+		<xs:sequence>
+			<xs:element name="eraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="eraldisId" type="mets:registerIdType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Staatus vastus -->
+	<xs:complexType name="eraldisStaatusVastus">
+		<xs:sequence>
+			<xs:element name="eraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="eraldis" type="mets:staatusVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="staatusVastus">
+		<xs:sequence>
+			<xs:element name="eraldisId" type="mets:registerIdType"/>
+			<xs:element name="olek" type="mets:koodType"/>
+			<xs:element minOccurs="0" name="regKuup" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Registrisse kandmise kuupäev. Peab olema täidetud, kui staatus on 1, st registreeritud.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Teatis esitamine -->
+	<xs:complexType name="teatisEsitamineParing">
+		<xs:annotation>
+			<xs:documentation>Metsateatiste esitamine</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="teatisYksused">
+				<xs:annotation>
+					<xs:documentation>Teatised kinnistute või RMK metskondade kaupa. Kohustuslik esitada vähemalt ühe üksuse teatis(t)e andmed.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatisYksus" type="mets:teatisYksusEsitamine"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="teatisYksusEsitamine">
+		<xs:complexContent>
+			<xs:extension base="mets:yksusAndmedAbstact">
+				<xs:sequence>
+					<xs:element name="teatised">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="teatis" type="mets:teatisEsitamine"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="teatisEsitamine">
+		<xs:complexContent>
+			<xs:extension base="mets:eraldisAndmedAbstract">
+				<xs:sequence>
+					<xs:element name="teatisId" type="mets:registerIdType">
+						<xs:annotation>
+							<xs:documentation>Unikaalne teatise tunnus sõnumis</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element name="vKood" type="mets:ehakKoodType"/>
+					<xs:element name="mKood" type="mets:ehakKoodType"/>
+					<xs:element name="omanikuKood" type="mets:ikoodType"/>
+					<xs:element name="omanikuNimi" type="mets:nimetusType"/>
+					<xs:element name="omanikJuriidiline" type="xs:boolean"/>
+					<xs:element name="omanikValismaalane" type="xs:boolean"/>
+					<xs:choice>
+						<xs:element minOccurs="0" name="volitatudIsik">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="volitatudIsikuKood" type="mets:isikukoodType"/>
+									<xs:element minOccurs="0" name="volitatudIsikuNimi" type="mets:nimetusType"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element minOccurs="0" name="kasutusvaldaja">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="kasutusvaldajaKood" type="mets:isikukoodType"/>
+									<xs:element minOccurs="0" name="kasutusvaldajaNimi" type="mets:nimetusType"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:element minOccurs="0" name="aadress" type="mets:aadressType"/>
+					<xs:element minOccurs="0" name="postiindeks" type="mets:indeksType"/>
+					<xs:element minOccurs="0" name="adsOid" type="mets:adsoidType">
+						<xs:annotation>
+							<xs:documentation>Kohustulik, kui on sisestatud kontaktaadress(aadress). Peab vastama aadressile.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="telefon" type="mets:Long10Type"/>
+					<xs:element minOccurs="0" name="epost" type="mets:epostType"/>
+					<xs:element minOccurs="0" name="epostVastus" type="mets:tunnusType"/>
+					<xs:element minOccurs="0" name="lmtTeatiseNr" type="mets:teatisNrType"/>
+					<xs:element name="teatisePindala" type="mets:eraldisePindalaType"/>
+					<xs:element name="teatiseGeomeetria" type="gml:MultiPolygonType"/>
+					<xs:choice>
+						<xs:element name="teatisRaie">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="tooliik" type="mets:koodType"/>
+									<xs:element name="raiutavMaht" type="mets:Integer4Type"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="teatisKahjustus">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="kPohjused">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element maxOccurs="1" minOccurs="1" name="kPohjus" type="mets:koodType">
+													<xs:annotation>
+														<xs:documentation>Kahjustuse põhjus. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 16</xs:documentation>
+													</xs:annotation>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element minOccurs="0" name="kPuuliigid">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element maxOccurs="1" minOccurs="0" name="kPuuliik" type="mets:koodType">
+													<xs:annotation>
+														<xs:documentation>Kahjustatud puuliik. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 9</xs:documentation>
+													</xs:annotation>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:element minOccurs="0" name="dokument" type="mets:manus"/>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="manus">
+		<xs:simpleContent>
+			<xs:extension base="xs:string">
+				<xs:attribute name="mediaType" type="xs:string" use="required"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+	<!-- Teatis vastus -->
+	<xs:complexType name="teatisEsitamineVastus">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="yldineStaatus" type="mets:staatusEnum">
+				<xs:annotation>
+					<xs:documentation>Üldine staatus. Võimalikud väärtused OK/NOK</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="teatised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatis" type="mets:teatisVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="teatisVastus">
+		<xs:complexContent>
+			<xs:extension base="mets:eraldisAndmedAbstract">
+				<xs:sequence>
+					<xs:element name="teatisId" type="mets:registerIdType"/>
+					<xs:element name="staatus" type="mets:staatusEnum"/>
+					<xs:element minOccurs="0" name="teatisNr" type="mets:teatisNrType"/>
+					<xs:element minOccurs="0" name="vead">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<!-- Oleku pärimine -->
+	<xs:complexType name="teatisOlekParing">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="teatisiParingus" type="xs:int"/>
+			<xs:element minOccurs="0" name="lehekyljeNr" type="xs:int"/>
+			<xs:choice>
+				<xs:element name="olekuMuudatused">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element minOccurs="0" name="olekud">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element maxOccurs="unbounded" name="olek" type="mets:koodType"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="kuupaevAlgus" type="xs:date"/>
+							<xs:element minOccurs="0" name="kuupaevLopp" type="xs:date"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="teatised">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element maxOccurs="unbounded" name="teatisNr" type="mets:teatisNrType"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Oleku vastus -->
+	<xs:complexType name="teatisOlekVastus">
+		<xs:sequence>
+			<xs:element name="teatisiKokku" type="xs:int"/>
+			<xs:element name="teatisiParingus" type="xs:int"/>
+			<xs:element name="lehekyljeNr" type="xs:int"/>
+			<xs:element minOccurs="0" name="teatised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatis" type="mets:olekVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="yldineViga" type="mets:viga"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="olekVastus">
+		<xs:sequence>
+			<xs:element name="teatisNr" type="mets:teatisNrType"/>
+			<xs:element name="olek" type="mets:koodType"/>
+			<xs:element minOccurs="0" name="otsusKuup" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Otsuse kuupäev. Peab olema täidetud, kui olek on 6, st menetletud.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="teatiseOtsus" type="mets:teatiseOtsusEnum"/>
+			<xs:element minOccurs="0" name="otsusePohjendus" type="xs:string"/>
+			<xs:element minOccurs="0" name="mkeNr" type="mets:mkeNrType"/>
+			<xs:element minOccurs="0" name="tyhistatavTeatis" type="mets:teatisNrType"/>
+			<xs:element minOccurs="0" name="riigiloivOlek" type="xs:string"/>
+			<xs:element minOccurs="0" name="eelnouAvaldAeg" type="xs:dateTime"/>
+			<xs:element minOccurs="0" name="ehNr" type="xs:string"/>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Riigilõivu ettemakse jäägi päring -->
+	<xs:complexType name="teatisRiigiloivParing"/>
+
+	<xs:complexType name="teatisRiigiloivVastus">
+		<xs:sequence>
+			<xs:element name="viitenumber" type="xs:long">
+				<xs:annotation>
+					<xs:documentation>Päringu teostanud isikule omistatud teatiste riigilõivu viitenumber</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="jaak" type="mets:Decimal_2Type">
+				<xs:annotation>
+					<xs:documentation>Isiku ettemakse jääk</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="seisuga" type="xs:dateTime">
+				<xs:annotation>
+					<xs:documentation>Vastuse tagastamise ajahetk</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Teatise tühistamise päring -->
+	<xs:complexType name="teatisTyhistamineParing">
+		<xs:annotation>
+			<xs:documentation>Metsateatiste tühistamine</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="teatised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatisNr" type="mets:teatisNrType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Teatise tühistamise vastus -->
+	<xs:complexType name="teatisTyhistamineVastus">
+		<xs:sequence>
+			<xs:element name="teatised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatis" type="mets:tyhistamineVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="tyhistamineVastus">
+		<xs:sequence>
+			<xs:element name="teatisNr" type="mets:teatisNrType"/>
+			<xs:element minOccurs="0" name="olek" type="mets:koodType"/>
+			<xs:element minOccurs="0" name="arhiveerimiseAeg" type="xs:dateTime"/>
+			<xs:element minOccurs="0" name="viga" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Katastri järgi eraldiste andmete pärimine -->
+	<xs:complexType name="yksusEraldisedParing">
+		<xs:sequence>
+			<xs:element name="yksused">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="katastriNr" type="mets:katastriNrType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Katastri järgi eraldiste andmete pärimise vastus -->
+	<xs:complexType name="yksusEraldisedVastus">
+		<xs:sequence>
+			<xs:element name="yksusedVastus">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="yksusVastus" type="mets:yksusVastusType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="yksusVastusType">
+		<xs:sequence>
+			<xs:element name="katastriNr" type="mets:katastriNrType"/>
+			<xs:element name="yksusEraldised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="yksusEraldis" type="mets:yksusEraldisType"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="yksusEraldisType">
+		<xs:sequence>
+			<xs:element name="eraldisId" type="mets:registerIdType"/>
+			<xs:element name="eraldiseNr" type="mets:erldiseNrType"/>
+			<xs:element name="inventKuup" type="xs:date"/>
+			<xs:element name="regKuup" type="xs:date"/>
+			<xs:element name="pindala" type="mets:eraldisePindalaType"/>
+			<xs:element name="kasvukoht" type="mets:koodType"/>
+			<xs:element name="peapuuliik" type="mets:koodType"/>
+		    <xs:element name="tuleohuklass" type="mets:koodType"/>
+		    <xs:element minOccurs="0" name="elemendid">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="element" type="mets:eraldisElement"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Teatise allalaalaadimine vastus -->
+	<xs:complexType name="teatisAllalaadimineVastus">
+		<xs:annotation>
+			<xs:documentation>Metsateatiste allalaalaadimine</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="teatised">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="teatis" type="mets:teatisAllalaadimine"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="teatisAllalaadimine">
+		<xs:complexContent>
+			<xs:extension base="mets:yksusAndmedAbstact">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="katastriNr" type="mets:katastriNrType"/>
+					<xs:element minOccurs="0" name="kvartaliNr" type="mets:kvartaliNrType"/>
+					<xs:element minOccurs="1" name="eraldiseNr" type="mets:erldiseNrType"/>
+					<xs:element name="vKood" type="mets:ehakKoodType"/>
+					<xs:element name="mKood" type="mets:ehakKoodType"/>
+					<xs:element name="omanikuKood" type="mets:ikoodType"/>
+					<xs:element name="omanikuNimi" type="mets:nimetusType"/>
+					<xs:element name="omanikJuriidiline" type="xs:boolean"/>
+					<xs:element name="omanikValismaalane" type="xs:boolean"/>
+					<xs:choice>
+						<xs:element minOccurs="0" name="volitatudIsik">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="volitatudIsikuKood" type="mets:isikukoodType"/>
+									<xs:element minOccurs="0" name="volitatudIsikuNimi" type="mets:nimetusType"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element minOccurs="0" name="kasutusvaldaja">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="kasutusvaldajaKood" type="mets:isikukoodType"/>
+									<xs:element minOccurs="0" name="kasutusvaldajaNimi" type="mets:nimetusType"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:element minOccurs="0" name="aadress" type="mets:aadressType"/>
+					<xs:element minOccurs="0" name="postiindeks" type="mets:indeksType"/>
+					<xs:element minOccurs="0" name="adsOid" type="mets:adsoidType"/>
+					<xs:element minOccurs="0" name="telefon" type="mets:Long10Type"/>
+					<xs:element minOccurs="0" name="epost" type="mets:epostType"/>
+					<xs:element name="teatisePindala" type="mets:eraldisePindalaType"/>
+					<xs:element name="teatiseGeomeetria" type="gml:MultiPolygonType"/>
+					<xs:choice>
+						<xs:element name="teatisRaie">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="tooliik" type="mets:koodType"/>
+									<xs:element name="raiutavMaht" type="mets:Integer4Type"/>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="teatisKahjustus">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element minOccurs="0" name="kPohjused">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element maxOccurs="3" minOccurs="1" name="kPohjus" type="mets:koodType">
+													<xs:annotation>
+														<xs:documentation>Kahjustuse põhjus. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 16</xs:documentation>
+													</xs:annotation>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+									<xs:element minOccurs="0" name="kPuuliigid">
+										<xs:complexType>
+											<xs:sequence>
+												<xs:element maxOccurs="3" minOccurs="0" name="kPuuliik" type="mets:koodType">
+													<xs:annotation>
+														<xs:documentation>Kahjustatud puuliik. Väärtus peab leiduma klassifikaatoris. MK juhendi lisa 9</xs:documentation>
+													</xs:annotation>
+												</xs:element>
+											</xs:sequence>
+										</xs:complexType>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:choice>
+					<xs:element name="teatisNr" type="mets:teatisNrType"/>
+					<xs:element name="olek" type="mets:koodType"/>
+					<xs:element minOccurs="0" name="otsusKuup" type="xs:date">
+						<xs:annotation>
+							<xs:documentation>Otsuse kuupäev. Peab olema täidetud, kui olek on 6, st menetletud.</xs:documentation>
+						</xs:annotation>
+					</xs:element>
+					<xs:element minOccurs="0" name="teatiseOtsus" type="mets:teatiseOtsusEnum"/>
+					<xs:element minOccurs="0" name="otsusePohjendus" type="xs:string"/>
+					<xs:element minOccurs="0" name="mkeNr" type="mets:mkeNrType"/>
+					<xs:element minOccurs="0" name="tyhistatavTeatis" type="mets:teatisNrType"/>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<!-- MKE andmete päring -->
+	<xs:complexType name="mkeAndmedParing">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="vastuseidParingus" type="xs:int"/>
+			<xs:element minOccurs="0" name="lehekyljeNr" type="xs:int"/>
+			<xs:choice>
+				<xs:element name="olekuMuudatused">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element minOccurs="0" name="olekud">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element maxOccurs="unbounded" name="aktiOlek" type="mets:aktiOlekType"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="kuupaevAlgus" type="xs:date"/>
+							<xs:element minOccurs="0" name="kuupaevLopp" type="xs:date"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="mked">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element maxOccurs="unbounded" name="mkeNr" type="mets:mkeNrType"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- MKE andmete vastus -->
+	<xs:complexType name="mkeAndmedVastus">
+		<xs:sequence>
+			<xs:element name="vastuseidKokku" type="xs:int"/>
+			<xs:element name="vastuseidParingus" type="xs:int"/>
+			<xs:element name="lehekyljeNr" type="xs:int"/>
+			<xs:element minOccurs="0" name="mkeAktid">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="mkeAkt" type="mets:mkeAkt"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="yldineViga" type="mets:viga"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="mkeAkt">
+		<xs:sequence>
+			<xs:element name="aktiNr" type="mets:mkeNrType"/>
+			<xs:element name="olek" type="mets:aktiOlekType"/>
+			<xs:element minOccurs="0" name="eelnouAvaldAeg" type="xs:dateTime"/>
+			<xs:element minOccurs="0" name="otsusKuup" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Akti kinnitamise  kuupäev.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kehtivKuni" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Otsuse kehtivuse lõppaeg.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="ekspertiisiTegija" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>MKE menetleja ees – ja perekonnanimi</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="hinnangSeisundile" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Metsa seisundi hinnang</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="tingimusedSoovitused" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Tingimused ja soovitused</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="metsakaitseAbinoud" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Üldised metsakaitse abinõud</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="markused" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Aktile lisatud märkused</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="mkeAktiRead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="mkeAktiRida" type="mets:mkeAktiRida"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="mkeAktiRida">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="katastriNr" type="mets:katastriNrType"/>
+			<xs:element minOccurs="0" name="kvartaliNr" type="mets:kvartaliNrType"/>
+			<xs:element minOccurs="1" name="eraldiseNr" type="mets:erldiseNrType"/>
+			<xs:element name="alaGeomeetria" type="gml:MultiPolygonType"/>
+			<xs:element minOccurs="0" name="taiusTerve" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Kahjustatud ala tervete puude täius (%)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="puudeArvTerve" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Tervete puude arv tk/ha</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kahjustatudPuuliik" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Kahjustatud puuliigi kood</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kahjustuseProtsent" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Kahjustuse % kokku</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="ulukikahjuProtsent" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Sh ulukikahjustuse %</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kahjustusPuudub" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>Tunnus kahjustuse puudumise kohta.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="kahjustajad">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="4" minOccurs="1" name="kahjustaja" type="mets:koodType">
+							<xs:annotation>
+								<xs:documentation>Kahjustuse põhjus. Väärtus leidub klassifikaatoris. MK juhendi lisa 16</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element minOccurs="0" name="tooLiik" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Soovitatava raie liik (töö kood)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="soovitatavRaiePindala" type="mets:eraldisePindalaType">
+				<xs:annotation>
+					<xs:documentation>Soovitatava raie pindala (ha)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="raiemaht" type="mets:Integer6Type">
+				<xs:annotation>
+					<xs:documentation>Soovitatav raiemaht</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="ehNr" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<!-- Metsauuenduse tähtaja pikendamistaotluse esitamine -->
+	<xs:complexType name="muPikendamineParing">
+		<xs:annotation>
+			<xs:documentation>Metsauuenduse tähtaja pikendamise taotluse esitamine</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="muTaotlusYksused">
+				<xs:annotation>
+					<xs:documentation>MU tähtaja pikendamise taotlused kinnistute või RMK metskondade kaupa. Kohustuslik esitada vähemalt ühe üksuse taotlus(t)e andmed.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="muTaotlusYksus" type="mets:muTaotlusYksusEsitamine"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="muTaotlusYksusEsitamine">
+		<xs:complexContent>
+			<xs:extension base="mets:yksusAndmedAbstact">
+				<xs:sequence>
+					<xs:element name="muTaotlused">
+						<xs:complexType>
+							<xs:sequence>
+								<xs:element maxOccurs="unbounded" name="muTaotlus" type="mets:muTaotlusEsitamine"/>
+							</xs:sequence>
+						</xs:complexType>
+					</xs:element>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="muTaotlusEsitamine">
+		<xs:sequence>
+			<xs:element name="vKood" type="mets:ehakKoodType"/>
+			<xs:element name="mKood" type="mets:ehakKoodType"/>
+			<xs:element name="omanikuKood" type="mets:ikoodType"/>
+			<xs:element name="omanikuNimi" type="mets:nimetusType"/>
+			<xs:element name="omanikJuriidiline" type="xs:boolean"/>
+			<xs:element name="omanikValismaalane" type="xs:boolean"/>
+			<xs:choice>
+				<xs:element minOccurs="0" name="volitatudIsik">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element minOccurs="0" name="volitatudIsikuKood" type="mets:isikukoodType"/>
+							<xs:element minOccurs="0" name="volitatudIsikuNimi" type="mets:nimetusType"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element minOccurs="0" name="kasutusvaldaja">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element minOccurs="0" name="kasutusvaldajaKood" type="mets:isikukoodType"/>
+							<xs:element minOccurs="0" name="kasutusvaldajaNimi" type="mets:nimetusType"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+			<xs:element minOccurs="0" name="aadress" type="mets:aadressType"/>
+			<xs:element minOccurs="0" name="postiindeks" type="mets:indeksType"/>
+			<xs:element minOccurs="0" name="adsOid" type="mets:adsoidType">
+				<xs:annotation>
+					<xs:documentation>Kohustuslik, kui on sisestatud kontaktaadress(aadress). Peab vastama aadressile.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="telefon" type="mets:Long10Type"/>
+			<xs:element minOccurs="0" name="epost" type="mets:epostType"/>
+			<xs:element minOccurs="1" name="katastriNr" type="mets:katastriNrType">
+				<xs:annotation>
+					<xs:documentation>Hetkel kehtiv katastritunnus kujul xxxxx:xxx:xxxx</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="1" name="raieDokument" type="mets:raieDokument"/>
+			<xs:element minOccurs="1" name="muTahtajaLiik" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Pikendatava tähtaja liik. Väärtused MU (metsa uuenenemise tähtaeg), UVR (uuendamisvõtete rakendamise tähtaeg)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:choice>
+				<xs:element minOccurs="0" name="muPikendamisePohjus" type="mets:koodType">
+					<xs:annotation>
+						<xs:documentation>Metsauuendamise tähtaja pikendamise põhjus. Väärtus peab leiduma klassifikaatoris.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element minOccurs="0" name="uvrPikendamisePohjus" type="mets:koodType">
+					<xs:annotation>
+						<xs:documentation>Metsa uuendamisvõtete tähtaja pikendamise põhjus. Väärtus peab leiduma klassifikaatoris.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:choice>
+			<xs:element minOccurs="1" name="uusTahtaeg" type="xs:date"/>
+			<xs:element minOccurs="0" name="selgitus" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="raieDokument">
+		<xs:annotation>
+			<xs:documentation>Taotluse aluseks olev raiedokument</xs:documentation>
+		</xs:annotation>
+		<xs:complexContent>
+			<xs:extension base="mets:eraldisAndmedAbstract">
+				<xs:sequence>
+					<xs:element minOccurs="0" name="teatisNr" type="mets:teatisNrType"/>
+					<xs:element minOccurs="0" name="mkeNr" type="mets:mkeNrType"/>
+					<xs:element name="teatisePindala" type="mets:eraldisePindalaType"/>
+					<xs:element name="tooliik" type="mets:koodType"/>
+				</xs:sequence>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<!-- Metsauuenduse pikendamise taotluse päringu vastus -->
+	<xs:complexType name="muPikendamineVastus">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="yldineStaatus" type="mets:staatusEnum">
+				<xs:annotation>
+					<xs:documentation>Üldine staatus. Võimalikud väärtused OK/NOK</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="muTaotlused">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="muTaotlus" type="mets:muTaotlusVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="muTaotlusVastus">
+		<xs:sequence>
+			<xs:element minOccurs="1" name="raieDokument" type="mets:raieDokument"/>
+			<xs:element name="staatus" type="mets:staatusEnum"/>
+			<xs:element minOccurs="0" name="muTaotlusNr" type="mets:muTaotlusNrType">
+				<xs:annotation>
+					<xs:documentation>MU taotluse registreeringu nr MR-s</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Metsauuenduse taotluse otsuse pärimine -->
+	<xs:complexType name="muTaotlusOtsusParing">
+		<xs:sequence>
+			<xs:element minOccurs="0" name="kirjeidVastuses" type="xs:int"/>
+			<xs:element minOccurs="0" name="lehekyljeNr" type="xs:int"/>
+			<xs:choice>
+				<xs:element name="olekuMuudatused">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element minOccurs="0" name="olekud">
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element maxOccurs="unbounded" name="olek" type="mets:koodType">
+											<xs:annotation>
+												<xs:documentation>Taotluse olek. Võimalikud väärtused 2 - menetluses, 3 - kinnitatud, 4 - arhiveeritud.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="kuupaevAlgus" type="xs:date"/>
+							<xs:element minOccurs="0" name="kuupaevLopp" type="xs:date"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="muTaotlused">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element maxOccurs="unbounded" name="muTaotlusNr" type="mets:muTaotlusNrType"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Metsauuenduse taotluse otsuse päringu vastus -->
+	<xs:complexType name="muTaotlusOtsusVastus">
+		<xs:sequence>
+			<xs:element name="taotlusiKokku" type="xs:int"/>
+			<xs:element name="kirjeidVastuses" type="xs:int"/>
+			<xs:element name="lehekyljeNr" type="xs:int"/>
+			<xs:element minOccurs="0" name="muTaotlused">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="muTaotlus" type="mets:muOtsusVastus"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element maxOccurs="unbounded" minOccurs="0" name="yldineViga" type="mets:viga"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="muOtsusVastus">
+		<xs:sequence>
+			<xs:element name="muTaotlusNr" type="mets:muTaotlusNrType"/>
+			<xs:element name="olek" type="mets:koodType">
+				<xs:annotation>
+					<xs:documentation>Taotluse olek. Võimalikud väärtused 2 - menetluses, 3 - kinnitatud, 4 - arhiveeritud.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="otsusKuup" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Otsuse kuupäev</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="muTaotlusOtsus" type="mets:muTaotlusOtsusEnum"/>
+			<xs:element minOccurs="0" name="uusTahtaeg" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Otsusega kinnitatud uus tähtaeg. Võib erineda taotletud tähtajast.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element minOccurs="0" name="otsusePohjendus" type="xs:string"/>
+			<xs:element minOccurs="0" name="vead">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element maxOccurs="unbounded" name="viga" type="mets:viga"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Lihttüübid -->
+	<xs:simpleType name="aadressType">
+		<xs:restriction base="mets:String250Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="adsoidType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="15"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="diameeterType">
+		<xs:restriction base="mets:Integer3Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="ehakKoodType">
+		<xs:restriction base="mets:Integer4Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="epostType">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="\w[\w-]*(\.[\w\-]+)*@\w[\w\-]*(\.[\w]+)+"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="eraldisePindalaType">
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="7"/>
+			<xs:fractionDigits value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="erldiseNrType">
+		<xs:restriction base="mets:Integer3Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="ikoodType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="indeksType">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="5"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="isikukoodType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="11"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="juurdekasvType">
+		<xs:restriction base="mets:Decimal41Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="katastriNrType">
+		<xs:restriction base="xs:string">
+			<xs:length value="14"/>
+			<xs:pattern value="[0-9]{5}:[0-9]{3}:[0-9]{4}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="kinnistuNrType">
+		<xs:restriction base="mets:Long10Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="koodType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="korgusType">
+		<xs:restriction base="mets:Decimal41Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="kvartaliNrType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="5"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="mkeNrType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="25"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="muTaotlusNrType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="15"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="muTaotlusOtsusEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="JAH"/>
+			<xs:enumeration value="EI"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="nimetusType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="50"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="teatiseOtsusEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="JAH"/>
+			<xs:enumeration value="EI"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="teatisNrType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="15"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="aktiOlekType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="protsentType">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="3"/>
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="100"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="puudeArvType">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="6"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="registerIdType">
+		<xs:restriction base="mets:Long10Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="registrikoodType">
+		<xs:restriction base="xs:string">
+			<xs:length value="8"/>
+			<xs:pattern value="\d{8}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="rpindalaType">
+		<xs:restriction base="mets:Decimal41Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="staatusEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="OK"/>
+			<xs:enumeration value="NOK"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="tagavaraType">
+		<xs:restriction base="mets:Integer4Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="taiusType">
+		<xs:restriction base="mets:Integer3Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="tunnusType">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="vanusType">
+		<xs:restriction base="mets:Integer3Type"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="veaKirjeldusType">
+		<xs:restriction base="xs:string"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="veaKoodType">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="50"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="veaLiikEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="HOIATUS"/>
+			<xs:enumeration value="VIGA"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Baastüübid -->
+	<xs:simpleType name="Integer3Type">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="3"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Integer4Type">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="4"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Integer6Type">
+		<xs:restriction base="xs:int">
+			<xs:totalDigits value="6"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Decimal_2Type">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Decimal41Type">
+		<xs:restriction base="xs:decimal">
+			<xs:totalDigits value="4"/>
+			<xs:fractionDigits value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="Long10Type">
+		<xs:restriction base="xs:long">
+			<xs:totalDigits value="10"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="String250Type">
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="250"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>
+    <xs:schema xmlns:tns="http://rm-v6.x-road.eu/treasury/customer" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://rm-v6.x-road.eu/treasury/customer">
+    <xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+    <xs:element name="rkSendMessageIso" type="tns:rkSendMessageIsoParing"/>
+    
+    <xs:element name="rkSendMessageIsoResponse" type="tns:rkSendMessageIsoVastus"/>
+    <xs:element name="attach" type="xs:base64Binary"/>
+
+    <xs:complexType name="rkSendMessageIsoParing">
+        <xs:annotation>
+            <xs:documentation>ISO dokumendi vastuvõtmise formaat.</xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="UniqueId" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Dokumendi unikaalne ID, tehniline viide. Peab asutuse kehtiva lepingu piires olema unikaalne.</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="MsgId" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Väljasaadetud sõnumile omistatud unikaalne ID</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="MsgType" type="xs:string">
+                <xs:annotation>
+                    <xs:documentation>Väljasaadetud sõnumi liik: "sendDocumentStatus", "transactionStatement", "accountStatement"</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="rkSendMessageIsoVastus">
+        <xs:all>
+            <xs:element ref="tns:Message"/>
+            <xs:element ref="tns:Code"/>
+        </xs:all>
+    </xs:complexType>
+
+    <xs:element name="Message" nillable="true" type="xs:string">
+        <xs:annotation>
+            <xs:appinfo>
+                <xrd:title>Teade</xrd:title>
+            </xs:appinfo>
+        </xs:annotation>
+    </xs:element>
+
+    <xs:element name="Code" type="xs:int">
+        <xs:annotation>
+            <xs:appinfo>
+                <xrd:title>kood</xrd:title>
+            </xs:appinfo>
+        </xs:annotation>
+    </xs:element>
+
+</xs:schema>
+    <xs:schema xmlns:prod="http://dumonitor.x-road.eu/producer" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://dumonitor.x-road.eu/producer">
+
+    <xs:element name="findUsage" type="prod:findUsageParing"/>
+    
+    <xs:element name="findUsageResponse" type="prod:findUsageVastus"/>
+
+    <!-- kasutusteabe esitamine -->
+    <xs:complexType name="findUsageParing">
+        <xs:sequence>
+            <xs:element maxOccurs="1" minOccurs="0" name="offset" type="xs:integer">
+                <xs:annotation>
+                    <xs:appinfo>
+                        <xs:documentation>Esimese tagastatava kirje jrknr</xs:documentation>
+                    </xs:appinfo>
+                </xs:annotation>
+            </xs:element>
+            <xs:element maxOccurs="1" minOccurs="0" name="limit" type="xs:integer">
+                <xs:annotation>
+                    <xs:appinfo>
+                        <xs:documentation>Tagastatavate kirjete arv</xs:documentation>
+                    </xs:appinfo>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="findUsageVastus">
+        <xs:sequence>
+            <xs:element maxOccurs="unbounded" minOccurs="0" name="usage">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element maxOccurs="1" minOccurs="0" name="logtime" type="xs:dateTime">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xs:documentation>Isikuandmete töötlemise aeg</xs:documentation>
+                                </xs:appinfo>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element maxOccurs="1" minOccurs="0" name="action" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xs:documentation>Tegevus</xs:documentation>
+                                </xs:appinfo>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element maxOccurs="1" minOccurs="0" name="receiver" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xs:documentation>Isikuandmeid vastu võtnud osapool</xs:documentation>
+                                </xs:appinfo>
+                            </xs:annotation>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
+  </wsdl:types>
+  <wsdl:message name="mkeAndmedRequest">
+    <wsdl:part element="tns:mkeAndmed" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisEsitamineRequest">
+    <wsdl:part element="tns:eraldisEsitamine" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisOlekRequest">
+    <wsdl:part element="tns:teatisOlek" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="rkSendMessageIsoRequest">
+    <wsdl:part element="sch1:rkSendMessageIso" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisTyhistamineRequest">
+    <wsdl:part element="tns:teatisTyhistamine" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="requestheader">
+    <wsdl:part element="xroad:client" name="client">
+    </wsdl:part>
+    <wsdl:part element="xroad:service" name="service">
+    </wsdl:part>
+    <wsdl:part element="xroad:id" name="id">
+    </wsdl:part>
+    <wsdl:part element="xroad:userId" name="userId">
+    </wsdl:part>
+    <wsdl:part element="xroad:protocolVersion" name="protocolVersion">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="muPikendamineResponse">
+    <wsdl:part element="tns:muPikendamineResponse" name="muPikendamineResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisKustutamineRequest">
+    <wsdl:part element="tns:eraldisKustutamine" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisKustutamineResponse">
+    <wsdl:part element="tns:eraldisKustutamineResponse" name="eraldisKustutamineResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="yksusEraldisedRequest">
+    <wsdl:part element="tns:yksusEraldised" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="muTaotlusOtsusResponse">
+    <wsdl:part element="tns:muTaotlusOtsusResponse" name="muTaotlusOtsusResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisStaatusResponse">
+    <wsdl:part element="tns:eraldisStaatusResponse" name="eraldisStaatusResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisEsitamineRequest">
+    <wsdl:part element="tns:teatisEsitamine" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisTyhistamineResponse">
+    <wsdl:part element="tns:teatisTyhistamineResponse" name="teatisTyhistamineResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="muPikendamineRequest">
+    <wsdl:part element="tns:muPikendamine" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisRiigiloivJaakRequest">
+    <wsdl:part element="tns:teatisRiigiloivJaak" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="mkeAndmedResponse">
+    <wsdl:part element="tns:mkeAndmedResponse" name="mkeAndmedResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisEsitamineResponse">
+    <wsdl:part element="tns:teatisEsitamineResponse" name="teatisEsitamineResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="rkSendMessageIsoResponse">
+    <wsdl:part element="sch1:rkSendMessageIsoResponse" name="rkSendMessageIsoResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="muTaotlusOtsusRequest">
+    <wsdl:part element="tns:muTaotlusOtsus" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisOlekResponse">
+    <wsdl:part element="tns:teatisOlekResponse" name="teatisOlekResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="yksusEraldisedResponse">
+    <wsdl:part element="tns:yksusEraldisedResponse" name="yksusEraldisedResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="findUsageResponse">
+    <wsdl:part element="sch2:findUsageResponse" name="findUsageResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="teatisRiigiloivJaakResponse">
+    <wsdl:part element="tns:teatisRiigiloivJaakResponse" name="teatisRiigiloivJaakResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisStaatusRequest">
+    <wsdl:part element="tns:eraldisStaatus" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="eraldisEsitamineResponse">
+    <wsdl:part element="tns:eraldisEsitamineResponse" name="eraldisEsitamineResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="findUsageRequest">
+    <wsdl:part element="sch2:findUsage" name="body">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:portType name="metsaregisterPort">
+    <wsdl:operation name="mkeAndmed">
+<wsdl:documentation><xroad:title>MKE andmete oleku pärimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:mkeAndmedRequest" name="mkeAndmedRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:mkeAndmedResponse" name="mkeAndmedResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisEsitamine">
+<wsdl:documentation><xroad:title>Eraldiste esitamine metsakorraldus firmadele</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:eraldisEsitamineRequest" name="eraldisEsitamineRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:eraldisEsitamineResponse" name="eraldisEsitamineResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisOlek">
+<wsdl:documentation><xroad:title>Teatiste staatuse küsimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:teatisOlekRequest" name="teatisOlekRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:teatisOlekResponse" name="teatisOlekResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendMessageIso">
+<wsdl:documentation><xroad:title>Riigikassast saadetud laekumise info</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:rkSendMessageIsoRequest" name="rkSendMessageIsoRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:rkSendMessageIsoResponse" name="rkSendMessageIsoResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisTyhistamine">
+<wsdl:documentation><xroad:title>Teatiste tühistamine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:teatisTyhistamineRequest" name="teatisTyhistamineRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:teatisTyhistamineResponse" name="teatisTyhistamineResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="muPikendamine">
+<wsdl:documentation><xroad:title>Metsauuenduse tähtaja pikendamise taotluse esitamine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:muPikendamineRequest" name="muPikendamineRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:muPikendamineResponse" name="muPikendamineResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisKustutamine">
+<wsdl:documentation><xroad:title>Eraldiste kustutamine/arhiveerimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:eraldisKustutamineRequest" name="eraldisKustutamineRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:eraldisKustutamineResponse" name="eraldisKustutamineResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="yksusEraldised">
+<wsdl:documentation><xroad:title>Erametsakeskuse eraldiste päring</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:yksusEraldisedRequest" name="yksusEraldisedRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:yksusEraldisedResponse" name="yksusEraldisedResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="muTaotlusOtsus">
+<wsdl:documentation><xroad:title>Metsauuenduse tähtaja pikendamise taotluse otsuse pärimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:muTaotlusOtsusRequest" name="muTaotlusOtsusRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:muTaotlusOtsusResponse" name="muTaotlusOtsusResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisStaatus">
+<wsdl:documentation><xroad:title>Eraldiste staatuse küsimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:eraldisStaatusRequest" name="eraldisStaatusRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:eraldisStaatusResponse" name="eraldisStaatusResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisEsitamine">
+<wsdl:documentation><xroad:title>Teatiste esitamine metsakorraldus firmadele</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:teatisEsitamineRequest" name="teatisEsitamineRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:teatisEsitamineResponse" name="teatisEsitamineResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisRiigiloivJaak">
+<wsdl:documentation><xroad:title>Riigilõivu ettemakse jäägi päring</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:teatisRiigiloivJaakRequest" name="teatisRiigiloivJaakRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:teatisRiigiloivJaakResponse" name="teatisRiigiloivJaakResponse">
+    </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="findUsage">
+<wsdl:documentation><xroad:title>Kasutusteabe küsimine</xroad:title></wsdl:documentation>
+      <wsdl:input message="tns:findUsageRequest" name="findUsageRequest">
+    </wsdl:input>
+      <wsdl:output message="tns:findUsageResponse" name="findUsageResponse">
+    </wsdl:output>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="metsaregisterPortSoap11" type="tns:metsaregisterPort">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="mkeAndmed">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="mkeAndmedRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="mkeAndmedResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisEsitamine">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="eraldisEsitamineRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="eraldisEsitamineResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisOlek">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="teatisOlekRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="teatisOlekResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendMessageIso">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="rkSendMessageIsoRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="rkSendMessageIsoResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisTyhistamine">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="teatisTyhistamineRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="teatisTyhistamineResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="muPikendamine">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="muPikendamineRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="muPikendamineResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisKustutamine">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="eraldisKustutamineRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="eraldisKustutamineResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="yksusEraldised">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="yksusEraldisedRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="yksusEraldisedResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="muTaotlusOtsus">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="muTaotlusOtsusRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="muTaotlusOtsusResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="eraldisStaatus">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="eraldisStaatusRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="eraldisStaatusResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisEsitamine">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="teatisEsitamineRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="teatisEsitamineResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="teatisRiigiloivJaak">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="teatisRiigiloivJaakRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="teatisRiigiloivJaakResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="findUsage">
+      <soap:operation soapAction=""/>
+        <xroad:version>v1</xroad:version>
+      <wsdl:input name="findUsageRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="findUsageResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="metsaregisterPortService">
+    <wsdl:port binding="tns:metsaregisterPortSoap11" name="metsaregisterPortSoap11">
+      <soap:address location="http://example.org/xroad-endpoint"/>
+    <xroad:address producer="metsaregister"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

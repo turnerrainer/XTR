@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?><definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:maaoksjon="http://maaoksjon.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://maaoksjon.x-road.eu/producer/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="MaaoksjonXteeService" targetNamespace="http://maaoksjon.x-road.eu/producer/">
+
+    <types>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/identifiers" schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://maaoksjon.x-road.eu/producer/" schemaLocation="https://riigimaaoksjon.ee/ws/ws/maaoksjonService.xsd"/>
+        </xsd:schema>
+    </types>
+    <message name="oksjoniLisamine">
+        <part element="maaoksjon:oksjoniLisamine" name="body"/>
+    </message>
+    <message name="oksjoniLisamineResponse">
+        <part element="maaoksjon:oksjoniLisamineResponse" name="body"/>
+    </message>
+    <message name="oksjoniMuutmine">
+        <part element="maaoksjon:oksjoniMuutmine" name="body"/>
+    </message>
+    <message name="oksjoniMuutmineResponse">
+        <part element="maaoksjon:oksjoniMuutmineResponse" name="body"/>
+    </message>
+    <message name="oksjoniObjektiKatkestamine">
+        <part element="maaoksjon:oksjoniObjektiKatkestamine" name="body"/>
+    </message>
+    <message name="oksjoniObjektiKatkestamineResponse">
+        <part element="maaoksjon:oksjoniObjektiKatkestamineResponse" name="body"/>
+    </message>
+    <message name="klassifikaatorid">
+        <part element="maaoksjon:klassifikaatorid" name="body"/>
+    </message>
+    <message name="klassifikaatoridResponse">
+        <part element="maaoksjon:klassifikaatoridResponse" name="body"/>
+    </message>
+    <message name="oksjoniObjektiOtsing">
+        <part element="maaoksjon:oksjoniObjektiOtsing" name="body"/>
+    </message>
+    <message name="oksjoniObjektiOtsingResponse">
+        <part element="maaoksjon:oksjoniObjektiOtsingResponse" name="body"/>
+    </message>
+
+    <message name="requestHeader">
+        <part element="xrd:client" name="client"/>
+        <part element="xrd:service" name="service"/>
+        <part element="xrd:id" name="id"/>
+        <part element="xrd:userId" name="userId"/>
+        <part element="xrd:issue" name="issue"/>
+        <part element="xrd:protocolVersion" name="protocolVersion"/>
+    </message>
+
+    <portType name="maaoksjonServicePort">
+        <operation name="oksjoniLisamine">
+            <documentation>
+                <xrd:title>oksjoniLisamine.v1</xrd:title>
+                <xrd:notes>Maaoksjon keskkonnas oksjoni lisamine
+                </xrd:notes>
+            </documentation>
+            <input message="tns:oksjoniLisamine"/>
+            <output message="tns:oksjoniLisamineResponse"/>
+        </operation>
+        <operation name="oksjoniMuutmine">
+            <documentation>
+                <xrd:title>oksjoniMuutmine.v1</xrd:title>
+                <xrd:notes>Maaoksjon keskkonnas oksjoni muutmine
+                </xrd:notes>
+            </documentation>
+            <input message="tns:oksjoniMuutmine"/>
+            <output message="tns:oksjoniMuutmineResponse"/>
+        </operation>
+        <operation name="oksjoniObjektiKatkestamine">
+            <documentation>
+                <xrd:title>oksjoniObjektiKatkestamine.v1</xrd:title>
+                <xrd:notes>Maaoksjon keskkonnas oksjoni objekti katkestamine
+                </xrd:notes>
+            </documentation>
+            <input message="tns:oksjoniObjektiKatkestamine"/>
+            <output message="tns:oksjoniObjektiKatkestamineResponse"/>
+        </operation>
+        <operation name="klassifikaatorid">
+            <documentation>
+                <xrd:title>klassifikaatorid.v1</xrd:title>
+                <xrd:notes>Maaoksjon keskkonna klassifikaatorid
+                </xrd:notes>
+            </documentation>
+            <input message="tns:klassifikaatorid"/>
+            <output message="tns:klassifikaatoridResponse"/>
+        </operation>
+        <operation name="oksjoniObjektiOtsing">
+            <documentation>
+                <xrd:title>oksjoniObjektiOtsing.v1</xrd:title>
+                <xrd:notes>Maaoksjon keskkonnas oksjoni objekti otsing
+                </xrd:notes>
+            </documentation>
+            <input message="tns:oksjoniObjektiOtsing"/>
+            <output message="tns:oksjoniObjektiOtsingResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="maaoksjonServicePortSoap11" type="tns:maaoksjonServicePort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="oksjoniLisamine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="oksjoniMuutmine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="oksjoniObjektiKatkestamine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="klassifikaatorid">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="oksjoniObjektiOtsing">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="maaoksjonPortService">
+        <port binding="tns:maaoksjonServicePortSoap11" name="maaoksjonServicePortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </port>
+    </service>
+</definitions>

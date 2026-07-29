@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="http://ehr.ee.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ehrdev.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://ehrdev.x-road.eu">
+    <wsdl:types>
+        <schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://ehr.ee.x-road.eu/producer/" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+            <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+            <include schemaLocation="https://devkluster.ehr.ee/api/xtee/v1/services/ehr_xrd.xsd"/>
+            <element name="vvkkasutamineRequest">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:vvkkasutamineRequestType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="vvkkasutamineRequestType">
+                <sequence>
+                    <element name="osaKood" type="long">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise osa kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kasutVeeKogusLiitrid" type="long">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kasutatud vee kogus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kasutAlgusKp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Vee kasutamise alguskuupäev</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kasutLoppKp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Vee kasutamise lõppkuupäev</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kasutatavus" type="tns:kasutatavusType">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kasutatavus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="markus" nillable="true" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Märkused</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kontaktIsikNimi" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kontaktisiku nimi</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kontaktIsikTelNr" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kontaktisiku telefoninumber</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="kontaktIsikMeil" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kontaktisiku meiliaadress</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <simpleType name="kasutatavusType">
+                <restriction base="string">
+                    <enumeration value="kasutatav"/>
+                    <enumeration value="puudustega"/>
+                    <enumeration value="mittekasutatav"/>
+                </restriction>
+            </simpleType>
+            <element name="vvkkasutamineResponse">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:vvkkasutamineRequestType"/>
+                        <element name="response" type="tns:vvkkasutamineResponseType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="vvkkasutamineResponseType">
+                <sequence>
+                    <element name="tulem" type="string"/>
+                    <element name="markused" nillable="true" type="string"/>
+                </sequence>
+            </complexType>
+        </schema>
+    </wsdl:types>
+    <wsdl:message name="vvkkasutamineResponse">
+        <wsdl:part element="sch:vvkkasutamineResponse" name="vvkkasutamineResponse"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="vvkkasutamineRequest">
+        <wsdl:part element="sch:vvkkasutamineRequest" name="vvkkasutamineRequest"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="requestheader">
+        <wsdl:part element="xrd:client" name="client"> </wsdl:part>
+        <wsdl:part element="xrd:service" name="service"> </wsdl:part>
+        <wsdl:part element="xrd:id" name="id"> </wsdl:part>
+        <wsdl:part element="xrd:userId" name="userId"> </wsdl:part>
+        <wsdl:part element="xrd:protocolVersion" name="protocolVersion"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="ehrPort">
+        <wsdl:operation name="vvkkasutamine">
+            <wsdl:documentation>
+                <xrd:title>Veevõtukoha kasutamisest teatamine</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:vvkkasutamineRequest" name="vvkkasutamineRequest"> </wsdl:input>
+            <wsdl:output message="tns:vvkkasutamineResponse" name="vvkkasutamineResponse"> </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="ehrPortSoap11" type="tns:ehrPort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="vvkkasutamine">
+            <soap:operation soapAction=""/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="vvkkasutamineRequest">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="vvkkasutamineResponse">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="ehrService">
+        <wsdl:port binding="tns:ehrPortSoap11" name="ehrPortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+            <xrd:address producer="ehrdev"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

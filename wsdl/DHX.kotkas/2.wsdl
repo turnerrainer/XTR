@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:plink="http://schemas.xmlsoap.org/ws/2003/05/partner-link/" xmlns:wsdlsoap11="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdlsoap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:soap11enc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soap11env="http://schemas.xmlsoap.org/soap/envelope/" xmlns:soap12env="http://www.w3.org/2003/05/soap-envelope" xmlns:soap12enc="http://www.w3.org/2003/05/soap-encoding" xmlns:wsa="http://schemas.xmlsoap.org/ws/2003/03/addressing" xmlns:xop="http://www.w3.org/2004/08/xop/include" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:tns="http://dhx.x-road.eu/producer" xmlns:s0="http://ws-i.org/profiles/basic/1.1/xsd" xmlns:s1="http://x-road.eu/xsd/identifiers" xmlns:s2="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://dhx.x-road.eu/producer" name="KotkasXtee">
+  <wsdl:types>
+    <xs:schema targetNamespace="http://dhx.x-road.eu/producer" elementFormDefault="qualified">
+      <xs:import namespace="http://ws-i.org/profiles/basic/1.1/xsd" schemaLocation="http://ws-i.org/profiles/basic/1.1/swaref.xsd"/>
+      <xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+      <xs:complexType name="sendDocument">
+        <xs:sequence>
+          <xs:element name="DHXVersion" type="tns:string" minOccurs="0">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Dhxversion</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="recipient" type="tns:string" minOccurs="0">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Recipient</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="recipientSystem" type="tns:string" minOccurs="0">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Recipientsystem</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="consignmentId" type="tns:string" minOccurs="0">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Consignmentid</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="documentAttachment" type="s0:swaRef">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Documentattachment</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="DHXFault">
+        <xs:sequence>
+          <xs:element name="faultCode" type="xs:string">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Fault Code</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="faultString" type="xs:string">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Fault explanation</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="sendDocumentResponse">
+        <xs:sequence>
+          <xs:element name="fault" type="tns:DHXFault" minOccurs="0" nillable="true">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Fault</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="receiptId" type="tns:string">
+            <xs:annotation>
+              <xs:appinfo>
+                <s2:title xml:lang="et">Receiptid</s2:title>
+                <s2:notes xml:lang="et"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:element name="sendDocument" type="tns:sendDocument"/>
+      <xs:element name="DHXFault" type="tns:DHXFault"/>
+      <xs:element name="sendDocumentResponse" type="tns:sendDocumentResponse"/>
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="sendDocument">
+    <wsdl:part name="sendDocument" element="tns:sendDocument"/>
+  </wsdl:message>
+  <wsdl:message name="sendDocumentResponse">
+    <wsdl:part name="sendDocumentResponse" element="tns:sendDocumentResponse"/>
+  </wsdl:message>
+  <wsdl:message name="sendDocumentOutHeaderMsg">
+    <wsdl:part name="client" element="s2:client"/>
+    <wsdl:part name="service" element="s2:service"/>
+    <wsdl:part name="id" element="s2:id"/>
+    <wsdl:part name="userId" element="s2:userId"/>
+    <wsdl:part name="protocolVersion" element="s2:protocolVersion"/>
+  </wsdl:message>
+  <wsdl:portType name="KotkasXtee">
+    <wsdl:operation name="sendDocument" parameterOrder="sendDocument">
+      <wsdl:documentation>
+        <s2:title>sendDocument</s2:title>
+      </wsdl:documentation>
+      <wsdl:input name="sendDocument" message="tns:sendDocument"/>
+      <wsdl:output name="sendDocumentResponse" message="tns:sendDocumentResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="KotkasXtee" type="tns:KotkasXtee">
+    <wsdlsoap11:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="sendDocument">
+      <wsdlsoap11:operation soapAction="" style="document"/>
+      <s2:version>v1</s2:version>
+      <wsdl:input name="sendDocument">
+        <wsdlsoap11:body use="literal"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="client"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="service"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="id"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="userId"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="protocolVersion"/>
+      </wsdl:input>
+      <wsdl:output name="sendDocumentResponse">
+        <wsdlsoap11:body use="literal"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="client"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="service"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="id"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="userId"/>
+        <wsdlsoap11:header use="literal" message="s2:sendDocumentOutHeaderMsg" part="protocolVersion"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="KotkasXteeService">
+    <wsdl:port name="KotkasXtee" binding="tns:KotkasXtee">
+      <wsdlsoap11:address location="http://example.org/xroad-endpoint"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

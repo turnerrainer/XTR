@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="UTF-8"?><definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:kpois="http://kpois.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://kpois.x-road.eu/producer/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="KPOISXteeService" targetNamespace="http://kpois.x-road.eu/producer/">
+
+    <types>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/identifiers" schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://kpois.x-road.eu/producer/" schemaLocation="https://kitsendused.kataster.ee/ws/kpoisService.xsd"/>
+        </xsd:schema>
+    </types>
+    <message name="kyKitsendusteTrykis">
+        <part element="kpois:kyKitsendusteTrykis" name="body"/>
+    </message>
+    <message name="kyKitsendusteTrykisResponse">
+        <part element="kpois:kyKitsendusteTrykisResponse" name="body"/>
+    </message>
+    <message name="kyKitsendusedLisamineMuutmine">
+        <part element="kpois:kyKitsendusedLisamineMuutmine" name="body"/>
+    </message>
+    <message name="kyKitsendusedLisamineMuutmineResponse">
+        <part element="kpois:kyKitsendusedLisamineMuutmineResponse" name="body"/>
+    </message>
+    <message name="kyKitsendusedKustutamine">
+        <part element="kpois:kyKitsendusedKustutamine" name="body"/>
+    </message>
+    <message name="kyKitsendusedKustutamineResponse">
+        <part element="kpois:kyKitsendusedKustutamineResponse" name="body"/>
+    </message>
+    <message name="kyKitsendused">
+        <part element="kpois:kyKitsendused" name="body"/>
+    </message>
+    <message name="kyKitsendusedResponse">
+        <part element="kpois:kyKitsendusedResponse" name="body"/>
+    </message>
+    <message name="kyKitsendusedAvalik">
+        <part element="kpois:kyKitsendusedAvalik" name="body"/>
+    </message>
+    <message name="kyKitsendusedAvalikResponse">
+        <part element="kpois:kyKitsendusedAvalikResponse" name="body"/>
+    </message>
+    <message name="kyKpo">
+        <part element="kpois:kyKpo" name="body"/>
+    </message>
+    <message name="kyKpoResponse">
+        <part element="kpois:kyKpoResponse" name="body"/>
+    </message>
+    <message name="kyMaamaksuSoodustused">
+        <part element="kpois:kyMaamaksuSoodustused" name="body"/>
+    </message>
+    <message name="kyMaamaksuSoodustusedResponse">
+        <part element="kpois:kyMaamaksuSoodustusedResponse" name="body"/>
+    </message>
+    <message name="kyKitsendusteLink">
+        <part element="kpois:kyKitsendusteLink" name="body"/>
+    </message>
+    <message name="kyKitsendusteLinkResponse">
+        <part element="kpois:kyKitsendusteLinkResponse" name="body"/>
+    </message>
+
+    <message name="requestHeader">
+        <part element="xrd:client" name="client"/>
+        <part element="xrd:service" name="service"/>
+        <part element="xrd:id" name="id"/>
+        <part element="xrd:userId" name="userId"/>
+        <part element="xrd:issue" name="issue"/>
+        <part element="xrd:protocolVersion" name="protocolVersion"/>
+    </message>
+
+    <portType name="kpoisServicePort">
+        <operation name="kyKitsendusedLisamineMuutmine">
+            <documentation>
+                <xrd:title>kyKitsendusedLisamineMuutmine.v1</xrd:title>
+                <xrd:notes>Antud teenusega on võimalik KPOIS süsteemile edastada kitsendusi põhjustavate objektide ja nende mõjualade andmeid.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendusedLisamineMuutmine"/>
+            <output message="tns:kyKitsendusedLisamineMuutmineResponse"/>
+        </operation>
+        <operation name="kyKitsendusedKustutamine">
+            <documentation>
+                <xrd:title>kyKitsendusedKustutamine.v1</xrd:title>
+                <xrd:notes>Antud teenusega on võimalik KPOIS süsteemist kustutada kitsendusi põhjustavaid objekte ja nende mõjualasid.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendusedKustutamine"/>
+            <output message="tns:kyKitsendusedKustutamineResponse"/>
+        </operation>
+        <operation name="kyKitsendusteTrykis">
+            <documentation>
+                <xrd:title>kyKitsendusteTrykis.v2</xrd:title>
+                <xrd:notes>Teenus võimaldada läbi X-tee pärida katastriüksuste tunnuse järgi katastrikaardi pilti koos kitsenduste andmetega.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendusteTrykis"/>
+            <output message="tns:kyKitsendusteTrykisResponse"/>
+        </operation>
+        <operation name="kyKitsendused">
+            <documentation>
+                <xrd:title>kyKitsendused.v2</xrd:title>
+                <xrd:notes>Teenus võimaldab pärida kitsendusi nii katastriüksuse numbri kui ka enda antud geomeetria järgi. Lisaks on võimalik defineerida, mis kuupäeva seisuga andmeid soovitakse.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendused"/>
+            <output message="tns:kyKitsendusedResponse"/>
+        </operation>
+        <operation name="kyKitsendusedAvalik">
+            <documentation>
+                <xrd:title>kyKitsendusedAvalik.v1</xrd:title>
+                <xrd:notes>Teenus võimaldab pärida kitsendusi nii katastriüksuse numbri kui ka enda antud geomeetria järgi. Lisaks on võimalik defineerida, mis kuupäeva seisuga andmeid soovitakse.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendusedAvalik"/>
+            <output message="tns:kyKitsendusedAvalikResponse"/>
+        </operation>
+        <operation name="kyKpo">
+            <documentation>
+                <xrd:title>kyKpo.v1</xrd:title>
+                <xrd:notes>Teenus võimaldab pärida maatükiga kattuvaid kitsendusi põhjustavaid objekte nii katastriüksuse numbri kui ka enda antud geomeetria järgi. Lisaks on võimalik defineerida, mis kuupäeva seisuga andmeid soovitakse.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKpo"/>
+            <output message="tns:kyKpoResponse"/>
+        </operation>
+        <operation name="kyMaamaksuSoodustused">
+            <documentation>
+                <xrd:title>kyMaamaksuSoodustused.v1</xrd:title>
+                <xrd:notes>Teenus võimaldab pärida katastriüksuse maamaksu soodustusega vööndite suurust. </xrd:notes>
+            </documentation>
+            <input message="tns:kyMaamaksuSoodustused"/>
+            <output message="tns:kyMaamaksuSoodustusedResponse"/>
+        </operation>
+        <operation name="kyKitsendusteLink">
+            <documentation>
+                <xrd:title>kyKitsendusteLink.v1</xrd:title>
+                <xrd:notes>Teenus võimaldada läbi X-tee pärida katastriüksuste tunnuse järgi linki, mis avab KPOIS ametniku vaade ja fokuseerib KÜ-le.</xrd:notes>
+            </documentation>
+            <input message="tns:kyKitsendusteLink"/>
+            <output message="tns:kyKitsendusteLinkResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="kpoisServicePortSoap11" type="tns:kpoisServicePort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="kyKitsendusedLisamineMuutmine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKitsendusedKustutamine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKitsendusteTrykis">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKitsendused">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKitsendusedAvalik">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKpo">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyMaamaksuSoodustused">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="kyKitsendusteLink">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="kpoisPortService">
+        <port binding="tns:kpoisServicePortSoap11" name="kpoisServicePortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </port>
+    </service>
+</definitions>

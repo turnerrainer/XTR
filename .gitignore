@@ -30,7 +30,32 @@ build/
 # mdBook output
 /book/book/
 
-# WSDL-generated DSLs — the WSDL under wsdl/<group>/ is the
+# WSDL-generated DSL files — regenerated on every boot.
+# Hand-written groups (e.g. DSL/xroad/) stay tracked.
+/DSL/DHX/*.yml
+/DSL/DHX.kotkas/*.yml
+/DSL/ads/*.yml
+/DSL/aks-ads/*.yml
+/DSL/aks-knr/*.yml
+/DSL/ar/*.yml
+/DSL/ehr3/*.yml
+/DSL/etak/*.yml
+/DSL/kkrmn/*.yml
+/DSL/knr/*.yml
+/DSL/kotkas-70008658/*.yml
+/DSL/kotkas-70009445/*.yml
+/DSL/kpois/*.yml
+/DSL/ljvis/*.yml
+/DSL/maais/*.yml
+/DSL/maais-klient/*.yml
+/DSL/maaok/*.yml
+/DSL/metsaregister/*.yml
+/DSL/mis/*.yml
+/DSL/mtp-katri/*.yml
+/DSL/okas/*.yml
+/DSL/tiheasustusalad/*.yml
+
+
 # source of truth; XTR regenerates the .yml files under
 # DSL/<group>/ on every boot. Ignoring the outputs keeps PRs
 # from churning on marker-header lines and preserves the

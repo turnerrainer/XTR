@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://rm-v6.x-road.eu/treasury/customer" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="MaaoksjonXteeService" targetNamespace="http://rm-v6.x-road.eu/treasury/customer">
+
+    <types>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/identifiers" schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://rm-v6.x-road.eu/treasury/customer" schemaLocation="https://riigimaaoksjon.ee/ws/ws/maaoksjonRkService.xsd"/>
+        </xsd:schema>
+    </types>
+    <message name="rkSendMessageIso">
+        <part element="tns:rkSendMessageIso" name="body"/>
+        <part element="tns:attach" name="p1"/>
+    </message>
+    <message name="rkSendMessageIsoResponse">
+        <part element="tns:rkSendMessageIsoResponse" name="body"/>
+    </message>
+
+
+    <message name="requestHeader">
+        <part element="xrd:client" name="client"/>
+        <part element="xrd:service" name="service"/>
+        <part element="xrd:id" name="id"/>
+        <part element="xrd:userId" name="userId"/>
+        <part element="xrd:issue" name="issue"/>
+        <part element="xrd:protocolVersion" name="protocolVersion"/>
+    </message>
+
+    <portType name="maaoksjonServicePort">
+        <operation name="rkSendMessageIso">
+            <documentation>
+                <xrd:title xml:lang="et">Teenus Riigikassa ISO formaadis sõnumite vastuvõtmiseks</xrd:title>
+            </documentation>
+            <input message="tns:rkSendMessageIso"/>
+            <output message="tns:rkSendMessageIsoResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="maaoksjonServicePortSoap11" type="tns:maaoksjonServicePort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="rkSendMessageIso">
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+                <mime:multipartRelated>
+                    <mime:part>
+                        <soap:body parts="body" use="literal"/>
+                    </mime:part>
+                    <mime:part>
+                        <mime:content part="attach" type="application/octet-stream"/>
+                    </mime:part>
+                </mime:multipartRelated>
+            </input>
+            <output>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+                <soap:body parts="body" use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="maaoksjonPortService">
+        <port binding="tns:maaoksjonServicePortSoap11" name="maaoksjonServicePortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </port>
+    </service>
+</definitions>

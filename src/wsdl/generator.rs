@@ -27,6 +27,15 @@ pub struct WsdlMeta {
     /// Optional — falls back to the operation name if not set.
     #[serde(default)]
     pub service_code: Option<String>,
+    /// Optional public-HTTPS override for vendors that ALSO expose
+    /// their SOAP endpoint outside X-Road (Ariregister-style dual
+    /// mode). When set, the generated DSL emits this as `service:`
+    /// even if the WSDL's `<soap:address>` says TURVASERVER — so
+    /// callers hit the public URL directly, no Security Server
+    /// needed. Vendor auth (typically username/password in the
+    /// SOAP body) is still required.
+    #[serde(default)]
+    pub service_url: Option<String>,
 }
 
 /// Emit one DSL YAML per operation in the parsed WSDL.
@@ -52,10 +61,13 @@ fn generate_one(
     let leaves: Vec<&ElementDef> = op.input_element.scalar_leaves();
     let params: Vec<&str> = leaves.iter().map(|e| e.name.as_str()).collect();
 
-    let envelope = if let Some(m) = meta {
-        build_xroad_envelope(wsdl, op, m)
-    } else {
-        build_plain_envelope(wsdl, op)
+    // X-Road header block only when the sidecar declares an X-Road
+    // target AND there's no direct-HTTPS service_url override. A
+    // service_url override means "hit the vendor URL directly,
+    // skip X-Road" — the envelope stays plain SOAP.
+    let envelope = match meta {
+        Some(m) if m.service_url.is_none() => build_xroad_envelope(wsdl, op, m),
+        _ => build_plain_envelope(wsdl, op),
     };
 
     let mut yaml = String::new();
@@ -72,18 +84,24 @@ fn generate_one(
             yaml.push('\n');
         }
     }
-    // X-Road WSDLs use a well-known placeholder ("TURVASERVER" —
-    // Estonian for "security server") in <soap:address location=>
-    // to signal "this service is accessed via YOUR Security Server,
-    // not this URL." Drop the URL in that case so XTR's executor
-    // routes through the configured security_server instead of
-    // trying to POST to a placeholder host.
-    if let Some(url) = wsdl.service_url.as_deref() {
-        if !is_xroad_placeholder_url(url) {
-            yaml.push_str("service: ");
-            yaml.push_str(url);
-            yaml.push('\n');
-        }
+    // Resolve the target URL in priority order:
+    //   1. Explicit sidecar `service_url:` override (for dual-mode
+    //      vendors that publish a public HTTPS endpoint alongside
+    //      their X-Road subsystem — Ariregister-style).
+    //   2. WSDL's `<soap:address location=…/>` — but only if it's
+    //      NOT the X-Road TURVASERVER placeholder.
+    //   3. Nothing — DSL omits `service:`, executor routes via
+    //      `security_server:` config.
+    let effective_service_url: Option<&str> =
+        meta.and_then(|m| m.service_url.as_deref()).or_else(|| {
+            wsdl.service_url
+                .as_deref()
+                .filter(|u| !is_xroad_placeholder_url(u))
+        });
+    if let Some(url) = effective_service_url {
+        yaml.push_str("service: ");
+        yaml.push_str(url);
+        yaml.push('\n');
     }
     // Method is always POST for SOAP-over-HTTP. Task 013 v5
     // memory: XTR is POST-only by design.
@@ -291,6 +309,7 @@ mod tests {
             member_code: "70000000".into(),
             subsystem_code: "arireg".into(),
             service_code: None,
+            service_url: None,
         };
         let files = generate_all(&wsdl, Some(&meta)).unwrap();
         let yaml = &files[0].1;
@@ -304,6 +323,28 @@ mod tests {
         assert!(yaml.contains("<id:serviceCode>lihtandmed_v3</id:serviceCode>"));
         assert!(yaml.contains("{{generate.uuid}}"));
         assert!(yaml.contains("{{generate.protocol_version}}"));
+    }
+
+    #[test]
+    fn service_url_override_uses_plain_soap_envelope_and_direct_url() {
+        // Ariregister-style dual-mode: sidecar declares a
+        // public-HTTPS override, WSDL says TURVASERVER, generated
+        // DSL should route DIRECTLY to the vendor URL with a
+        // plain SOAP envelope (no X-Road header).
+        let wsdl = parse(ARIREG_LIKE_WSDL).unwrap();
+        let meta = WsdlMeta {
+            member_class: "GOV".into(),
+            member_code: "70000310".into(),
+            subsystem_code: "arireg".into(),
+            service_code: None,
+            service_url: Some("https://ariregxmlv6.rik.ee/".into()),
+        };
+        let files = generate_all(&wsdl, Some(&meta)).unwrap();
+        let yaml = &files[0].1;
+        assert!(yaml.contains("service: https://ariregxmlv6.rik.ee/\n"));
+        // No X-Road header block when service_url override is set
+        assert!(!yaml.contains("{{{generate.client}}}"));
+        assert!(!yaml.contains("<xroad:service"));
     }
 
     #[test]

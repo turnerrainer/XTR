@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:knr="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+
+	<import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+	<element name="nimeobjektiLogi" type="knr:nimeobjektiLogiRequestType">
+		<annotation>
+			<appinfo>
+				<xrd:title>Nimeobjekti muudatuslogi päring</xrd:title>
+			</appinfo>
+		</annotation>
+	</element>
+
+	<element name="nimeobjektiLogiResponse" type="knr:nimeobjektiLogiResponseType"/>
+	<complexType name="nimeobjektiLogiRequestType">
+		<sequence>
+			<element name="alates" type="date" minOccurs="0">
+				<annotation>
+					<appinfo>
+						<xrd:notes>
+							Kuupäev, alates millest (k.a.) registreeritud muudatusi
+							soovitakse leida.
+						</xrd:notes>
+						<xrd:title>Muudetud alates</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="kuni" type="date" minOccurs="0">
+				<annotation>
+					<appinfo>
+						<xrd:notes>
+							Kuupäev, milleni (k.a.) registreeritud muudatusi
+							soovitakse leida.
+						</xrd:notes>
+						<xrd:title>Muudetud kuni</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="nimeobjektId" type="integer" minOccurs="0">
+				<annotation>
+					<appinfo>
+						<xrd:title>Nimeobjekti identifikaator</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="nimeobjektiLiigid" minOccurs="0" type="string">
+				<annotation>
+					<appinfo>
+						<xrd:title>Tagastusse soovitud nimeobjekti liikide koodide loetelu eraldatud komaga</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="logiId" type="integer" minOccurs="0">
+				<annotation>
+					<appinfo>
+						<xrd:notes>
+							Millisest logi identifikaatorist suuremaid kirjeid
+							otsitakse. Vaikimisi 0
+						</xrd:notes>
+						<xrd:title>Logi identifikaator</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="maxVastuseid" type="integer" default="100">
+				<annotation>
+					<appinfo>
+						<xrd:title>Tagastatav kirjete max arv</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+			<element name="ruumiAndmeteFormaat" type="knr:kujuGeomeetriaFormaatType" minOccurs="0" default="GML">
+				<annotation>
+					<appinfo>
+						<xrd:title>Millises formaadis tagastada objekti kuju geomeetria
+						</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+		</sequence>
+	</complexType>
+	<complexType name="nimeobjektiLogiResponseType">
+		<sequence minOccurs="0" maxOccurs="unbounded">
+			<element name="tulem">
+				<complexType>
+					<sequence>
+						<element name="logiId" type="integer">
+							<annotation>
+								<appinfo>
+									<xrd:title>Logikirje identifikaator</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="logiKuupaev" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Logikirje tekkimise kuupäev</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="nimeobjektId" type="integer">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti identifikaator</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="nimeobjektiLiigiKood" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti liigi kood</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="nimeobjektiLiigiNimetus" type="string">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti liigi nimetus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="tunnuspunktX" type="decimal" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Tunnuspunkti x-koordinaat</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="tunnuspunktY" type="decimal" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Tunnuspunkti y-koordinaat</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="ruumiKuju" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Ruumikuju</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="register" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Päritoluregistri nimetus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="tunnusRegistris" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Tunnus päritoluregistris</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="adsOid" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Aadressiobjekti tunnus ADS süsteemis</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="olek">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti olek</xrd:title>
+								</appinfo>
+							</annotation>
+							<simpleType>
+								<restriction base="string">
+									<enumeration value="K">
+										<annotation>
+											<appinfo>
+												<xrd:title>kehtiv</xrd:title>
+											</appinfo>
+										</annotation>
+									</enumeration>
+									<enumeration value="X">
+										<annotation>
+											<appinfo>
+												<xrd:title>kehtetu</xrd:title>
+											</appinfo>
+										</annotation>
+									</enumeration>
+								</restriction>
+							</simpleType>
+						</element>
+						<element name="ylemobjektId" type="integer" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:notes>
+										Kui tühi, siis nimeobjekt ei kuulu rühma.
+										Kui
+										ylemobjektiId = nimeobjektId, siis on tegemist rühmaülemaga
+									</xrd:notes>
+									<xrd:title>Rühmaülema nimeobjekti identifikaator</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="ryhmanimeKuva" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Rühmanime kuva
+									</xrd:title>
+								</appinfo>
+							</annotation>
+							<simpleType>
+								<restriction base="string">
+									<enumeration value="ALAM">
+										<annotation>
+											<appinfo>
+												<xrd:title>nimed kuvatakse ainult alamobjektide juures
+												</xrd:title>
+											</appinfo>
+										</annotation>
+									</enumeration>
+									<enumeration value="YLEM">
+										<annotation>
+											<appinfo>
+												<xrd:title>nimed kuvatakse ainult rühmaülema juures
+												</xrd:title>
+											</appinfo>
+										</annotation>
+									</enumeration>
+									<enumeration value="KOIK">
+										<annotation>
+											<appinfo>
+												<xrd:title>nimed kuvatakse nii alam- kui ka	ülemobjekti juures
+												</xrd:title>
+											</appinfo>
+										</annotation>
+									</enumeration>
+								</restriction>
+							</simpleType>
+						</element>
+						<element name="ametlikNimi" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Ametlikud kohanimed</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="maEsikohanimi" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Mitteametlikud esikohanimed</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="maMuunimi" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Mitteametlikud muud nimed</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="esindusAadress" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Esindusaadress</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="esindusAadressKood" type="string" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Esindusaadressi kood</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="esindusAadressId" type="integer" minOccurs="0">
+							<annotation>
+								<appinfo>
+									<xrd:title>Esindusaadressi adr_id</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="maakond" type="knr:ehakType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Maakond</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="omavalitsus" type="knr:ehakType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Omavalitsus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="asustusyksus" type="knr:ehakType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Asustusüksus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="vaikekoht" type="knr:ehakType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Väikekoht</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+					</sequence>
+				</complexType>
+			</element>
+		</sequence>
+	</complexType>
+	<simpleType name="ehak">
+		<annotation>
+			<appinfo>
+				<xrd:title>Haldusüksus</xrd:title>
+				<xrd:technotes>Haldusüksuse kood EHAKis (võib olla nii maakond, vald
+					kui ka asula)</xrd:technotes>
+			</appinfo>
+		</annotation>
+		<restriction base="string">
+			<pattern value="\d{4}"/>
+		</restriction>
+	</simpleType>
+	<simpleType name="kujuGeomeetriaFormaatType">
+		<restriction base="string">
+			<enumeration value="WKT">
+				<annotation>
+					<appinfo>
+						<xrd:title>WKT</xrd:title>
+					</appinfo>
+				</annotation>
+			</enumeration>
+			<enumeration value="GML">
+				<annotation>
+					<appinfo>
+						<xrd:title>Stringi kujul (escaped) GML</xrd:title>
+					</appinfo>
+				</annotation>
+			</enumeration>
+			<enumeration value="GeoJSON">
+				<annotation>
+					<appinfo>
+						<xrd:title>Json</xrd:title>
+					</appinfo>
+				</annotation>
+			</enumeration>
+		</restriction>
+	</simpleType>
+	<complexType name="ehakType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Ehak tüüp</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="kood" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Ehak kood</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="nimetus" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Nimetus</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+	
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="nimeobjektiLogi">
+        <wsdl:part name="body" element="tns:nimeobjektiLogi"/>
+    </wsdl:message>
+    <wsdl:message name="nimeobjektiLogiResponse">
+        <wsdl:part name="body" element="tns:nimeobjektiLogiResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="nimeobjektiLogi">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Nimeobjekti muudatuslogi päring</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:nimeobjektiLogi"/>
+            <wsdl:output message="tns:nimeobjektiLogiResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="nimeobjektiLogi">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

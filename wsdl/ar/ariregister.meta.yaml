@@ -1,0 +1,7 @@
+member_class: GOV
+member_code: "70000310"
+subsystem_code: arireg
+# Public HTTPS fallback — Ariregister publishes both an X-Road
+# subsystem AND a plain HTTPS endpoint. service_url shortcuts
+# the Security Server, keeping this the "just works" demo.
+service_url: https://ariregxmlv6.rik.ee/

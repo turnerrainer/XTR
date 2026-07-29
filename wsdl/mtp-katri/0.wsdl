@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?><definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:katri="http://katri.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://katri.x-road.eu/producer/">
+
+	<types>
+		<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://katri.x-road.eu/producer/">
+
+			<xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+			<element name="katriTeenused">
+				<complexType>
+					<sequence>
+						<element name="vajadusType" type="katri:vajadusType"/>
+						<element name="hindamineID" type="xsd:positiveInteger" minOccurs="0"/>
+						<element name="menetlusalaID" type="xsd:positiveInteger" minOccurs="0"/>
+						<element name="tellijaKood" type="xsd:positiveInteger" minOccurs="0"/>
+						<element name="katastriTunnus" type="xsd:string" maxOccurs="unbounded"/>
+						<element name="menetlusNumber" type="xsd:string"/>
+						<element name="menetlusID" type="xsd:positiveInteger"/>
+						<element name="menetlusLiik" type="katri:menetlusLiikType"/>
+						<element name="menetlusAlaliikType" type="katri:menetlusAlaliikType"/>
+						<element name="menetlusViisType" type="katri:menetlusViisType"/>
+						<element name="metsInfo" type="xsd:string" minOccurs="0"/>
+						<element name="metsArvamus" type="xsd:string" minOccurs="0"/>
+					</sequence>
+				</complexType>
+			</element>
+
+			<element name="katriTeenusedResponse">
+				<complexType>
+					<xsd:sequence>
+						<xsd:element name="tulemus" type="katri:tulemusType"/>
+						<xsd:element name="katriID" type="xsd:positiveInteger"/>
+						<xsd:element name="faultCode" type="xsd:string" minOccurs="0"/>
+						<xsd:element name="faultString" type="xsd:string" minOccurs="0"/>
+					</xsd:sequence>
+				</complexType>
+			</element>
+
+			<simpleType name="menetlusAlaliikType">
+				<restriction base="string">
+					<xsd:enumeration value="MAARENTIMINE"/>
+					<xsd:enumeration value="KAEVANDUSEKS"/>
+					<xsd:enumeration value="HOONESTUSOIGUS"/>
+					<xsd:enumeration value="REAALSERVITUUT"/>
+					<xsd:enumeration value="ISIKLIK_KASUTUSOIGUS"/>
+					<xsd:enumeration value="KASUTUSVALDUS"/>
+					<xsd:enumeration value="KOKKULEPE"/>
+					<xsd:enumeration value="YYRIMINERENTIMINE"/>
+					<xsd:enumeration value="LIHTSUSTATUD_KOKKULEPE"/>
+					<xsd:enumeration value="HARILIK_VASTAV_TASU"/>
+					<xsd:enumeration value="TASUTA_KOHALIK_OMAVALITSUS"/>
+					<xsd:enumeration value="TASUTA_AVALIK_OIGUSLIK"/>
+					<xsd:enumeration value="TASUTA_MTY_SA"/>
+					<xsd:enumeration value="TASUTA_VALISRIIK"/>
+					<xsd:enumeration value="TASUTA_MUU_SEADUS"/>
+					<xsd:enumeration value="ELAMUMAA_RVS"/>
+					<xsd:enumeration value="VAHETAMINE_SUNDVOORANDAMINE_SEADUS"/>
+					<xsd:enumeration value="VAHETAMINE_AVALIK_EESMARK"/>
+					<xsd:enumeration value="VAHETAMINE_MUU_SEADUS"/>
+					<xsd:enumeration value="MAAREFORM_KASUTUS_VOORANDAMINE"/>
+					<xsd:enumeration value="MAAREFORM_HOONESTUS_VOORANDAMINE"/>
+					<xsd:enumeration value="ETTEVOTLUS_ARENDAMINE"/>
+					<xsd:enumeration value="MUU"/>
+					<xsd:enumeration value="EHITISEKASUTUS"/>
+					<xsd:enumeration value="MAARENT"/>
+					<xsd:enumeration value="YLDHOOLDUS"/>
+					<xsd:enumeration value="JAATMED"/>
+					<xsd:enumeration value="RAIETOOD"/>
+					<xsd:enumeration value="EHITUS"/>
+					<xsd:enumeration value="MAAPARANDUS"/>
+					<xsd:enumeration value="VALJANOUDMINE"/>
+					<xsd:enumeration value="TOOD"/>
+				</restriction>
+			</simpleType>
+			<simpleType name="menetlusLiikType">
+				<restriction base="string">
+					<enumeration value="KASUTAMISEKS_ANDMINE"/>
+					<enumeration value="KASUTAMISEKS_VOTMINE"/>
+					<enumeration value="VARA_VOORANDAMINE"/>
+					<enumeration value="HOOLDUS"/>
+				</restriction>
+			</simpleType>
+			<simpleType name="menetlusViisType">
+				<restriction base="string">
+					<enumeration value="AVALIK_ENAMPAKKUMINE"/>
+					<enumeration value="VALIKPAKKUMINE"/>
+					<enumeration value="OTSUSTUSKORRAS"/>
+				</restriction>
+			</simpleType>
+			<simpleType name="vajadusType">
+				<restriction base="string">
+					<enumeration value="HINDAMINE"/>
+					<enumeration value="PAIKVAATLUS"/>
+					<enumeration value="MENETLUSALA"/>
+					<enumeration value="MUU"/>
+				</restriction>
+			</simpleType>
+			<simpleType name="tulemusType">
+				<restriction base="string">
+					<enumeration value="OK"/>
+					<enumeration value="ERROR"/>
+				</restriction>
+			</simpleType>
+		</schema>
+	</types>
+
+	<message name="katriTeenused">
+		<part name="katriTeenused" element="katri:katriTeenused"/>
+	</message>
+	<message name="katriTeenusedResponse">
+		<part name="katriTeenusedResponse" element="katri:katriTeenusedResponse"/>
+	</message>
+
+	<message name="requestHeader">
+		<part name="client" element="xrd:client"/>
+		<part name="service" element="xrd:service"/>
+		<part name="id" element="xrd:id"/>
+		<part name="userId" element="xrd:userId"/>
+		<part name="protocolVersion" element="xrd:protocolVersion"/>
+	</message>
+
+	<portType name="KatriXtee">
+		<operation name="katriTeenused">
+			<input message="katri:katriTeenused"/>
+			<output message="katri:katriTeenusedResponse"/>
+		</operation>
+	</portType>
+
+	<binding name="KatriXtee" type="katri:KatriXtee">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<operation name="katriTeenused">
+			<xrd:version>v1</xrd:version>
+			<soap:operation/>
+			<input>
+				<soap:body use="literal"/>
+				<soap:header message="katri:requestHeader" part="client" use="literal"/>
+				<soap:header message="katri:requestHeader" part="service" use="literal"/>
+				<soap:header message="katri:requestHeader" part="id" use="literal"/>
+				<soap:header message="katri:requestHeader" part="userId" use="literal"/>
+				<soap:header message="katri:requestHeader" part="protocolVersion" use="literal"/>
+			</input>
+			<output>
+				<soap:body use="literal"/>
+				<soap:header message="katri:requestHeader" part="client" use="literal"/>
+				<soap:header message="katri:requestHeader" part="service" use="literal"/>
+				<soap:header message="katri:requestHeader" part="id" use="literal"/>
+				<soap:header message="katri:requestHeader" part="userId" use="literal"/>
+				<soap:header message="katri:requestHeader" part="protocolVersion" use="literal"/>
+			</output>
+		</operation>
+	</binding>
+
+	<service name="mtp-katri">
+		<port name="KatriXtee" binding="katri:KatriXtee">
+			<soap:address location="http://example.org/xroad-endpoint"/>
+		</port>
+	</service>
+</definitions>

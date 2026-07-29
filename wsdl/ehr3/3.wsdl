@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="http://ehr.ee.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ehrdev.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://ehrdev.x-road.eu">
+    <wsdl:types>
+        <schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://ehr.ee.x-road.eu/producer/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+            <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+            <include schemaLocation="https://devkluster.ehr.ee/api/xtee/v1/services/ehr_xrd.xsd"/>
+            <element name="ehitiseAndmeteParing">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:ehitiseAndmeteParingRequestType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="ehitiseAndmeteParingRequestType">
+                <sequence>
+                    <element minOccurs="0" name="ehrKood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="katastritunnus" type="tns:kyTunnusType">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Katastritunnus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitId" type="long">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise tehniline võti</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="aadressTxt" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Aadress tekstina</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="adsOid" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise ADS süsteemi kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element default="100000000000" name="andmevektor" type="tns:andmevektorType">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Andmevektor</xrd:title>
+                                <xrd:notes>12 sümbolist koosnev string, millega määratakse, milliseid andmeid teenus tagastab. Vaikimisi 100000000000 </xrd:notes>
+                                <xrd:fieldsize>12</xrd:fieldsize>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <element name="ehitiseAndmeteParingResponse">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:ehitiseAndmeteParingRequestType"/>
+                        <element name="response" type="tns:ehitiseAndmeteParingResponseType"/>
+                    </sequence>
+                </complexType>
+            </element>
+        </schema>
+    </wsdl:types>
+    <wsdl:message name="ehitiseAndmeteParing">
+        <wsdl:part element="sch:ehitiseAndmeteParing" name="ehitiseAndmeteParing"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="ehitiseAndmeteParingResponse">
+        <wsdl:part element="sch:ehitiseAndmeteParingResponse" name="ehitiseAndmeteParingResponse"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="requestheader">
+        <wsdl:part element="xrd:client" name="client"> </wsdl:part>
+        <wsdl:part element="xrd:service" name="service"> </wsdl:part>
+        <wsdl:part element="xrd:id" name="id"> </wsdl:part>
+        <wsdl:part element="xrd:userId" name="userId"> </wsdl:part>
+        <wsdl:part element="xrd:protocolVersion" name="protocolVersion"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="ehrPort">
+        <wsdl:operation name="ehitiseAndmeteParing">
+            <wsdl:documentation>
+                <xrd:title>Ehitise andmete päring</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:ehitiseAndmeteParing" name="ehitiseAndmeteParing"> </wsdl:input>
+            <wsdl:output message="tns:ehitiseAndmeteParingResponse" name="ehitiseAndmeteParingResponse"> </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="ehrPortSoap11" type="tns:ehrPort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="ehitiseAndmeteParing">
+            <soap:operation soapAction=""/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="ehitiseAndmeteParing">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="ehitiseAndmeteParingResponse">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="ehrService">
+        <wsdl:port binding="tns:ehrPortSoap11" name="ehrPortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+            <xrd:address producer="ehr3"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

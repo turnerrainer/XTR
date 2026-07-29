@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="http://ehr.ee.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ehrdev.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://ehrdev.x-road.eu">
+    <wsdl:types>
+        <schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://ehr.ee.x-road.eu/producer/" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+            <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+            <include schemaLocation="https://devkluster.ehr.ee/api/xtee/v1/services/ehr_xrd.xsd"/>
+            <element name="pohidokumentRequest">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:pohidokumentRequestType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="pohidokumentRequestType">
+                <sequence>
+                    <element name="ehrKood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>EHR kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="dotyId" type="long">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi tüübi id</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="dokTyyp" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi tüüp</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="dokNr" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi number</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="dokAlgus" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi kuupäevade vahemiku algus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="dokLopp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi kuupäevade vahemiku lõpp</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitAadress" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise aadress</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <element name="pohidokumentResponse">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:pohidokumentRequestType"/>
+                        <element name="response" type="tns:pohidokumentResponseType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="pohidokumentResponseType">
+                <choice>
+                    <sequence>
+                        <element name="dokumendid" type="tns:Dokumendid"/>
+                    </sequence>
+                    <sequence>
+                        <element default="Vastuseid ei leitud" name="tyhiVastus" type="string"/>
+                    </sequence>
+                </choice>
+            </complexType>
+            <complexType name="Dokumendid">
+                <sequence>
+                    <element maxOccurs="unbounded" name="dokument" nillable="true" type="tns:Dokument"/>
+                </sequence>
+            </complexType>
+            <complexType name="Dokument">
+                <sequence>
+                    <element name="dokId" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi id</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="dotyId" type="integer">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi tüübi id</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="dokumendiTyybiNimetus" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi tüübi nimetus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="dokNr" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi number</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="dokKp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Dokumendi kuupäev</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitised" type="tns:Ehitised">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitised</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="seotudIsikud" type="tns:Isikud">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Seotud isikud</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="alusDokId" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Alusdokumendi id</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitustegevuseLiik" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitustegevuse liik</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <complexType name="Ehitised">
+                <sequence>
+                    <element maxOccurs="unbounded" name="ehitis" nillable="true" type="tns:Ehitis"/>
+                </sequence>
+            </complexType>
+            <complexType name="Ehitis">
+                <sequence>
+                    <element name="ehrKood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>EHR kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="peamineKasutusOtstarve" type="tns:Kasutusotstarve"> </element>
+                    <element name="ehitNimetus" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise nimetus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="ehitTaisaadress" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise täisaadress</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="katastritunnused" type="tns:KatastriTunnused"> </element>
+                    <element name="ehitisOsad" type="tns:EhitisOsad"/>
+                    <element minOccurs="0" name="ehitustoodeAlustamiseKp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitustööde alusatamise kuupäev</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitiseLammutamiseKp" type="date">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise lammutamise kuupäev</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitustegevuseLiik" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitustegevuse liik</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <complexType name="ehitustegevuseLiikAlam">
+                        <sequence>
+                            <element maxOccurs="unbounded" name="ehitustegevusLiikAlamuks" type="string"/>
+                        </sequence>
+                    </complexType>
+                </sequence>
+            </complexType>
+            <complexType name="KatastriTunnused">
+                <sequence>
+                    <element maxOccurs="unbounded" name="katastritunnus" type="tns:kyTunnusType">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Katastriüksused</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <complexType name="Kasutusotstarve">
+                <annotation>
+                    <appinfo>
+                        <xrd:title>Kasutusotstarve</xrd:title>
+                    </appinfo>
+                </annotation>
+                <sequence>
+                    <element minOccurs="0" name="kaosId" type="long">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kasutusotstarve id</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="kaosNimetus" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Kasutusotstarve tekstina</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <complexType name="EhitisOsad">
+                <sequence>
+                    <element maxOccurs="unbounded" name="ehitisOsa" nillable="true" type="tns:EhitisOsa">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise osad</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <complexType name="EhitisOsa">
+                <sequence>
+                    <element name="ehrKood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>EHR kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="kasutusotstarbed" type="tns:Kasutusotstarbed"/>
+                    <element minOccurs="0" name="nimetus" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise osa nimetus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="ehitOsaTaisaadress" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Ehitise osa täisaadress</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="katastritunnused" type="tns:KatastriTunnused"/>
+                </sequence>
+            </complexType>
+            <complexType name="Kasutusotstarbed">
+                <sequence>
+                    <element maxOccurs="unbounded" name="kasutusotstarve" nillable="true" type="tns:Kasutusotstarve"/>
+                </sequence>
+            </complexType>
+            <complexType name="Isikud">
+                <sequence>
+                    <element maxOccurs="unbounded" name="isik" nillable="true" type="tns:Isik"/>
+                </sequence>
+            </complexType>
+            <complexType name="Isik">
+                <annotation>
+                    <appinfo>
+                        <xrd:title>Isiku andmed</xrd:title>
+                    </appinfo>
+                </annotation>
+                <sequence>
+                    <element minOccurs="0" name="isikuRoll" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isiku rolli kirjeldus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="registrikood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Registrikood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="nimetus" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Nimetus</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="isikukood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isikukood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="eesnimi" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isiku eesnimi</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element minOccurs="0" name="perekonnanimi" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isiku perekonnanimi</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+        </schema>
+    </wsdl:types>
+    <wsdl:message name="pohidokumentResponse">
+        <wsdl:part element="sch:pohidokumentResponse" name="pohidokumentResponse"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="pohidokumentRequest">
+        <wsdl:part element="sch:pohidokumentRequest" name="pohidokumentRequest"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="requestheader">
+        <wsdl:part element="xrd:client" name="client"> </wsdl:part>
+        <wsdl:part element="xrd:service" name="service"> </wsdl:part>
+        <wsdl:part element="xrd:id" name="id"> </wsdl:part>
+        <wsdl:part element="xrd:userId" name="userId"> </wsdl:part>
+        <wsdl:part element="xrd:protocolVersion" name="protocolVersion"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="ehrPort">
+        <wsdl:operation name="pohidokument">
+            <wsdl:documentation>
+                <xrd:title>Põhidokumendi päring</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:pohidokumentRequest" name="pohidokumentRequest"> </wsdl:input>
+            <wsdl:output message="tns:pohidokumentResponse" name="pohidokumentResponse"> </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="ehrPortSoap11" type="tns:ehrPort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="pohidokument">
+            <soap:operation soapAction=""/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="pohidokumentRequest">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="pohidokumentResponse">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="ehrService">
+        <wsdl:port binding="tns:ehrPortSoap11" name="ehrPortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+            <xrd:address producer="ehrdev"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

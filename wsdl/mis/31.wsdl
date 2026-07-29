@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:maa="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+  <element name="paigaldis_logi" type="maa:paigaldis_logiParingType"/>
+	<element name="paigaldis_logiResponse" type="maa:paigaldis_logiVastusType"/>
+	<complexType name="paigaldis_logiParingType">
+		<annotation>
+			<appinfo>
+				<xrd:title>Paigaldistega MIS-is tehtud muudatuste logi</xrd:title>
+			</appinfo>
+		</annotation>	
+		<sequence>
+			<element name="log_id" type="integer" minOccurs="0">
+				<annotation>
+          <appinfo>
+            <xrd:title>Alatest mitmendast logi kirjest päritakse</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+			<element name="algus" type="dateTime" minOccurs="0">
+				<annotation>
+          <appinfo>
+            <xrd:title>Päritavate muudatuste alguskuupäev-kellaaeg</xrd:title>
+          </appinfo>
+				</annotation>
+			</element>
+			<element name="lopp" type="dateTime" minOccurs="0">			
+				<annotation>
+          <appinfo>
+            <xrd:title>Päritavate muudatuste lõppkuupäev-kellaaeg</xrd:title>
+          </appinfo>
+				</annotation>
+			</element>
+			<element name="max_kirjeid" minOccurs="0">									
+				<annotation>
+          <appinfo>
+            <xrd:title>Maksimaalselt tagastavate kirjete arv ühe päringuga (vaikimis 25, maksimaalselt 250)</xrd:title>
+          </appinfo>
+				</annotation>			
+				<simpleType>
+					<restriction base="integer">
+						<maxInclusive value="250"/>
+					</restriction>
+				</simpleType>
+			</element>
+		</sequence>
+	</complexType>
+	<complexType name="paigaldis_logiVastusType">
+		<annotation>
+			<appinfo>
+				<xrd:title>Paigaldistega MIS-is tehtud muudatuste logi</xrd:title>
+			</appinfo>
+		</annotation>
+		<sequence minOccurs="0" maxOccurs="unbounded">
+			<element name="logi">
+				<complexType>
+					<sequence>
+						<element name="log_id" type="integer"/>
+						<element name="muudatuse_aeg" type="dateTime">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Muudatuse kuupäev ja kellaaeg</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>						
+						<element name="muudatuse_op">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Muudatuste operatsiooni kood: I - insert, U - update, D -delete</xrd:title>
+                </appinfo>
+							</annotation>
+							<simpleType>
+								<restriction base="string">
+									<enumeration value="I"/>
+									<enumeration value="U"/>
+									<enumeration value="D"/>
+								</restriction>
+							</simpleType>
+						</element>
+						<element name="paigaldise_id" type="integer">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Paigaldise MIS poolt antud kood, mis ühtib MIS_ID väärtusega</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>
+						<element name="paigaldise_nimetus" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Sisestatud paigaldise nimetus</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>
+						<element name="paigaldise_liik_kood" type="integer" minOccurs="0"/>
+						<element name="paigaldise_liik_nimetus" type="string" minOccurs="0"/>
+						<element name="aadress" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Aadress</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>
+						<element name="postiindeks" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Postiindeks</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="ehak_kood" type="string" minOccurs="0"/>
+						<element name="omanik_nimi" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Omaniku nimetus</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="omanik_regkood" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Omaniku registrikood</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="valdaja_nimi" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Valdaja nimetus</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="valdaja_regkood" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>Valdaja registrikood</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="paigaldis_lest_pl" type="decimal" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>LEST põhjalaius</xrd:title>
+                </appinfo>
+              </annotation>
+						</element>
+						<element name="paigaldis_lest_ip" type="decimal" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>LEST idapikkus</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>
+						<element name="mis_id" type="string" minOccurs="0">
+							<annotation>
+                <appinfo>
+                  <xrd:title>MIS-i poolt omistatud identifikaator</xrd:title>
+                </appinfo>
+							</annotation>
+						</element>
+					</sequence>
+				</complexType>
+			</element>
+		</sequence>
+	</complexType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="paigaldis_logi">
+        <wsdl:part name="body" element="tns:paigaldis_logi"/>
+    </wsdl:message>
+    <wsdl:message name="paigaldis_logiResponse">
+        <wsdl:part name="body" element="tns:paigaldis_logiResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="paigaldis_logi">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Paigaldistega MIS-is tehtud muudatuste logi</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:paigaldis_logi"/>
+            <wsdl:output message="tns:paigaldis_logiResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="paigaldis_logi">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

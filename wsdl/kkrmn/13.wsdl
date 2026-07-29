@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:rmr="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+  <element name="RMRplokiandmed" type="rmr:RMRplokiandmedRequestType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Mäeeraldise plokkide andmete päringu teenus</xrd:title>
+      </appinfo>
+    </annotation>
+  </element>
+
+  <element name="RMRplokiandmedResponse" type="rmr:RMRplokiandmedResponseType"/>
+
+  <complexType name="RMRplokiandmedRequestType">
+    <sequence>
+      <element name="loa_nr" type="string" minOccurs="1">
+        <annotation>
+          <appinfo>
+            <xrd:title>Loa number:</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+
+  <complexType name="RMRplokiandmedResponseType">
+    <sequence>
+      <element name="maeeraldis" minOccurs="0">
+        <annotation>
+          <documentation>Mäeeraldis</documentation>
+        </annotation>
+        <complexType>
+          <sequence>
+            <element name="loa_nr" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Loa number:</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="maeerald_kood" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Mäeerladise kood:</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="plokid" minOccurs="0">
+              <complexType>
+                <sequence>
+                  <element name="plokk" minOccurs="0" maxOccurs="unbounded">
+                    <complexType>
+                      <sequence>
+                        <element name="registrikaart" type="integer" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Maardla registrikaart:</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="ploki_nimi" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Ploki nimi</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="kasutusala_kood" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Ploki kasutusala kood</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="kasutusala_nimetus" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Ploki kasutusala nimetus</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="jooksev_varu" type="decimal" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Ploki aktiivvaru jääk</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="varu_kuup" type="date" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Varu kuupäev</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="mootyhik" type="rmr:yhikKlassif" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Varu mõõtühik</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="ploki_liik" type="rmr:plokiLiikKlassif" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Varu kategooria</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="uuringuviis" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Uuringuviis</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                      </sequence>
+                    </complexType>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+  <simpleType name="yhikKlassif">
+    <restriction base="string">
+      <enumeration value="tuh.m3">
+        <annotation>
+          <appinfo>
+            <xrd:title>tuh.m3</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="tuh.t">
+        <annotation>
+          <appinfo>
+            <xrd:title>tuh.t</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+  <simpleType name="plokiLiikKlassif">
+    <restriction base="string">
+      <enumeration value="aT">
+        <annotation>
+          <appinfo>
+            <xrd:title>aktiivne tarbevaru</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="aR">
+        <annotation>
+          <appinfo>
+            <xrd:title>aktiivne reservvaru</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="pT">
+        <annotation>
+          <appinfo>
+            <xrd:title>passiivne tarbevaru</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="pR">
+        <annotation>
+          <appinfo>
+            <xrd:title>passiivne reservvaru</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="P">
+        <annotation>
+          <appinfo>
+            <xrd:title>prognoosvaru</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="RMRplokiandmed">
+        <wsdl:part name="body" element="tns:RMRplokiandmed"/>
+    </wsdl:message>
+    <wsdl:message name="RMRplokiandmedResponse">
+        <wsdl:part name="body" element="tns:RMRplokiandmedResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="RMRplokiandmed">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Mäeeraldise plokkide andmete päringu teenus</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:RMRplokiandmed"/>
+            <wsdl:output message="tns:RMRplokiandmedResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="RMRplokiandmed">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v3</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

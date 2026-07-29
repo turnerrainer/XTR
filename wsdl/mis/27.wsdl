@@ -1,0 +1,830 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:maa="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+  <include schemaLocation="http://www.maaamet.ee/schemas/xtee6/maa_typesv6.xsd"/>
+  <include schemaLocation="http://www.maaamet.ee/schemas/xtee6/maa_klassifikaatoridv6.xsd"/>
+  <element name="kylogi" type="maa:kylogiParingType"/>
+  <element name="kylogiResponse" type="maa:kylogiVastusType"/>
+  <complexType name="kylogiParingType">
+    <sequence>
+        <element name="ajavahemik" type="maa:ajavahemikType" minOccurs="0"/>
+        <element name="alates_logiID" type="int" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Alates logi ID-st</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="katastritunnus" type="maa:KY_tunnusType" minOccurs="0">
+          <annotation>
+            <documentation>
+              <xrd:title>Katastriüksuse tunnus</xrd:title>
+            </documentation>
+          </annotation>
+        </element>
+      <element name="piirkond" type="maa:ehakkoodType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Piirkond (EHAK kood)</xrd:title>
+            <xrd:notes>Sisesta neljakohaline EHAK kood nt 0070</xrd:notes>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="tsoon" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Puhvertsoon</xrd:title>
+            <xrd:notes>Puhvertsooni laius meetrites, lubatud väärtused 10-1000 (määratud peab olema ka piirkond)</xrd:notes>
+          </appinfo>
+        </annotation>
+        <simpleType>
+          <restriction base="int">
+            <minInclusive value="10"/>
+            <maxInclusive value="1000"/>
+          </restriction>
+        </simpleType>
+      </element>
+      <element name="mis_muutused" type="maa:vektorType" default="11111110">
+        <annotation>
+          <appinfo>
+            <xrd:title>Muudatusvektor, milliseid muudatusi näha soovitakse</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="mis_andmed" type="maa:vektorType" default="11111110">
+        <annotation>
+          <appinfo>
+            <xrd:title>Andmevektor, milliseid andmeid näha soovitakse</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="toimingid" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Toiming ID </xrd:title>
+              <xrd:notes>Toiming ID järgi päringu sooritamine eeldab, et katastritunnus oleks tühi.</xrd:notes>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ka_vanad" type="boolean" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Näita ka vanu andmeid </xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ruumiAndmeteFormaat" type="maa:kujuGeomeetriaFormaatType" minOccurs="0" default="GML">
+        <annotation>
+          <appinfo>
+            <xrd:title>Tagastatavate geomeetriliste andmete formaat</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="max_arv" type="int" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Maksimaalne tagastavate kirjete arv</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="kylogiVastusType">
+    <sequence>
+      <element name="tulemid" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="tulem" maxOccurs="unbounded">
+              <complexType>
+                <sequence>
+                  <element name="logi">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Logi andmed</xrd:title>
+                      </appinfo>
+                    </annotation>
+                    <complexType>
+                      <sequence>
+                        <element name="KYtunnus" type="maa:KY_tunnusType">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Katastriüksuse tunnus</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="toiming" type="maa:toimingKlassifikaator">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Toiming, mida maaregistris teostati</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="toimingid" type="string">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Toimingu identifikaator</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="suund" type="string">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Kas toiming allkirjastati või tühistati (+ allkirjastati, - allkiri tühistati)</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="registreerimisaeg" type="date">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Katastriüksuse registreerimise aeg</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="log_stamp" type="dateTime">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Logikirje aeg</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="log_id" type="int">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Logikirje ID, järjepidamiseks teistes süsteemides</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="muut_liik" type="maa:muutliikType">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>KÜ muudatuse liik</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="ky_olek" type="maa:olekType">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>KÜ olek</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="tsentroid" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>KÜ mõõdistuskuju tsentroidi koordinaadid (x,y)</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="muudatusvektor" type="maa:vektorType">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Muudatusvektor, millised andmed muutusid</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="tagasiAndmevektor" type="maa:vektorType">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Andmevektor, milliseid andmeid tegelikult näidati</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="parineb_millest" type="string" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>KÜ tunnus, millest KÜ on moodustatud</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                      </sequence>
+                    </complexType>
+                  </element>
+                  <element name="kyandmed" minOccurs="0">
+                    <complexType>
+                      <sequence>
+                        <element name="uued" type="maa:KatastriyksusType" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Uued andmed</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                        <element name="olid" type="maa:KatastriyksusType" minOccurs="0">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Vanad andmed</xrd:title>
+                            </appinfo>
+                          </annotation>
+                        </element>
+                      </sequence>
+                    </complexType>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+      <element name="fault" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="faultCode" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kood</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="faultString" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kirjeldus</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="piirkondParingType">
+    <sequence>
+      <element name="piirkond" type="maa:ehakkoodType">
+        <annotation>
+          <appinfo>
+            <xrd:title>Piirkond (EHAK kood)</xrd:title>
+            <xrd:notes>Sisesta neljakohaline EHAK kood nt 0070</xrd:notes>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="tsoon" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Puhvertsoon</xrd:title>
+            <xrd:notes>Puhvertsooni laius meetrites, lubatud väärtused 10-1000</xrd:notes>
+          </appinfo>
+        </annotation>
+        <simpleType>
+          <restriction base="int">
+            <minInclusive value="10"/>
+            <maxInclusive value="1000"/>
+          </restriction>
+        </simpleType>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="KatastriyksusType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Katastriüksus</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="aadress" type="maa:aadressType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Aadressandmed</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="sihtotstarbed" type="maa:sihtotstarbedType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Sihtotstarbed</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="pohiandmed" type="maa:KY_pohiandmedType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Põhiandmed</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="kinnistamine" type="maa:kinnistamisandmedType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Kinnistamisandmed</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="moodistuskuju" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Mõõdistuskuju</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="moodistamiseAndmed" type="maa:moodistamiseAndmedType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Mõõdistuskuju tärkandmed</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="topokuju" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Topokuju</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="sihtotstarbedType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Sihtotstarbe andmetüüp</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="sihtotstarve1" type="maa:sihtotstarveKlassifikaator" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Esimene sihtotstarve</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="sihtotstarve2" type="maa:sihtotstarveKlassifikaator" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Teine sihtotstarve</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="sihtotstarve3" type="maa:sihtotstarveKlassifikaator" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Kolmas sihtotstarve</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="so_protsent1" type="nonNegativeInteger" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Esimese sihtotstarbe protsent</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="so_protsent2" type="nonNegativeInteger" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Teise sihtotstarbe protsent</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="so_protsent3" type="nonNegativeInteger" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Kolmanda sihtotstarbe protsent</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="KY_pohiandmedType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Põhiandmete tüüp</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="pindala_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Pindala (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="pindala_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Pindala (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ehitistealunemaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Esitluspinna/sh ehitiste alune maa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ehitistealunemaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Esitluspinna/sh ehitiste alune maa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="haritavmaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Haritav maa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="haritavmaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Haritav maa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="rohumaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Looduslik rohumaa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="rohumaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Looduslik rohumaa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="metsamaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Metsamaa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="metsamaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Metsamaa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ouemaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Õuemaa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ouemaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Õuemaa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="muumaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Muu maa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="muumaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Muu maa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="veealunemaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Muu maa/sh vee alune maa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="veealunemaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Muu maa/sh vee alune maa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="maaratlematamaa_ha" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Määratlemata maa (hektarites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="maaratlematamaa_m" type="decimal" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Määratlemata maa (ruutmeetrites)</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="omandamisviis" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>KÜ versiooni tekkelugu</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="registreeritud" type="date" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>KÜ registreerimise kuupäev</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="allkirjastatud" type="dateTime" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>KÜ allkirjastamise kuupäev</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="kustutatud" type="dateTime" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>KÜ sulgemise kuupäev/aeg</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="esmaregistreeritud" type="date" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>KÜ esmaregistreerimise kuupäev</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="esitluspind" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Üldpindala teksti kujul õiendil oleva pinnatäpsusega</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="plaani_alusel" type="maa:plaani_aluselType">
+        <annotation>
+          <appinfo>
+            <xrd:title>Plaani alusel moodustatud</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="trykitapsus" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Trükitäpsus</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="omandivorm_kood" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Omandivorm kood</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="omandivorm_nimetus" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Omandivorm nimetus</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="kinnistamisandmedType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Kinnistamisandmed andmetüüp</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="registriosa" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title> Kinnistu registriosa number</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="koosseisu" type="date" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Kinnistamise kuupäev</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="moodistamiseAndmedType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Mõõdistuskuju tärkandmete tüüp</xrd:title>
+      </appinfo>
+    </annotation>
+    <sequence>
+      <element name="koostamise_kuupaev" type="date" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title> Toimiku koostamise kuupäev</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="moodustamise_kuupaev" type="date" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Mõõdistamise aeg</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="mootja_nimi" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Mõõdistaja nimi</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="litsentsi_nr" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Litsentsi number</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ksyst_kood" type="string" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title> Koordinaatsüsteem</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="kuju_liik" type="maa:kujuliikKlassifikaator" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title> Maaüksuse kuju liik </xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <simpleType name="kujuliikKlassifikaator">
+    <annotation>
+      <appinfo>
+        <xrd:title>kujuliik klassifikaator</xrd:title>
+      </appinfo>
+    </annotation>
+    <restriction base="string">
+      <enumeration value="0511">
+        <annotation>
+          <appinfo>
+            <xrd:title>mõõdistatud, L-EST</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0512">
+        <annotation>
+          <appinfo>
+            <xrd:title>mõõdistatud, transformeeritud</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0513">
+        <annotation>
+          <appinfo>
+            <xrd:title>mõõdistatud, suvaline</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0514">
+        <annotation>
+          <appinfo>
+            <xrd:title>kaardi ja plaani alusel</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0515">
+        <annotation>
+          <appinfo>
+            <xrd:title>aerofotogeodeetiline</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0521">
+        <annotation>
+          <appinfo>
+            <xrd:title>konverteeritud, L-EST</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0522">
+        <annotation>
+          <appinfo>
+            <xrd:title>konverteeritud, transformeeritud</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0523">
+        <annotation>
+          <appinfo>
+            <xrd:title>konverteeritud, suvaline</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0524">
+        <annotation>
+          <appinfo>
+            <xrd:title>konverteeritud, kaardilt</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="0525">
+        <annotation>
+          <appinfo>
+            <xrd:title>konverteeritud, aerofotogeodeetiline</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+  <simpleType name="trykitapsusType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Trükitäpsus</xrd:title>
+      </appinfo>
+    </annotation>
+    <restriction base="string">
+      <enumeration value="1">
+        <annotation>
+          <appinfo>
+            <xrd:title>hektarites: 0,1 ha täpsusega</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="2">
+        <annotation>
+          <appinfo>
+            <xrd:title>hektarites: 0,1 ha täpsusega</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="3">
+        <annotation>
+          <appinfo>
+            <xrd:title>ruutmeetrites: 1 m2 täpsusega</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="kylogi">
+        <wsdl:part name="body" element="tns:kylogi"/>
+    </wsdl:message>
+    <wsdl:message name="kylogiResponse">
+        <wsdl:part name="body" element="tns:kylogiResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="kylogi">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">KÜ muudatused</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:kylogi"/>
+            <wsdl:output message="tns:kylogiResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="kylogi">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

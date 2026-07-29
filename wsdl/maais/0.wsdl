@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch0="http://producers.maais.xtee.riik.ee/producer/maais" xmlns:sch1="http://producers.maais.xtee.riik.ee/producer/maais" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://maais.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://maais.x-road.eu">
+  <wsdl:types>
+    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://producers.maais.xtee.riik.ee/producer/maais" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xtee="http://x-road.eu/xsd/x-road.xsd" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://producers.maais.xtee.riik.ee/producer/maais"><xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/><xs:import namespace="http://x-road.eu/xsd/x-road.xsd" schemaLocation="http://x-road.eu/xsd/x-road.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="legacyMaaisRequest" type="tns:legacyMaaisRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="legacyMaaisResponse" type="xtee:legacy_response" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:complexType name="legacyMaaisRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element maxOccurs="unbounded" minOccurs="0" name="item" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType></xs:schema>
+    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://producers.maais.xtee.riik.ee/producer/maais" xmlns:xtee="http://x-road.eu/xsd/x-road.xsd" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://producers.maais.xtee.riik.ee/producer/maais"><xs:import namespace="http://x-road.eu/xsd/x-road.xsd" schemaLocation="http://x-road.eu/xsd/x-road.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:complexType name="MokaQuery" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="Moka" type="tns:MokaType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:element name="Message" nillable="true" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="Code" type="xs:int" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:complexType name="MokaResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element ref="tns:Message" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Code" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:all></xs:complexType><xs:complexType name="MokaType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="Treasury" type="tns:Treasury" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="Payer" type="tns:Payer" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="Receiver" type="tns:Receiver" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="Payment" type="tns:Payment" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element minOccurs="0" name="TreasuryClassif" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="100" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="PaymentDesc" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="255" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element></xs:all></xs:complexType><xs:complexType name="Treasury" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="DocumentNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="50" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="OrderNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="1" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="20" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="BankRef" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="20" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element></xs:all></xs:complexType><xs:complexType name="Payer" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="Name" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="80" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="RegNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="15" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="AccountNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="35" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="RefNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="20" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="TransmissionDate" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:length value="10" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:pattern value="\d{2}/\d{2}/\d{4}" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element></xs:all></xs:complexType><xs:complexType name="Receiver" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="Name" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="80" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="RegNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="15" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="AccountNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="35" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="RefNum" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="20" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element minOccurs="0" name="ReceptionDate" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:length value="10" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:pattern value="\d{2}/\d{2}/\d{4}" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element></xs:all></xs:complexType><xs:complexType name="Payment" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="Type" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:length value="1" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:pattern value="[C,D]" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="BaseCurrencyAmount" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:decimal" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:totalDigits value="15" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:fractionDigits value="2" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="Amount" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:decimal" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:totalDigits value="15" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:fractionDigits value="2" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:element name="Currency" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:length value="3" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:pattern value="[A-Z]{3}" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:pattern value="[a-z]{3}" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element></xs:all></xs:complexType><xs:element name="Filename" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:simpleType xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:restriction base="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:minLength value="0" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:maxLength value="20" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:restriction></xs:simpleType></xs:element><xs:complexType name="FileType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element ref="tns:Filename" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Code" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Message" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="FilesType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element maxOccurs="unbounded" minOccurs="0" name="File" type="tns:FileType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="ItemType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element ref="tns:Filename" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="RefNum" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Code" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Message" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="ItemsType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element maxOccurs="unbounded" minOccurs="0" name="Item" type="tns:ItemType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="rkSendDocumentStatusRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="DocumentStatus" type="tns:DocumentStatusType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="DocumentStatusType" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="UniqueId" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="Type" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element maxOccurs="unbounded" minOccurs="0" name="Files" type="tns:FilesType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element maxOccurs="unbounded" minOccurs="0" name="Items" type="tns:ItemsType" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:complexType name="rkSendDocumentStatusResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element ref="tns:Message" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Code" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:all></xs:complexType><xs:complexType name="rkSendMessageIsoRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:sequence xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element name="UniqueId" type="xs:string" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="p1" type="tns:attach" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:sequence></xs:complexType><xs:element name="attach" type="xs:base64Binary" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:complexType name="rkSendMessageIsoResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:all xmlns:xs="http://www.w3.org/2001/XMLSchema"><xs:element ref="tns:Message" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element ref="tns:Code" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:all></xs:complexType><xs:element name="rkSendMessageIsoRequest" type="tns:rkSendMessageIsoRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="rkSendMessageIsoResponse" type="tns:rkSendMessageIsoResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="rkSendTransactionStatementRequest" type="tns:MokaQuery" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="rkSendTransactionStatementResponse" type="tns:MokaResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="rkSendDocumentStatusRequest" type="tns:rkSendDocumentStatusRequest" xmlns:xs="http://www.w3.org/2001/XMLSchema"/><xs:element name="rkSendDocumentStatusResponse" type="tns:rkSendDocumentStatusResponse" xmlns:xs="http://www.w3.org/2001/XMLSchema"/></xs:schema>
+  </wsdl:types>
+  <wsdl:message name="rkSendTransactionStatementRequest">
+    <wsdl:part element="sch1:rkSendTransactionStatementRequest" name="rkSendTransactionStatementRequest"/>
+  </wsdl:message>
+  <wsdl:message name="requestheader">
+    <wsdl:part element="xrd:client" name="client"/>
+    <wsdl:part element="xrd:service" name="service"/>
+    <wsdl:part element="xrd:id" name="id"/>
+    <wsdl:part element="xrd:userId" name="userId"/>
+    <wsdl:part element="xrd:protocolVersion" name="protocolVersion"/>
+  </wsdl:message>
+  <wsdl:message name="rkSendMessageIsoResponse">
+    <wsdl:part element="sch1:rkSendMessageIsoResponse" name="rkSendMessageIsoResponse"/>
+  </wsdl:message>
+  <wsdl:message name="rkSendMessageIsoRequest">
+    <wsdl:part element="sch1:rkSendMessageIsoRequest" name="rkSendMessageIsoRequest"/>
+  </wsdl:message>
+  <wsdl:message name="rkSendDocumentStatusResponse">
+    <wsdl:part element="sch1:rkSendDocumentStatusResponse" name="rkSendDocumentStatusResponse"/>
+  </wsdl:message>
+  <wsdl:message name="rkSendDocumentStatusRequest">
+    <wsdl:part element="sch1:rkSendDocumentStatusRequest" name="rkSendDocumentStatusRequest"/>
+  </wsdl:message>
+  <wsdl:message name="legacyMaaisResponse">
+    <wsdl:part element="sch1:legacyMaaisResponse" name="legacyMaaisResponse"/>
+  </wsdl:message>
+  <wsdl:message name="legacyMaaisRequest">
+    <wsdl:part element="sch1:legacyMaaisRequest" name="legacyMaaisRequest"/>
+  </wsdl:message>
+  <wsdl:message name="rkSendTransactionStatementResponse">
+    <wsdl:part element="sch1:rkSendTransactionStatementResponse" name="rkSendTransactionStatementResponse"/>
+  </wsdl:message>
+  <wsdl:portType name="maais">
+    <wsdl:operation name="rkSendTransactionStatement">
+<wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"><xrd:title xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">rkSendTransactionStatement</xrd:title></wsdl:documentation>
+      <wsdl:input message="tns:rkSendTransactionStatementRequest" name="rkSendTransactionStatementRequest"/>
+      <wsdl:output message="tns:rkSendTransactionStatementResponse" name="rkSendTransactionStatementResponse"/>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendMessageIso">
+<wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"><xrd:title xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">rkSendMessageIso</xrd:title></wsdl:documentation>
+      <wsdl:input message="tns:rkSendMessageIsoRequest" name="rkSendMessageIsoRequest"/>
+      <wsdl:output message="tns:rkSendMessageIsoResponse" name="rkSendMessageIsoResponse"/>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendDocumentStatus">
+<wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"><xrd:title xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">rkSendDocumentStatus</xrd:title></wsdl:documentation>
+      <wsdl:input message="tns:rkSendDocumentStatusRequest" name="rkSendDocumentStatusRequest"/>
+      <wsdl:output message="tns:rkSendDocumentStatusResponse" name="rkSendDocumentStatusResponse"/>
+    </wsdl:operation>
+    <wsdl:operation name="legacyMaais">
+<wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"><xrd:title xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">legacyMaais</xrd:title></wsdl:documentation>
+      <wsdl:input message="tns:legacyMaaisRequest" name="legacyMaaisRequest"/>
+      <wsdl:output message="tns:legacyMaaisResponse" name="legacyMaaisResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="maaisSoap11" type="tns:maais">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="rkSendTransactionStatement">
+      <soap:operation soapAction=""/>
+        <xrd:version>v1</xrd:version>
+      <wsdl:input name="rkSendTransactionStatementRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="rkSendTransactionStatementResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendMessageIso">
+      <soap:operation soapAction=""/>
+        <xrd:version>v1</xrd:version>
+      <wsdl:input name="rkSendMessageIsoRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="rkSendMessageIsoResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="rkSendDocumentStatus">
+      <soap:operation soapAction=""/>
+        <xrd:version>v1</xrd:version>
+      <wsdl:input name="rkSendDocumentStatusRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="rkSendDocumentStatusResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="legacyMaais">
+      <soap:operation soapAction=""/>
+        <xrd:version>v1</xrd:version>
+      <wsdl:input name="legacyMaaisRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="legacyMaaisResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="maaisService">
+    <wsdl:port binding="tns:maaisSoap11" name="maaisSoap11">
+      <soap:address location="http://example.org/xroad-endpoint"/>
+    <xrd:address producer="maais" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

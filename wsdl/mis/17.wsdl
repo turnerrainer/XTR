@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:maa="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+  <include schemaLocation="http://www.maaamet.ee/schemas/xtee6/maa_klassifikaatoridv6.xsd"/>
+  <include schemaLocation="http://www.maaamet.ee/schemas/xtee6/maa_typesv6.xsd"/>
+  <element name="ehakkehtiv" type="maa:ehakkehtivParingType"/>
+  <element name="ehakkehtivResponse" type="maa:ehakkehtivVastusType"/>
+  <complexType name="ehakkehtivParingType">
+		<annotation>
+			<appinfo>
+				<xrd:title>EHAK kehtiv seis</xrd:title>
+			</appinfo>
+		</annotation>
+    <sequence>
+      <element name="piirkond" type="maa:ehakkoodType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Piirkond (EHAK kood)</xrd:title>
+            <xrd:notes>Sisesta neljakohaline EHAK kood nt 0070</xrd:notes>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="ehaktyyp" type="maa:EhaktyypKlassifikaator" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>EHAK objekti tüüp</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="mis_andmed" type="maa:vektor2Type" default="10">
+        <annotation>
+          <appinfo>
+            <xrd:title>Milliseid andmeid näha soovitakse</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="max_arv" type="int" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Maksimaalne tagastavate kirjete arv</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="gen_aste" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Generaliseerimise samm</xrd:title>
+            <xrd:notes>Sisesta genrealiseerimise sammu väärtus vahemikus 2-1000</xrd:notes>
+          </appinfo>
+        </annotation>
+        <simpleType>
+          <restriction base="int">
+            <minInclusive value="2"/>
+            <maxInclusive value="1000"/>
+          </restriction>
+        </simpleType>
+      </element>
+      <element name="ruumiAndmeteFormaat" type="maa:kujuGeomeetriaFormaatType" minOccurs="0" default="GML">
+        <annotation>
+          <appinfo>
+            <xrd:title>
+              Millises formaadis tagastada objekti kuju geomeetria
+            </xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="algehak" type="maa:ehakkoodType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>EHAK kood, millest alates andmeid soovitakse</xrd:title>
+            <xrd:notes>EHAK koodi järjehoidjana kasutamisel peavad ülejäänud päringutingimused samaks jääma</xrd:notes>
+          </appinfo>
+        </annotation>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="ehakkehtivVastusType">
+    <sequence>
+      <element name="ehakjarg" type="maa:ehakkoodType" minOccurs="0">
+        <annotation>
+          <appinfo>
+            <xrd:title>Järgmise päringu alguse EHAK kood</xrd:title>
+          </appinfo>
+        </annotation>
+      </element>
+      <element name="tulem" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="ehakandmed" minOccurs="0" maxOccurs="unbounded">
+              <annotation>
+                <documentation>EHAK andmed</documentation>
+              </annotation>
+              <complexType>
+                <sequence>
+                  <element name="nimi" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>EHAK objekti nimetus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="ehaktyyp" type="maa:EhaktyypKlassifikaator" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>EHAK objekti tüüp</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="ehakkood" type="maa:ehakkoodType" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>EHAK objekti kood</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="vallaKood" type="maa:ehakkoodType" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Omavalitsuse kood</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="vallaNimi" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Omavalitsuse nimi</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="mkKood" type="maa:ehakkoodType" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Maakonna kood</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="mkNimi" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Maakonna nimi</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="pindala" type="decimal" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Pindala (m2)</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="vastuvotmiseAeg" type="date" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Õigusliku aluse vastuvõtmise aeg</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="juriidilineAlus" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Õiguslik alus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="juriidKehtimisalgusAeg" type="date" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Õiguslik kehtivuse algus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="juriidKehtivuseLopp" type="date" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Õiguslik kehtivuse lõpp</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="muudatusePohjus" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Muudatuse põhjus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="allkirjastatud" type="dateTime" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Allkirjastamise kuupäev</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="tsentroid" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Tsentroidi x,y koordinaadid</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="gen_kuju" type="maa:genRuumiandmedType" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>EHAK objekti ruumiandmed</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                </sequence>
+                <attribute name="id" type="ID">
+                  <annotation>
+                    <appinfo>
+                      <xrd:title>Päringu kirje unikaalne identifikaator</xrd:title>
+                    </appinfo>
+                  </annotation>
+                </attribute>
+              </complexType>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+      <element name="fault" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="faultCode" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kood</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="faultString" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kirjeldus</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="ehakkehtiv">
+        <wsdl:part name="body" element="tns:ehakkehtiv"/>
+    </wsdl:message>
+    <wsdl:message name="ehakkehtivResponse">
+        <wsdl:part name="body" element="tns:ehakkehtivResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="ehakkehtiv">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">EHAK kehtiv seis</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:ehakkehtiv"/>
+            <wsdl:output message="tns:ehakkehtivResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="ehakkehtiv">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

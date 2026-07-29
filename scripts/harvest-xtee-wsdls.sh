@@ -17,6 +17,10 @@
 #   ./scripts/harvest-xtee-wsdls.sh                    # fetch all
 #   ./scripts/harvest-xtee-wsdls.sh --subsystem rr     # just RR
 #   ./scripts/harvest-xtee-wsdls.sh --subsystem rr,liiklusregister
+#   ./scripts/harvest-xtee-wsdls.sh --member 70003098  # by member
+#   ./scripts/harvest-xtee-wsdls.sh --member 70001231,70003098,70008658,70009445
+#
+# When both --subsystem and --member are given, both filters apply.
 #
 # Requires: bash, curl, python3.
 
@@ -26,11 +30,13 @@ CATALOG_URL="https://x-tee.ee/catalogue-data/EE/index.json"
 CATALOG_BASE="https://x-tee.ee/catalogue-data/EE"
 OUT_DIR="wsdl"
 SUBSET=""
+MEMBERS=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --subsystem) SUBSET="$2"; shift 2 ;;
-    --out) OUT_DIR="$2"; shift 2 ;;
+    --member)    MEMBERS="$2"; shift 2 ;;
+    --out)       OUT_DIR="$2"; shift 2 ;;
     -h|--help)
       grep '^# ' "$0" | sed 's/^# //'
       exit 0
@@ -48,11 +54,15 @@ subs=$(python3 -c "
 import json, sys
 d = json.load(open('$work/index.json'))
 subset = '$SUBSET'
-wanted = set(s.strip() for s in subset.split(',') if s.strip())
+members = '$MEMBERS'
+wanted_sub = set(s.strip() for s in subset.split(',') if s.strip())
+wanted_mem = set(s.strip() for s in members.split(',') if s.strip())
 for s in d:
     if not s.get('methods'):
         continue
-    if wanted and s['subsystemCode'] not in wanted:
+    if wanted_sub and s['subsystemCode'] not in wanted_sub:
+        continue
+    if wanted_mem and s['memberCode'] not in wanted_mem:
         continue
     print(f\"{s['memberClass']}\t{s['memberCode']}\t{s['subsystemCode']}\")
 ")
@@ -68,8 +78,15 @@ python3 <<PYEOF > "$work/plan.tsv"
 import json, collections, re
 d = json.load(open('$work/index.json'))
 subset = '$SUBSET'
-wanted = set(s.strip() for s in subset.split(',') if s.strip())
-subs = [s for s in d if s.get('methods') and (not wanted or s['subsystemCode'] in wanted)]
+members = '$MEMBERS'
+wanted_sub = set(s.strip() for s in subset.split(',') if s.strip())
+wanted_mem = set(s.strip() for s in members.split(',') if s.strip())
+subs = [
+    s for s in d
+    if s.get('methods')
+    and (not wanted_sub or s['subsystemCode'] in wanted_sub)
+    and (not wanted_mem or s['memberCode'] in wanted_mem)
+]
 code_count = collections.Counter(s['subsystemCode'] for s in subs)
 def dir_for(s):
     code = re.sub(r'[^a-zA-Z0-9._-]', '-', s['subsystemCode'])

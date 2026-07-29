@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:knr="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+
+	<import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+	<include schemaLocation="http://www.maaamet.ee/schemas/xtee6/kohaNimiv6_types.xsd"/>
+
+	<element name="kohanimiKoikNimed" type="knr:kohanimiKoikNimedRequestType">
+		<annotation>
+			<appinfo>
+				<xrd:title>Kohanimede päring nimeobjekti identifikaatori järgi</xrd:title>
+			</appinfo>
+		</annotation>
+	</element>
+	
+	<element name="kohanimiKoikNimedResponse" type="knr:kohanimiKoikNimedResponseType"/>
+	
+	<complexType name="kohanimiKoikNimedRequestType">
+		<sequence>
+			<element name="NIMEOBJEKTI_ID" type="integer">
+				<annotation>
+					<appinfo>
+						<xrd:notes>Nimeobjektile kohanimeregistris omistatud
+							identifikaator.</xrd:notes>
+						<xrd:title>Nimeobjekti identifikaator</xrd:title>
+					</appinfo>
+				</annotation>
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="kohanimiKoikNimedResponseType">	
+		<sequence minOccurs="0" maxOccurs="unbounded">
+			<element name="tulem">
+				<complexType>
+					<sequence>
+						<element name="KOHANIME_ID" type="integer">
+							<annotation>
+								<appinfo>
+									<xrd:title>Kohanime identifikaator</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="NIMEOBJEKTI_ID" type="integer">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti identifikaator</xrd:title>
+									<xrd:wildcard>Nimeobjekti identifikaator</xrd:wildcard>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="KOHANIMI" type="normalizedString">
+							<annotation>
+								<appinfo>
+									<xrd:title>Kohanimi</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="KEEL" type="knr:knrkeelKlassifikaator">
+							<annotation>
+								<appinfo>
+									<xrd:title>Keel</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="STAATUS" type="knr:kohaNimiStaatusType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Staatus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="KEHTIVUS" type="knr:kohaNimiOlekType">
+							<annotation>
+								<appinfo>
+									<xrd:title>Kehtivus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="NIMEOBJEKTI_LIIGI_KOOD" type="knr:knrnimeobjliikKlassifikaator">
+							<annotation>
+								<appinfo>
+									<xrd:title>Nimeobjekti liik</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="MAAKOND" type="knr:ehak">
+							<annotation>
+								<appinfo>
+									<xrd:title>Maakond</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="OMAVALITSUS" type="knr:ehak">
+							<annotation>
+								<appinfo>
+									<xrd:title>Omavalitsus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="ASUSTUSYKSUS" type="knr:ehak">
+							<annotation>
+								<appinfo>
+									<xrd:title>Asustusüksus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="JOUSTUMISE_KUUPAEV" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Jõustumise kuupäev</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="TUHISTAMISE_KUUPAEV" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Tühistamise kuupäev</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="DOK_NIMETUS" type="normalizedString">
+							<annotation>
+								<appinfo>
+									<xrd:title>Alusdokumendi nimetus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="DOK_KUUPAEV" type="date">
+							<annotation>
+								<appinfo>
+									<xrd:title>Alusdokumendi kehtivuse algus</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+						<element name="TAISAADRESS" type="normalizedString">
+							<annotation>
+								<appinfo>
+									<xrd:title>Objekti täisaadress</xrd:title>
+								</appinfo>
+							</annotation>
+						</element>
+					</sequence>
+					<attribute name="id" type="ID">
+						<annotation>
+							<appinfo>
+								<xrd:title>Päringu kirje unikaalne identifikaator</xrd:title>
+							</appinfo>
+						</annotation>
+					</attribute>
+				</complexType>
+			</element>
+		</sequence>
+	</complexType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="kohanimiKoikNimed">
+        <wsdl:part name="body" element="tns:kohanimiKoikNimed"/>
+    </wsdl:message>
+    <wsdl:message name="kohanimiKoikNimedResponse">
+        <wsdl:part name="body" element="tns:kohanimiKoikNimedResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="kohanimiKoikNimed">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Kohanimede päring nimeobjekti identifikaatori järgi</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:kohanimiKoikNimed"/>
+            <wsdl:output message="tns:kohanimiKoikNimedResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="kohanimiKoikNimed">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

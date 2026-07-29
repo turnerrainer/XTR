@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="http://producers.maais-klient.xtee.riik.ee/producer/maais-klient" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://maais-klient.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://maais-klient.x-road.eu">
+  <wsdl:types>
+    <schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://producers.maais-klient.xtee.riik.ee/producer/maais-klient" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xtee="http://x-road.eu/xsd/x-road.xsd" attributeFormDefault="unqualified" elementFormDefault="qualified" targetNamespace="http://producers.maais-klient.xtee.riik.ee/producer/maais-klient"><import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/><import namespace="http://x-road.eu/xsd/x-road.xsd" schemaLocation="http://x-road.eu/xsd/x-road.xsd" xmlns="http://www.w3.org/2001/XMLSchema"/><element name="legacy-maais-klientRequest" type="tns:maaisRequest" xmlns="http://www.w3.org/2001/XMLSchema"/><element name="legacy-maais-klientResponse" type="xtee:legacy_response" xmlns="http://www.w3.org/2001/XMLSchema"/><complexType name="maaisRequest" xmlns="http://www.w3.org/2001/XMLSchema"><sequence xmlns="http://www.w3.org/2001/XMLSchema"><element maxOccurs="unbounded" minOccurs="0" name="item" type="string" xmlns="http://www.w3.org/2001/XMLSchema"/></sequence></complexType></schema>
+  </wsdl:types>
+  <wsdl:message name="legacy-maais-klientResponse">
+    <wsdl:part element="sch:legacy-maais-klientResponse" name="legacy-maais-klientResponse"/>
+  </wsdl:message>
+  <wsdl:message name="requestheader">
+    <wsdl:part element="xrd:client" name="client"/>
+    <wsdl:part element="xrd:service" name="service"/>
+    <wsdl:part element="xrd:id" name="id"/>
+    <wsdl:part element="xrd:userId" name="userId"/>
+    <wsdl:part element="xrd:protocolVersion" name="protocolVersion"/>
+  </wsdl:message>
+  <wsdl:message name="legacy-maais-klientRequest">
+    <wsdl:part element="sch:legacy-maais-klientRequest" name="legacy-maais-klientRequest"/>
+  </wsdl:message>
+  <wsdl:portType name="maais-klient">
+    <wsdl:operation name="legacy-maais-klient">
+<wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"><xrd:title xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">legacy-maais-klient</xrd:title></wsdl:documentation>
+      <wsdl:input message="tns:legacy-maais-klientRequest" name="legacy-maais-klientRequest"/>
+      <wsdl:output message="tns:legacy-maais-klientResponse" name="legacy-maais-klientResponse"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="maais-klientSoap11" type="tns:maais-klient">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="legacy-maais-klient">
+      <soap:operation soapAction=""/>
+        <xrd:version>v1</xrd:version>
+      <wsdl:input name="legacy-maais-klientRequest">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="legacy-maais-klientResponse">
+        <soap:header message="tns:requestheader" part="client" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="service" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="userId" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="id" use="literal">
+        </soap:header>
+        <soap:header message="tns:requestheader" part="protocolVersion" use="literal">
+        </soap:header>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="maais-klientService">
+    <wsdl:port binding="tns:maais-klientSoap11" name="maais-klientSoap11">
+      <soap:address location="http://example.org/xroad-endpoint"/>
+    <xrd:address producer="maais-klient" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

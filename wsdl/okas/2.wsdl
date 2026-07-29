@@ -1,0 +1,870 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://okas.x-road.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="Okas" targetNamespace="http://okas.x-road.ee">
+	<wsdl:types>
+		<xsd:schema targetNamespace="http://okas.x-road.ee">
+			<xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+			<xsd:element name="kaebus" type="tns:Kaebus"/>
+			<xsd:element name="kaebusTulemus" type="tns:Tulemus"/>
+			<xsd:complexType name="Kaebus">
+				<xsd:sequence>
+					<xsd:element name="tunnus" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Unikaalne registreerimise tunnus liidestunud infosüsteemis.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="juhtum">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebuse nimetus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="80"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="prioriteetsus" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Juhtumi prioriteetsus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:enumeration value="TAVA"/>
+								<xsd:enumeration value="KIIRE"/>
+								<xsd:enumeration value="KRIIS"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="valdkond">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebuse valdkond. Juhul kui edastatud valdkonda OKAS-es ei esine, siis kaebust ei ole võimalik lisada.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="100"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="kirjeldus" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebuse kirjeldus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="teavitused" type="tns:Teavitus" minOccurs="0" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebuse raames juba teostatud teavitused ja infoedastused.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="asukoht" type="tns:Asukoht">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Asukoha info.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="teavituseAeg" type="xsd:dateTime">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebuse vastuvõtmise ajahetk.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="teavitajad" type="tns:Teavitaja" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaebusest teavitajad.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="registreerimisInfo" type="tns:RegistreerimisInfo">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Välises infosüsteemis registreerimisinfo.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Teavitus">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Juba sooritatud infoedastus.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="aeg" type="xsd:dateTime">
+						<xsd:annotation>
+							<xsd:documentation/>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="telefon" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="20"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="epost" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="50"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="nimi" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="50"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="tyyp" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Teavituse edastamise viis.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="sisu" type="xsd:string" minOccurs="0"/>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Asukoht">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Asukoha info</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="ADSkood">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">ADS-i komponendi kood.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+
+
+								<xsd:length value="33"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="taisaadress" type="xsd:string"/>
+					<xsd:element name="lahiaadress" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Objekti nimetus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="tyyp">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+
+								<xsd:enumeration value="AADRESS"/>
+
+
+								<xsd:enumeration value="OBJEKT"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="tapsustus" type="xsd:string" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Asukoha kommentaar.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="kood" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">KIS kood.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="10"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="pikkuskraad" type="xsd:double">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Asukoha pikkuskraad esitatuna WGS formaadis.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="laiuskraad" type="xsd:double">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Asukoha laiuskraad esitatuna WGS formaadis.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Teavitaja">
+				<xsd:sequence>
+
+
+					<xsd:element name="isik" type="tns:Isik" minOccurs="0" maxOccurs="1"/>
+					<xsd:element name="telefon" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="20"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="epost" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="50"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="tagasiside">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Näitab, kas teavitaja soovib tagsisidet lahenduse kohta.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:enumeration value="EI"/>
+								<xsd:enumeration value="JAH"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="anonyymsus">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Näitab, kas teavaitaja soovib anonüümsust.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:enumeration value="EI"/>
+								<xsd:enumeration value="JAH"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="RegistreerimisInfo">
+				<xsd:sequence>
+					<xsd:element name="sisestaja" type="xsd:string">
+
+					</xsd:element>
+
+
+					<xsd:element name="sisestamiseAeg" type="xsd:dateTime">
+					</xsd:element>
+					<xsd:element name="muutja" minOccurs="0" type="xsd:string">
+
+					</xsd:element>
+					<xsd:element name="muutmiseAeg" type="xsd:dateTime" minOccurs="0">
+					</xsd:element>
+
+					<xsd:element name="seotudTunnused" type="xsd:string" minOccurs="0" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Varasemalt edastataud teavituste tunnused.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:element name="kalateade" type="tns:Kalateade"/>
+			<xsd:element name="kalateadeTulemus" type="tns:Tulemus"/>
+
+			<xsd:complexType name="Kalateade">
+				<xsd:sequence>
+					<xsd:element name="tunnus" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Unikaalne registreerimise tunnus liidestunud infosüsteemis.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="tyyp">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kalateate tüüp. Võimalikud väärtused on MERI, PEIPSI ja ERIPYYK.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:enumeration value="MERI"/>
+								<xsd:enumeration value="PEIPSI"/>
+								<xsd:enumeration value="ERIPYYK"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="liik" minOccurs="0" nillable="true">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kalateate liik.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:enumeration value="LOSSIMINE"/>
+								<xsd:enumeration value="YMBERLAADIMINE">
+								</xsd:enumeration>
+								<xsd:enumeration value="VMS"/>
+								<xsd:enumeration value="SADAMATEENUSE_KASUTAMINE">
+								</xsd:enumeration>
+								<xsd:enumeration value="YLESOIT"/>
+								<xsd:enumeration value="GPS"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="kirjeldus" type="xsd:string" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kalateate kirjeldus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="teavitused" type="tns:Teavitus" minOccurs="0" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kalateate raames juba teostatud teavitused ja infoedastused.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="asukoht" type="tns:Asukoht">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Asukoha info.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="teavituseAeg" type="xsd:dateTime">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Ajahetk, mil teade vastuvõeti.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="saabumiseAeg" type="xsd:dateTime" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Tüübi MERI ja PEIPSI korral sadamasse saabumise aeg. Tüübi ERIPYYK korral puudub.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+
+					<xsd:element name="kalur" type="tns:Kalur">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kaluri/kapteni andmed.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="laev" type="tns:Laev" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Laeva andmed.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+
+					<xsd:element name="pyygid" type="tns:Pyyk" minOccurs="0" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Teate käigus edastatad püügilubade ja püükide andmed. Püügiload peavad olema unikaalsed.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="registreerimisInfo" type="tns:RegistreerimisInfo">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">älises infosüsteemis registreerimisinfo.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Kalur">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Kaluri/kapteni andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="isik" type="tns:Isik">
+
+					</xsd:element>
+
+					<xsd:element name="telefon" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="20"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Laev">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Laeva andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="nimi" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+
+								<xsd:maxLength value="20"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="pardaNr" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+
+								<xsd:maxLength value="10"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Saak">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Saagi andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+
+					<xsd:element name="kala" type="tns:Kala" minOccurs="0" maxOccurs="1">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püütud kala.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="pyygiVahend" type="tns:PyygiVahend" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügivand, millega püük sooritati.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+
+					<xsd:element name="pyygiRuut" minOccurs="0" type="tns:PyygiRuut">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügiruut, kus püük sooritati.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Kala">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Kala andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+
+					<xsd:element name="nimi">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kala nimetus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="25"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="kood">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Kala kood.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:length value="5"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="kogus" type="xsd:int" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">
+									Püütud kalakogus esitatuna
+									kilogrammides (kg)
+								</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="arv" type="xsd:int" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">
+									Püütud kalakogus esitatuna tükkides
+									(tk)
+								</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+
+			<xsd:complexType name="PyygiVahend">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Püügivahendi andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="nimi">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügivahendi nimetus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="100"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="kood">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügivahendi kood.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="5"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="tapsustus" type="tns:PyygiVahend" minOccurs="0">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügivahendi täpsustus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="PyygiRuut">
+				<xsd:sequence>
+					<xsd:element name="nimi">
+
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="250"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+
+				</xsd:sequence>
+			</xsd:complexType>
+
+
+			<xsd:complexType name="Viga">
+				<xsd:sequence>
+					<xsd:element name="kood" type="xsd:string"/>
+					<xsd:element name="kirjeldus" type="xsd:string"/>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Tulemus">
+				<xsd:sequence>
+					<xsd:element name="viga" type="tns:Viga" minOccurs="0"/>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Isik">
+				<xsd:sequence>
+					<xsd:element name="eesnimi" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="35"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="perenimi" minOccurs="0">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="35"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="Pyyk">
+				<xsd:annotation>
+					<xsd:documentation>
+						<xrd:title xml:lang="et">Püügi andmed.</xrd:title>
+					</xsd:documentation>
+				</xsd:annotation>
+				<xsd:sequence>
+					<xsd:element name="tunnus" type="xsd:string">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Unikaalne püügi tunnus.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+					<xsd:element name="loaNr" minOccurs="1">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Loa number, millega püügid sooritati.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:maxLength value="10"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="saagid" type="tns:Saak" minOccurs="0" maxOccurs="unbounded">
+						<xsd:annotation>
+							<xsd:documentation>
+								<xrd:title xml:lang="et">Püügi raames saadud saak.</xrd:title>
+							</xsd:documentation>
+						</xsd:annotation>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:element name="kustutaKaebus" type="tns:KustutaKaebus">
+
+			</xsd:element>
+			<xsd:element name="kustutaKaebusTulemus" type="tns:Tulemus">
+
+			</xsd:element>
+			<xsd:element name="kustutaKalateade" type="tns:KustutaKalateade">
+
+			</xsd:element>
+			<xsd:element name="kustutaKalateadeTulemus" type="tns:Tulemus">
+
+			</xsd:element>
+
+			<xsd:complexType name="KustutaKaebus">
+				<xsd:sequence>
+					<xsd:element name="tunnus">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:length value="12"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+
+			<xsd:complexType name="KustutaKalateade">
+				<xsd:sequence>
+					<xsd:element name="tunnus">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:length value="12"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+					<xsd:element name="alamtunnus">
+						<xsd:simpleType>
+							<xsd:restriction base="xsd:string">
+								<xsd:length value="2"/>
+							</xsd:restriction>
+						</xsd:simpleType>
+					</xsd:element>
+				</xsd:sequence>
+			</xsd:complexType>
+		</xsd:schema>
+	</wsdl:types>
+	<wsdl:message name="xrdheader">
+		<wsdl:part name="client" element="xrd:client"/>
+		<wsdl:part name="service" element="xrd:service"/>
+		<wsdl:part name="userId" element="xrd:userId"/>
+		<wsdl:part name="id" element="xrd:id"/>
+		<wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+	</wsdl:message>
+	<wsdl:message name="kaebus">
+		<wsdl:part name="parameters" element="tns:kaebus"/>
+	</wsdl:message>
+	<wsdl:message name="kaebusTulemus">
+		<wsdl:part name="parameters" element="tns:kaebusTulemus"/>
+	</wsdl:message>
+	<wsdl:message name="kalateade">
+		<wsdl:part name="parameters" element="tns:kalateade"/>
+	</wsdl:message>
+	<wsdl:message name="kalateadeTulemus">
+		<wsdl:part name="parameters" element="tns:kalateadeTulemus"/>
+	</wsdl:message>
+	<wsdl:message name="kustutaKaebus">
+		<wsdl:part name="parameters" element="tns:kustutaKaebus"/>
+	</wsdl:message>
+	<wsdl:message name="kustutaKaebusTulemus">
+		<wsdl:part name="parameters" element="tns:kustutaKaebusTulemus"/>
+	</wsdl:message>
+	<wsdl:message name="kustutaKalateade">
+		<wsdl:part name="parameters" element="tns:kustutaKalateade"/>
+	</wsdl:message>
+	<wsdl:message name="kustutaKalateadeTulemus">
+		<wsdl:part name="parameters" element="tns:kustutaKalateadeTulemus"/>
+	</wsdl:message>
+	<wsdl:portType name="IOkasService">
+		<wsdl:operation name="kaebus">
+			<wsdl:documentation>
+				<xrd:title xml:lang="et">
+					Kaebuse registreerimine/muutmine
+				</xrd:title>
+			</wsdl:documentation>
+			<wsdl:input message="tns:kaebus"/>
+			<wsdl:output message="tns:kaebusTulemus"/>
+		</wsdl:operation>
+		<wsdl:operation name="kalateade">
+			<wsdl:documentation>
+				<xrd:title xml:lang="et">
+					Kalateate registreerimine/muutmine
+				</xrd:title>
+			</wsdl:documentation>
+			<wsdl:input message="tns:kalateade"/>
+			<wsdl:output message="tns:kalateadeTulemus"/>
+		</wsdl:operation>
+		<wsdl:operation name="kustutaKaebus">
+			<wsdl:documentation>
+				<xrd:title xml:lang="et">
+					Kaebuse tühistamine
+				</xrd:title>
+			</wsdl:documentation>
+			<wsdl:input message="tns:kustutaKaebus"/>
+			<wsdl:output message="tns:kustutaKaebusTulemus"/>
+		</wsdl:operation>
+		<wsdl:operation name="kustutaKalateade">
+			<wsdl:documentation>
+				<xrd:title xml:lang="et">
+					Kalateate tühistamine
+				</xrd:title>
+			</wsdl:documentation>
+			<wsdl:input message="tns:kustutaKalateade"/>
+			<wsdl:output message="tns:kustutaKalateadeTulemus"/>
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="OkasSOAP" type="tns:IOkasService">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<wsdl:operation name="kaebus">
+			<xrd:version>v1</xrd:version>
+			<soap:operation soapAction="http://okas.x-road.ee/kaebus"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="kalateade">
+			<xrd:version>v1</xrd:version>
+			<soap:operation soapAction="http://okas.x-road.ee/kalateade"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="kustutaKaebus">
+			<xrd:version>v1</xrd:version>
+			<soap:operation soapAction="http://okas.x-road.ee/kustutaKaebus"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="kustutaKalateade">
+			<xrd:version>v1</xrd:version>
+			<soap:operation soapAction="http://okas.x-road.ee/kustutaKalateade"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+				<soap:header message="tns:xrdheader" part="client" use="literal"/>
+				<soap:header message="tns:xrdheader" part="service" use="literal"/>
+				<soap:header message="tns:xrdheader" part="userId" use="literal"/>
+				<soap:header message="tns:xrdheader" part="id" use="literal"/>
+				<soap:header message="tns:xrdheader" part="protocolVersion" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="Okas">
+		<wsdl:port binding="tns:OkasSOAP" name="OkasSOAP">
+			<soap:address location="http://example.org/xroad-endpoint"/>
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

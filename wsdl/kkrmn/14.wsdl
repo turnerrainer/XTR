@@ -1,0 +1,551 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:rmr="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+
+  <element name="RMRuuringupunktid" type="rmr:RMRuuringupunktidRequestType">
+    <annotation>
+      <appinfo>
+        <xrd:title>Uuringupunktide ja laboriproovide andmete päring</xrd:title>
+      </appinfo>
+    </annotation>
+  </element>
+
+  <element name="RMRuuringupunktidResponse" type="rmr:RMRuuringupunktidResponseType"/>
+
+  <complexType name="RMRuuringupunktidRequestType">
+    <sequence>
+      <element name="Sisend">
+        <complexType>
+          <annotation>
+            <appinfo>
+              <xrd:notes>Korraga saab olla väärtustatud ainult 1 element, kas Maardla, Maeeraldis või Uuringuala</xrd:notes>
+            </appinfo>
+          </annotation>
+          <sequence>
+            <element name="Maardla" minOccurs="0">
+              <complexType>
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Maardla, mille kohta andmeid päritakse</xrd:title>
+                  </appinfo>
+                </annotation>
+                <sequence>
+                  <element name="Registrikaart" type="int" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Registrikaardi number</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="Maardla_nimetus" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Maardla nimetus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+            <element name="Maeeraldis" minOccurs="0">
+              <complexType>
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Mäeeraldis, mille kohta andmeid päritakse</xrd:title>
+                  </appinfo>
+                </annotation>
+                <sequence>
+                  <element name="Kaevandamisloa_nr" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Kaevandamisloa number</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="Maeeraldise_nimetus" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Mäeeraldise nimetus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+            <element name="Uuringuala" minOccurs="0">
+              <complexType>
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Uuringuala, mille kohta andmeid päritakse</xrd:title>
+                  </appinfo>
+                </annotation>
+                <sequence>
+                  <element name="Uuringuloa_nr" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Uuringuloa number</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="Uuringuala_nimetus" type="string" minOccurs="0">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Uuringuala nimetus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+  <complexType name="RMRuuringupunktidResponseType">
+    <sequence>
+      <element name="Objektid" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="Objekt" maxOccurs="unbounded">
+              <complexType>
+                <sequence>
+                  <element name="Nr" type="string">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Maardla registrikaart või kaevandamisloa nr või uuringuloa nr</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="Nimetus" type="string">
+                    <annotation>
+                      <appinfo>
+                        <xrd:title>Maardla nimetus või mäeeraldise nimetus või uuringuala nimetus</xrd:title>
+                      </appinfo>
+                    </annotation>
+                  </element>
+                  <element name="Uuringupunktid" minOccurs="0">
+                    <complexType>
+                      <sequence>
+                        <element name="Uuringupunkt" maxOccurs="unbounded">
+                          <annotation>
+                            <appinfo>
+                              <xrd:title>Objektiga seotud uuringupunkt</xrd:title>
+                            </appinfo>
+                          </annotation>
+                          <complexType>
+                            <sequence>
+                              <element name="punkti_nr" type="string">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Uuringupunkti nimetus</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="vorm" type="string" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Uuringupunkti vorm</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="x" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Suudme keskme x koordinaat</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="y" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Suudme keskme y koordinaat</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="z" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Suudme kõrgus</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="sygavus" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Uuringupunkti sügavus</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="veetase" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Veeteaseme abs kõrgus, m</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="veetaseme_kp" type="date" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Veetaseme mõõtmise kuupäev</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="katendi_paksus" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Katendi paksus, m</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="kasuliku_kihi_paksus" type="double" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Kasuliku kihi paksus, m</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                              </element>
+                              <element name="Uuringukihid" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Uuringupunktis avatud kihid</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                                <complexType>
+                                  <sequence>
+                                    <element name="Uuringukiht" maxOccurs="unbounded">
+                                      <complexType>
+                                        <sequence>
+                                          <element name="strat_indeks" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Stratigraafiline indeks</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="lasuvus_alates" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Kihi sügavus alates</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="lasuvus_kuni" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Kihi sügavus kuni</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="kihi_paksus" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Kihi paksus</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="geoloogiline_kirjeldus" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Kihi geoloogiline kirjeldus</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="plokkide_piir" type="int" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Kas kihi alumine piir on uuringuaruandes eraldatud plokkide piir (1 – jah 0 - ei)</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                        </sequence>
+                                      </complexType>
+                                    </element>
+                                  </sequence>
+                                </complexType>
+                              </element>
+                              <element name="Laboriproovid" minOccurs="0">
+                                <annotation>
+                                  <appinfo>
+                                    <xrd:title>Uuringupunktis teostatud proovide numbrilised andmed</xrd:title>
+                                  </appinfo>
+                                </annotation>
+                                <complexType>
+                                  <sequence>
+                                    <element name="Laboriproov" maxOccurs="unbounded">
+                                      <complexType>
+                                        <sequence>
+                                          <element name="proovi_nr" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Proovi number</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ulatus_alates" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Proovi sügavus alates</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ulatus_kuni" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Proovi sügavus kuni</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="la" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Purunemiskindlus katsemeetodiga EVS-EN 1097-2 (LA)</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="la_fraktsioon" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>LA proovitud fraktsioon</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="f" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Külmakindlus katsemeetodiga EVS-EN 1367-1 (F)</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="f_fraktsioon" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>F proovitud fraktsioon</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="k10" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Filtratsioonimoodul katsemeetodiga EVS-EN 901-20 (K10)</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="k10_fraktsioon" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>K10 proovitud fraktsioon</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_125" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 125 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_80" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 80 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_63" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 63 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_40" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 40 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_31_5" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 31,5 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_20" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 20 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_16" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 16 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_12_5" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 12,5 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_8" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 8 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_6_3" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 6,3 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_4" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 4 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_2" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 2 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_1" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 1 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_05" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 0,5 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_025" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 0,25 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_0125" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 0,125 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="ava_0063" type="double" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Läbib sõela ava surusega 0,063 mm</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="kasutusala" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Arvutuslik kasutusala nimetus ilma LA arvestamiseta</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                          <element name="markus" type="string" minOccurs="0">
+                                            <annotation>
+                                              <appinfo>
+                                                <xrd:title>Muud sõela ava suurused ja märkused</xrd:title>
+                                              </appinfo>
+                                            </annotation>
+                                          </element>
+                                        </sequence>
+                                      </complexType>
+                                    </element>
+                                  </sequence>
+                                </complexType>
+                              </element>
+                            </sequence>
+                          </complexType>
+                        </element>
+                      </sequence>
+                    </complexType>
+                  </element>
+                </sequence>
+              </complexType>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="RMRuuringupunktid">
+        <wsdl:part name="body" element="tns:RMRuuringupunktid"/>
+    </wsdl:message>
+    <wsdl:message name="RMRuuringupunktidResponse">
+        <wsdl:part name="body" element="tns:RMRuuringupunktidResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="RMRuuringupunktid">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Uuringupunktide ja laboriproovide andmete päringu teenus</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:RMRuuringupunktid"/>
+            <wsdl:output message="tns:RMRuuringupunktidResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="RMRuuringupunktid">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v2</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

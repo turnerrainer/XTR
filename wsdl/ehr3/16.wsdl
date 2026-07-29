@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ehr.ee.x-road.eu/producer/" xmlns:wsi="http://ws-i.org/profiles/basic/1.1/xsd" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" name="PlanisXteeService" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+    <wsdl:types>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+            <!--  Import X-Road schema  -->
+            <xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+            <xs:import namespace="http://ws-i.org/profiles/basic/1.1/xsd" schemaLocation="http://ws-i.org/profiles/basic/1.1/swaref.xsd"/>
+
+            <!-- Common Types -->
+            <xs:simpleType name="Staatus">
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="PUUDUB">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>PUUDUB - sisendis oleva numbriga importi ei ole registreeritud sisendis oleva KOVi poolt</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="OOTEL">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>OOTEL - süsteem ei ole veel alustanud selle impordi töötlemist</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="VIGA">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>VIGA - impordi töötlemisel tekkis ebaõnnestumist põhjustav viga, tekkinud veateade sisaldub importProbleem andmeväljas</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="ESITAMISEL">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>ESITAMISEL - esitatud andmed kanti andmekogusse, kuid esitamine ei ole lõpetatud. Esineb jõustamist takistavaid veateateid või
+                                    kommenteerimata hoiatusi või tekkis esitatud andmete kinnitamisel viga. Esitamine tuleb lõpule viia kasutajaliidese kaudu. Kinnitamist takistav
+                                    probleem on kirjeldatud importProbleem andmeväljas
+                                </xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="KINNITATUD">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>KINNITATUD - esitatud andmed on andmekogus jõustatud, esitamine on lõppenud.</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                </xs:restriction>
+            </xs:simpleType>
+
+            <xs:complexType name="TeadeDTO">
+                <xs:annotation>
+                    <xs:appinfo>
+                        <xrd:title xml:lang="et">Andmekokku esitamisel süsteemi poolt tuvastatud vead</xrd:title>
+                    </xs:appinfo>
+                    <xs:documentation>Automaatkontrolli teated (0 – n elementi). Andmekokku esitamisel süsteemi poolt tuvastatud vead, hoiatused ja informatiivsed teated. Võivad
+                        esineda juhul, kui impordi staatus on ESITAMISEL või KINNITATUD.
+                    </xs:documentation>
+                </xs:annotation>
+                <xs:sequence>
+                    <xs:element name="tase" type="xs:int">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">tase</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Teate taseme number: 1, 2, 3 või 4</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="taseNimi" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">taseNimi</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Taseme nimi: 1 – viga; 2 – hoiatus; 3- info; 4 – esitamist mittetakistav viga (esineb ainult vana seaduse alusel koostatud
+                                planeeringute puhul)
+                            </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="teade" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">teade</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Teate sisu, probleemi kirjeldus</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="kiht" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">kiht</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Kui teade käib konkreetsel kihil asuva objekti kohta, siis selle kihi nimetus</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="objectId" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">objectId</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Kui teade käib konkreetsel kihil asuva objekti kohta, siis selle objectId väärtus lähtefailis</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:complexType>
+
+            <xs:simpleType name="tulem">
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="OK"/>
+                    <xs:enumeration value="VIGA"/>
+                </xs:restriction>
+            </xs:simpleType>
+
+            <xsd:complexType name="TulemDTO">
+                <xs:sequence>
+                    <xs:element name="tulem" type="tns:tulem">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">tulem</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>OK – esitatud andmed on süsteemis töötlemiseks järjekorda pandud, tagastatud on impordisessiooni tunnus; VIGA - esitatud sisendi töötlemisel tekkis viga </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="importId" type="xs:long">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">importId</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Impordisessiooni number, mille kaudu on edaspidi võimalik pärida impordi staatust. Tagastatakse juhul, kui tulem oli OK </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="veaKood" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">veaKood</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Veakood, kui tulem oli VIGA</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="veaTeade" type="xs:string">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">veaTeade</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Veakoodi selgitav veateade, kui tulem oli VIGA</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xsd:complexType>
+
+            <xs:simpleType name="KlplanSeis">
+                <xs:restriction base="xs:int">
+                    <xs:enumeration value="10">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>10 - kehtiv</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="15">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>15 - osaliselt kehtiv</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="20">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>20 - kehtetu</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                </xs:restriction>
+            </xs:simpleType>
+
+            <xs:simpleType name="KlplanLiik">
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="30">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>30 - Detailplaneering</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="20">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>20 - Üldplaneering</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="27">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title>27 - Kohaliku omavalitsuse eriplaneering</xrd:title>
+                            </xs:appinfo>
+                        </xs:annotation>
+                    </xs:enumeration>
+                </xs:restriction>
+            </xs:simpleType>
+
+            <xs:simpleType name="KldokLiik">
+                <xs:restriction base="xs:string">
+                    <xs:enumeration value="SK100"><xs:annotation><xs:appinfo><xrd:title>SK100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN100"><xs:annotation><xs:appinfo><xrd:title>JN100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN200"><xs:annotation><xs:appinfo><xrd:title>JN200</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN220"><xs:annotation><xs:appinfo><xrd:title>JN220</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN240"><xs:annotation><xs:appinfo><xrd:title>JN240</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN300"><xs:annotation><xs:appinfo><xrd:title>JN300</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN400"><xs:annotation><xs:appinfo><xrd:title>JN400</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN500"><xs:annotation><xs:appinfo><xrd:title>JN500</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN600"><xs:annotation><xs:appinfo><xrd:title>JN600</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN700"><xs:annotation><xs:appinfo><xrd:title>JN700</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN800"><xs:annotation><xs:appinfo><xrd:title>JN800</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="JN900"><xs:annotation><xs:appinfo><xrd:title>JN900</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK101"><xs:annotation><xs:appinfo><xrd:title>DK101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK102"><xs:annotation><xs:appinfo><xrd:title>DK102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK201"><xs:annotation><xs:appinfo><xrd:title>DK201</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK202"><xs:annotation><xs:appinfo><xrd:title>DK202</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK300"><xs:annotation><xs:appinfo><xrd:title>DK300</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK401"><xs:annotation><xs:appinfo><xrd:title>DK401</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK402"><xs:annotation><xs:appinfo><xrd:title>DK402</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DK500"><xs:annotation><xs:appinfo><xrd:title>DK500</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD100"><xs:annotation><xs:appinfo><xrd:title>MD100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD101"><xs:annotation><xs:appinfo><xrd:title>MD101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD201"><xs:annotation><xs:appinfo><xrd:title>MD201</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD202"><xs:annotation><xs:appinfo><xrd:title>MD202</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD203"><xs:annotation><xs:appinfo><xrd:title>MD203</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD301"><xs:annotation><xs:appinfo><xrd:title>MD301</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD302"><xs:annotation><xs:appinfo><xrd:title>MD302</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD303"><xs:annotation><xs:appinfo><xrd:title>MD303</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD304"><xs:annotation><xs:appinfo><xrd:title>MD304</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MD400"><xs:annotation><xs:appinfo><xrd:title>MD400</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH100"><xs:annotation><xs:appinfo><xrd:title>MH100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH101"><xs:annotation><xs:appinfo><xrd:title>MH101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH102"><xs:annotation><xs:appinfo><xrd:title>MH102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH103"><xs:annotation><xs:appinfo><xrd:title>MH103</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH104"><xs:annotation><xs:appinfo><xrd:title>MH104</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="MH105"><xs:annotation><xs:appinfo><xrd:title>MH105</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU100"><xs:annotation><xs:appinfo><xrd:title>UU100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU101"><xs:annotation><xs:appinfo><xrd:title>UU101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU102"><xs:annotation><xs:appinfo><xrd:title>UU102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU103"><xs:annotation><xs:appinfo><xrd:title>UU103</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU104"><xs:annotation><xs:appinfo><xrd:title>UU104</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU105"><xs:annotation><xs:appinfo><xrd:title>UU105</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU106"><xs:annotation><xs:appinfo><xrd:title>UU106</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU107"><xs:annotation><xs:appinfo><xrd:title>UU107</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU108"><xs:annotation><xs:appinfo><xrd:title>UU108</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU200"><xs:annotation><xs:appinfo><xrd:title>UU200</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU201"><xs:annotation><xs:appinfo><xrd:title>UU201</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU300"><xs:annotation><xs:appinfo><xrd:title>UU300</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU301"><xs:annotation><xs:appinfo><xrd:title>UU301</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU302"><xs:annotation><xs:appinfo><xrd:title>UU302</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU303"><xs:annotation><xs:appinfo><xrd:title>UU303</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU400"><xs:annotation><xs:appinfo><xrd:title>UU400</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU401"><xs:annotation><xs:appinfo><xrd:title>UU401</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU402"><xs:annotation><xs:appinfo><xrd:title>UU402</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU500"><xs:annotation><xs:appinfo><xrd:title>UU500</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU501"><xs:annotation><xs:appinfo><xrd:title>UU501</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU600"><xs:annotation><xs:appinfo><xrd:title>UU600</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU601"><xs:annotation><xs:appinfo><xrd:title>UU601</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU602"><xs:annotation><xs:appinfo><xrd:title>UU602</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU603"><xs:annotation><xs:appinfo><xrd:title>UU603</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="UU604"><xs:annotation><xs:appinfo><xrd:title>UU604</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ET100"><xs:annotation><xs:appinfo><xrd:title>ET100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="LE100"><xs:annotation><xs:appinfo><xrd:title>LE100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="LE101"><xs:annotation><xs:appinfo><xrd:title>LE101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="LE102"><xs:annotation><xs:appinfo><xrd:title>LE102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="LE103"><xs:annotation><xs:appinfo><xrd:title>LE103</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="LE104"><xs:annotation><xs:appinfo><xrd:title>LE104</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="RI100"><xs:annotation><xs:appinfo><xrd:title>RI100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML100"><xs:annotation><xs:appinfo><xrd:title>ML100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML101"><xs:annotation><xs:appinfo><xrd:title>ML101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML102"><xs:annotation><xs:appinfo><xrd:title>ML102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML103"><xs:annotation><xs:appinfo><xrd:title>ML103</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML104"><xs:annotation><xs:appinfo><xrd:title>ML104</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML105"><xs:annotation><xs:appinfo><xrd:title>ML105</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML106"><xs:annotation><xs:appinfo><xrd:title>ML106</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML107"><xs:annotation><xs:appinfo><xrd:title>ML107</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML108"><xs:annotation><xs:appinfo><xrd:title>ML108</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="ML109"><xs:annotation><xs:appinfo><xrd:title>ML109</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="DD100"><xs:annotation><xs:appinfo><xrd:title>DD100</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="HO101"><xs:annotation><xs:appinfo><xrd:title>HO101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="HO102"><xs:annotation><xs:appinfo><xrd:title>HO102</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                    <xs:enumeration value="KO101"><xs:annotation><xs:appinfo><xrd:title>KO101</xrd:title></xs:appinfo></xs:annotation></xs:enumeration>
+                </xs:restriction>
+            </xs:simpleType>
+
+            <xs:complexType name="FileImportManusDTO">
+                <xs:annotation>
+                    <xs:appinfo>
+                        <xrd:title xml:lang="et">Esitatav fail</xrd:title>
+                    </xs:appinfo>
+                    <xs:documentation>Faili nimi koos laiendiga</xs:documentation>
+                </xs:annotation>
+                <xs:sequence>
+                    <xs:element name="fail" type="wsi:swaRef">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">fail</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>Viide manustatud failile </xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                    <xs:element name="failiLiik" type="tns:KldokLiik">
+                        <xs:annotation>
+                            <xs:appinfo>
+                                <xrd:title xml:lang="et">dokLiik klassifikaatori kood</xrd:title>
+                            </xs:appinfo>
+                            <xs:documentation>dokLiik klassifikaatori kood (kohustuslik).</xs:documentation>
+                        </xs:annotation>
+                    </xs:element>
+                </xs:sequence>
+            </xs:complexType>
+
+            <!-- Operation 1: Broneerimine -->
+            <xs:element name="BroneerimineRequest">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="kovKood" type="xs:int">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">kovKood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Planeeringu koostamist korraldava omavalitsuse KOV kood EHAK klassifikaatoris (kohustuslik).</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="planLiik" type="xs:int">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">Planeeringu põhiliigi kood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Planeeringu põhiliigi kood (kohustuslik).</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="planNimi" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">planNimi</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Planeeringu esialgne nimetus, vajalik arusaadavuse huvides (kohustuslik)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+
+            <xs:element name="BroneerimineResponse">
+                <xsd:complexType>
+                    <xs:sequence>
+                        <xs:element name="sysid" type="xs:long">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">sysid</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Uuele planeeringule broneeritud number andmekogus</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="veaKood" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">veaKood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Veakood, kui tulem oli VIGA</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="veaTeade" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">veaTeade</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Veakoodi selgitav veateade, kui tulem oli VIGA</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                    </xs:sequence>
+                </xsd:complexType>
+            </xs:element>
+
+            <!-- Operation 2: EsitamineStaatus -->
+            <xs:element name="EsitamineStaatusRequest">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="kovKood" type="xs:int">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">kovKood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Planeeringu koostamist korraldava omavalitsuse KOV kood EHAK klassifikaatoris (kohustuslik).</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="importId" type="xs:long">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">importId</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Impordisessiooni number, mille tagastas teenus planisEsitamine (kohustuslik)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+
+            <xs:element name="EsitamineStaatusResponse">
+                <xsd:complexType>
+                    <xs:sequence>
+                        <xs:element name="importId" type="xs:long">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">importId</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Impordisessiooni number, mille kohta tagaside antakse (sama mis sisendis)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="importStaatus" type="tns:Staatus">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">Impordi staatuse kood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Impordi staatuse kood .</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="importProbleem" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">importProbleem</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Impordi käigus tekkinud probleemi kirjeldav tekst. Staatuse VIGA puhul kirjeldab probleemi, mis takistas esitatava planeeringu
+                                    laadimist andmekogusse. Staatuse ESITAMISEL puhul kirjeldab probleemi, mis takistas planeeringu esitamise lõplikku kinnitamist andmekogus.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="sysid" type="xs:int">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">sysid</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Esitatud planeeringu number andmekogus, tagastatakse juhul, kui esitatud andmed kirjutati andmekogusse või ka juhul, kui sysid
+                                    anti esitamisel kaasa.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="teated">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">teated</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Automaatkontrolli teated (0 – n elementi). Andmekokku esitamisel süsteemi poolt tuvastatud vead, hoiatused ja informatiivsed
+                                    teated. Võivad esineda juhul, kui impordi staatus on ESITAMISEL või KINNITATUD.
+                                </xs:documentation>
+                            </xs:annotation>
+                            <xs:complexType>
+                                <xs:sequence>
+                                    <xs:element maxOccurs="unbounded" minOccurs="0" name="TeadeDTO" nillable="true" type="tns:TeadeDTO"/>
+                                </xs:sequence>
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                </xsd:complexType>
+            </xs:element>
+
+            <!-- Operation 3: EsitaPlaneeringManus -->
+            <xs:element name="EsitaPlaneeringManusRequest">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="kovKood" type="xs:int">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">kovKood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>KOV kood EHAK klassifikaatoris kohustuslik.</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="sysid" type="xs:long">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">sysid</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Esitatava planeeringu number andmekogus juhul, kui esitatakse muudatust varemregistreeritud planeeringule või kui kasutatakse
+                                    broneeritud numbrit.
+                                </xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="oiguslikAlusFail" type="wsi:swaRef">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">oiguslikAlusFail</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Viide manustatud õigusliku aluse failile (kohustuslik juhul, kui veebilehte pole)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="oiguslikAlusVeebiviit" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">oiguslikAlusVeebiviit</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Veebilink õigusliku aluse veebilehele (kohustuslik juhul, kui failina ei esitata)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="pohjendus" type="xs:string">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">pohjendus</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Andmete esitamise tekstiline selgitus vajadusel</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="oiguslikAlusKehtestatud" type="xs:date">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">oiguslikAlusKehtestatud</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Õigusliku aluse kehtestamise kuupäev (kohustuslik)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="planSeis" type="tns:KlplanSeis">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">planSeis</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>planSeis klassifikaatori kood; planeeringu seisund andmete esitamisel (kohustuslik)</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="oiguslikAlusLiik" type="tns:KldokLiik">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">dokLiik klassifikaatori kood</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>dokLiik klassifikaatori kood (kohustuslik).</xs:documentation>
+                            </xs:annotation>
+                        </xs:element>
+                        <xs:element name="failid">
+                            <xs:annotation>
+                                <xs:appinfo>
+                                    <xrd:title xml:lang="et">failid</xrd:title>
+                                </xs:appinfo>
+                                <xs:documentation>Esitatavad failid (element, mis sisaldab 1 – n elementi)</xs:documentation>
+                            </xs:annotation>
+                            <xs:complexType>
+                                <xs:sequence>
+                                    <xs:element maxOccurs="unbounded" minOccurs="1" name="FileImportManusDTO" nillable="true" type="tns:FileImportManusDTO"/>
+                                </xs:sequence>
+                            </xs:complexType>
+                        </xs:element>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+
+            <xs:element name="EsitaPlaneeringManusResponse">
+                <xs:annotation>
+                    <xs:appinfo>
+                        <xrd:title xml:lang="et">planisEsitamine vastus</xrd:title>
+                    </xs:appinfo>
+                    <xs:documentation>Esita planeering manusega teenuse vastus.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="TulemDTO" type="tns:TulemDTO"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:schema>
+    </wsdl:types>
+
+    <!-- Common request header -->
+    <wsdl:message name="requestHeader">
+        <wsdl:part element="xrd:client" name="client"/>
+        <wsdl:part element="xrd:service" name="service"/>
+        <wsdl:part element="xrd:id" name="id"/>
+        <wsdl:part element="xrd:userId" name="userId"/>
+        <wsdl:part element="xrd:requestHash" name="requestHash"/>
+        <wsdl:part element="xrd:protocolVersion" name="protocolVersion"/>
+    </wsdl:message>
+
+    <!-- Operation 1: Broneerimine messages -->
+    <wsdl:message name="BroneerimineRequest">
+        <wsdl:part element="tns:BroneerimineRequest" name="keha"/>
+    </wsdl:message>
+    <wsdl:message name="BroneerimineResponse">
+        <wsdl:part element="tns:BroneerimineResponse" name="keha"/>
+    </wsdl:message>
+
+    <!-- Operation 2: EsitamineStaatus messages -->
+    <wsdl:message name="EsitamineStaatusRequest">
+        <wsdl:part element="tns:EsitamineStaatusRequest" name="keha"/>
+    </wsdl:message>
+    <wsdl:message name="EsitamineStaatusResponse">
+        <wsdl:part element="tns:EsitamineStaatusResponse" name="keha"/>
+    </wsdl:message>
+
+    <!-- Operation 3: EsitaPlaneeringManus messages -->
+    <wsdl:message name="EsitaPlaneeringManusRequest">
+        <wsdl:part element="tns:EsitaPlaneeringManusRequest" name="keha"/>
+    </wsdl:message>
+    <wsdl:message name="EsitaPlaneeringManusResponse">
+        <wsdl:part element="tns:EsitaPlaneeringManusResponse" name="keha"/>
+    </wsdl:message>
+
+    <!-- Combined Port Type with all three operations -->
+    <wsdl:portType name="PlanisXteePortType">
+        <wsdl:operation name="Broneerimine">
+            <wsdl:documentation>
+                <xrd:title>Uue planeeringu jaoks andmekogu identifikaatori broneerimine</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:BroneerimineRequest"/>
+            <wsdl:output message="tns:BroneerimineResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="EsitamineStaatus">
+            <wsdl:documentation>
+                <xrd:title>Teenuse kaudu on võimalik saada tagasisidet esitatud planeeringu kohta.</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:EsitamineStaatusRequest"/>
+            <wsdl:output message="tns:EsitamineStaatusResponse"/>
+        </wsdl:operation>
+
+        <wsdl:operation name="EsitaPlaneeringManus">
+            <wsdl:documentation>
+                <xrd:title>Planeeringu esitamine manustatud failidega</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:EsitaPlaneeringManusRequest"/>
+            <wsdl:output message="tns:EsitaPlaneeringManusResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <!-- Combined Binding with all three operations -->
+    <wsdl:binding name="PlanisXteeBinding" type="tns:PlanisXteePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+        <!-- Broneerimine operation -->
+        <wsdl:operation name="Broneerimine">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="BroneerimineRequest">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="BroneerimineResponse">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+
+        <!-- EsitamineStaatus operation -->
+        <wsdl:operation name="EsitamineStaatus">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="EsitamineStaatusRequest">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="EsitamineStaatusResponse">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+
+        <!-- EsitaPlaneeringManus operation -->
+        <wsdl:operation name="EsitaPlaneeringManus">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="EsitaPlaneeringManusRequest">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="EsitaPlaneeringManusResponse">
+                <soap:body parts="keha" use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <!-- Service definition -->
+    <wsdl:service name="PlanisXteeService">
+        <wsdl:port binding="tns:PlanisXteeBinding" name="PlanisXteePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+            <xrd:title>PlanisXtee_v1</xrd:title>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

@@ -1,0 +1,938 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:ads="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="https://x-road.eu/xsd/xroad.xsd"/>
+  <include schemaLocation="https://www.maaamet.ee/schemas/xtee6/ads_types.xsd"/>
+  <element name="ADSobjmuudatusedV7">
+    <complexType>
+      <annotation>
+        <appinfo>
+          <xrd:title>Objekti muudatuste päring (ADSobjmuudatusedV7)</xrd:title>
+        </appinfo>
+      </annotation>
+      <sequence>
+        <choice>
+          <element name="muudetudAlates" type="date">
+            <annotation>
+              <appinfo>
+                <xrd:title>Muudetud alates</xrd:title>
+                <xrd:notes>Kuupäev alates millest (k.a) registreeritud muudatusi soovitakse leida</xrd:notes>
+              </appinfo>
+            </annotation>
+          </element>
+          <element name="logId" type="integer">
+            <annotation>
+              <appinfo>
+                <xrd:title>Logikirje ID</xrd:title>
+                <xrd:notes>LogId, mille väärtusest suuremaid kirjeid otsitakse</xrd:notes>
+              </appinfo>
+            </annotation>
+          </element>
+        </choice>
+        <element name="muudetudPaevad" minOccurs="0" default="1">
+          <annotation>
+            <appinfo>
+              <xrd:title>Muudatuste päevade arv</xrd:title>
+              <xrd:notes>Number vahemikus 1-10 ehk mitme päeva muudatusi vastusesse soovitakse. Vaikimisi 1 päev.</xrd:notes>
+            </appinfo>
+          </annotation>
+          <simpleType>
+            <restriction base="int">
+              <minInclusive value="1"/>
+              <maxInclusive value="10"/>
+            </restriction>
+          </simpleType>
+        </element>
+        <element name="objektiLiik" minOccurs="0" type="ads:adsobjliikKlassifikaator">
+          <annotation>
+            <appinfo>
+              <xrd:title>Objekti liik</xrd:title>
+              <xrd:notes>Objekti liik, millega seotud muudatusi soovitakse</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="maxarv" minOccurs="0">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagastatav kirjete max arv</xrd:title>
+            </appinfo>
+          </annotation>
+          <simpleType>
+            <restriction base="integer">
+              <maxInclusive value="100"/>
+            </restriction>
+          </simpleType>
+        </element>
+        <element name="hSyndmused" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta ka seotud objektide muudatuse sündmus</xrd:title>
+              <xrd:notes>True - tagastab ka H sündmuse, False - H sündmusi ei arvestata</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="lSyndmused" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta ka seotud liidesobjektide muudatuse sündmus</xrd:title>
+              <xrd:notes>True - tagastab ka L sündmuse, False - L sündmusi ei arvestata</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="eSyndmused" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta ka EHR lisaandmete muudatuse sündmus</xrd:title>
+              <xrd:notes>True - tagastab ka E sündmuse, False - E sündmusi ei arvestata</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="andmevektor" type="string" minOccurs="1" default="000">
+          <annotation>
+            <appinfo>
+              <xrd:title>Andmevektor</xrd:title>
+              <xrd:notes>Andmevektor on kolmest sümbolist koosnev string. Eraldi positsioonis sümbolitega (0, 1) tähistatakse, millised andmed teenus tagastab. Esimene positsioon tähistab objekti tärk-, teine ruumi- ja kolmas aadressiandmeid. Vaikimisi 000.</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="aadressKomp" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta aadress komponentidena</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="EHRlisaandmed" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>EHR registrist pärit objekti korral tagasta ka mõned täiendavad atribuudid</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="objJarglased" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta objekti eellased/järglased</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="seotudObjektid" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Hoonetega või katastriüksustega seotud objektid</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="seotudHooneosad" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagastusse lisandub seotud hooneosade plokk</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="huviPunktid" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta objektiga seotud huvipunktide (POI) nimed</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="liidestujaObjektid" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Tagasta objektiga seotud Kinnistusraamatu korteriomandid ja Äriregistri juriidilised isikud</xrd:title>
+            </appinfo>
+          </annotation>
+        </element>
+        <element name="ruumiAndmeteFormaat" type="ads:kujuGeomeetriaFormaatType" minOccurs="0" default="GML">
+          <annotation>
+            <appinfo>
+              <xrd:title>Millises formaadis (WKT, GML, GeoJSON) tagastada objekti kuju geomeetria</xrd:title>
+              <xrd:notes>GML versioon 3.1.1</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+      </sequence>
+    </complexType>
+  </element>
+  <element name="ADSobjmuudatusedV7Response">
+    <complexType>
+      <sequence>
+        <element name="objmuudatusedTulem" minOccurs="0">
+          <complexType>
+            <sequence>
+              <element name="muudatus" maxOccurs="unbounded">
+                <complexType>
+                  <sequence>
+                    <element name="logId" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Logikirje ID</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="logStamp" type="dateTime">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Logikirje tekkimise aeg</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="syndmus" minOccurs="0" type="ads:objSyndmusType">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Sündmus</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="muutvektor" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Muudatusvektor</xrd:title>
+                          <xrd:notes>Kolmest 0/1 sümbolist koosnev string, mis väljendab muudatusi võrreldes eelmise versiooniga. Pos1 - objekti õiguslik alus, Pos2 - objekti kuju, Pos3 - objekti aadressid.</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="objektiLiik" type="ads:adsobjliikKlassifikaator">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti liik</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="adsOid" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti identifikaator ADS süsteemis (ADS_OID)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="adobId" type="integer">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti versiooni ID ADS süsteemis (ADOB_ID)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="origTunnus" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti tunnus päritoluregistris</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="taisAadress" type="string">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti täisaadress</xrd:title>
+                          <xrd:notes>Objekti täisaadressi tekst, mis sisaldab kõiki paralleelaadresse optimeeritud kujul.</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="lahiAadress" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti lähiaadress</xrd:title>
+                          <xrd:notes>Objekti lähiaadressi tekst, mis sisaldab kõiki paralleelaadresse optimeeritud kujul.</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="olek" type="ads:olekType" minOccurs="1">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Sündmuse põhjustanud objektiversiooni olek päringu sooritamise hetkel</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="vanaAdobId" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti eelmise versiooni ID muutmise korral (VANA_ADOB_ID)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="vanaTaisAadress" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti eelmise versiooni aadress</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="vanaLahiAadress" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti eelmise versiooni lähiaadress</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="unikaalne" type="boolean" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti UN-tunnus</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="eellased" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti eellased</xrd:title>
+                          <xrd:notes>Objekti võimalikeks eellasteks olevate objektide ADS_OID väärtuste loetelu. Loetelu eraldatud semikoolonitega. Eellased tagastatakse päringu hetke seisuga, mitte logikirje tekkimise hetke seisuga. Järjestatakse kehtetuks muutumise aja järgi kahanevalt.</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="jarglased" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti järglased</xrd:title>
+                          <xrd:notes>Objekti võimalikeks järglasteks olevate objektide ADS_OID väärtuste loetelu. Loetelu eraldatud semikoolonitega. Järglased on võimalikud ainult tühistatud objektide korral. Järglased tagastatakse päringu hetke seisuga, mitte logikirje tekkimise hetke seisuga. Järjestatakse esimese versiooni kehtivuse aja järgi kasvavalt. Tagastatakse ainult kehtivas ja ootel olekus objektid.</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="hooneOID" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Hooneosa puhul selle hoone ADS_OID, millesse hooneosa kuulub</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="kehtiv" type="dateTime" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti versiooni kehtivuse alguse kuupäev koos kellaajaga</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="kehtetu" type="dateTime" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti versiooni kehtivuse lõpu kuupäev koos kellaajaga</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="hooneKujuPindala" type="double" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Hoone 2D kuju alusel arvutatud pindala m2 täpsusega 1 koht peale koma</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="hooneKorgusR" type="double" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Hoone räästa kõrgus m sellise täpsusega nagu on ETAK andmetes</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="hooneKorgusM" type="double" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Hoone maksimaalne (harja) kõrgus m sellise täpsusega nagu on ETAK andmetes</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="muudatuseAlgataja" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Muudatuse algataja</xrd:title>
+                          <xrd:notes>Täidetud ainult hooneosade korral ja väljendab, kas hooneosa muudatus laekus ADS-i X-tee teenuse kaudu EHR-ist (X) või tegi selle muudatuse ADS kasutaja või süsteem (K).</xrd:notes>
+                        </appinfo>
+                      </annotation>
+                      <simpleType>
+                        <restriction base="string">
+                          <enumeration value="X">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>X-tee teenus</xrd:title>
+                              </appinfo>
+                            </annotation>
+                          </enumeration>
+                          <enumeration value="K">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>ADS kasutaja või süsteem</xrd:title>
+                              </appinfo>
+                            </annotation>
+                          </enumeration>
+                        </restriction>
+                      </simpleType>
+                    </element>
+                    <element name="ruumikuju" type="string" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti ruumikuju</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="kujuMoodustusviis" type="ads:adsObjmviisType" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Kuju moodustusviis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="objektiPunktX" type="double" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti viitepunkti x-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="objektiPunktY" type="double" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Objekti viitepunkti y-koordinaat L-Est süsteemis</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="etakId" type="integer" minOccurs="0">
+                      <annotation>
+                        <appinfo>
+                          <xrd:title>Hoone tunnus ETAK süsteemis (ETAK_ID)</xrd:title>
+                        </appinfo>
+                      </annotation>
+                    </element>
+                    <element name="aadressid" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="aadress" minOccurs="0" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="adrId" type="integer" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Aadressi versiooni ID (ADR_ID)</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="koodAadress" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Koodaadress</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="taisAadress" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Täisaadress</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="lahiAadress" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Lähiaadress</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="sihtnumber" type="integer" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Sihtnumber (postiindeks)</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="maPiirkond" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Mitteametlike piirkondade nimed, millesse aadress kuulub</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="maPiirkondAlias" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Mitteametlike piirkondade sünonüümid ehk alternatiivsed nimevariandid</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="aadressiPunktX" type="double" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Objekti aadressipunkti x-koordinaat L-Est süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="aadressiPunktY" type="double" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Objekti aadressipunkti y-koordinaat L-Est süsteemis</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="tehniline" type="boolean" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tunnus, kas tegemist on tehnilise aadressiga</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="primaarseimObjekt" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>ADR_ID-ga seotud primaarseima objekt ADS_OID</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase1" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 1</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase2" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 2</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase3" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 3</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase4" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 4</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase5" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 5</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase6" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 6</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase7" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 7</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adsTase8" type="ads:adsTaseType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Tase 8</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="EHRlisaandmed" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="nimetus" type="string" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>EHR nimetus</xrd:title>
+                                <xrd:notes>Hoonele või hooneosale EHR süsteemis omistatud nimetus.</xrd:notes>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                          <element name="pind" type="double" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>EHR pind</xrd:title>
+                                <xrd:notes>Ehitisealune pind hoone puhul, elu- või mitteeluruumi üldpind hooneosa puhul.</xrd:notes>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                          <element name="kasutusotstarbed" type="string" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>EHR kasutusotstarvete loetelu</xrd:title>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                          <element name="korrus" type="integer" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>EHR hooneosa puhul sissepääsu korrus</xrd:title>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                          <element name="staatus" type="string" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>Objekti seisund EHR-is</xrd:title>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                          <element name="andmedSeisuga" type="date" minOccurs="0">
+                            <annotation>
+                              <appinfo>
+                                <xrd:title>Andmete EHR-ist uuendamise kuupäev</xrd:title>
+                                <xrd:notes>Kuupäev, millise seisuga EHR andmed ADS süsteemis on uuendatud.</xrd:notes>
+                              </appinfo>
+                            </annotation>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="objseosed" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="objseos" minOccurs="0" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="adsOid" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti ADS_OID</xrd:title>
+                                      <xrd:notes>Seotud objekti identifikaator ADS süsteemis</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adobId" type="integer">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti ADOB_ID</xrd:title>
+                                      <xrd:notes>Objekti versiooni ID ADS süsteemis</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="objektiLiik" minOccurs="0" type="ads:adsobjliikKlassifikaator">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti liik</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="origTunnus" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti tunnus päritoluregistris</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="aadress" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti täisaadress</xrd:title>
+                                      <xrd:notes>Seotud objekti täisaadressi tekst, mis sisaldab kõiki paralleelaadresse optimeeritud kujul.</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="unikaalne" type="boolean" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud objekti UN-tunnus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="hooneosad" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="hooneosa" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="adsOid" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud hooneosa ADS_OID</xrd:title>
+                                      <xrd:notes>Seotud hooneosa identifikaator ADS süsteemis</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="adobId" type="integer">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud hooneosa ADOB_ID</xrd:title>
+                                      <xrd:notes>Hooneosa versiooni ID ADS süsteemis</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="objektiLiik" minOccurs="0" type="ads:adsobjliikKlassifikaator">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud hooneosa objekti liik</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="origTunnus" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud hooneosa tunnus päritoluregistris</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="aadress" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Seotud hooneosa täisaadress</xrd:title>
+                                      <xrd:notes>Seotud hooneosa täisaadressi tekst, mis sisaldab kõiki paralleelaadresse optimeeritud kujul.</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="hooneOID" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Hooneosa puhul selle hoone ADS_OID, millesse hooneosa kuulub</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="huvipunktid" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="huvipunkt" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="huviPunktiNimi" type="string">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Objektiga seotud huvipunkti (POI) nimetus</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                    <element name="liidestujaObjektid" minOccurs="0">
+                      <complexType>
+                        <sequence>
+                          <element name="liidestujaObjekt" maxOccurs="unbounded">
+                            <complexType>
+                              <sequence>
+                                <element name="register" type="ads:adsRegisterType" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Registrer</xrd:title>
+                                      <xrd:notes>Liidestunud registri lühend: KR – Kinnistusraamat, AR - Äriregister</xrd:notes>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="idRegistris" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Objekti tunnus liidestunud registris: vastavalt kas korteriomandi number või äriregistri registrikood</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                                <element name="lisainfo" type="string" minOccurs="0">
+                                  <annotation>
+                                    <appinfo>
+                                      <xrd:title>Eriomandi number korteriomandi puhul või juriidilise isiku nimi</xrd:title>
+                                    </appinfo>
+                                  </annotation>
+                                </element>
+                              </sequence>
+                            </complexType>
+                          </element>
+                        </sequence>
+                      </complexType>
+                    </element>
+                  </sequence>
+                </complexType>
+              </element>
+            </sequence>
+          </complexType>
+        </element>
+        <element name="fault" minOccurs="0">
+          <complexType>
+            <sequence>
+              <element name="faultCode" type="string">
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Vea kood</xrd:title>
+                  </appinfo>
+                </annotation>
+              </element>
+              <element name="faultString" type="string">
+                <annotation>
+                  <appinfo>
+                    <xrd:title>Vea kirjeldus</xrd:title>
+                  </appinfo>
+                </annotation>
+              </element>
+            </sequence>
+          </complexType>
+        </element>
+      </sequence>
+    </complexType>
+  </element>
+  <simpleType name="objSyndmusType">
+    <restriction base="string">
+      <enumeration value="I">
+        <annotation>
+          <appinfo>
+            <xrd:title>lisamine</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="U">
+        <annotation>
+          <appinfo>
+            <xrd:title>muutmine</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="D">
+        <annotation>
+          <appinfo>
+            <xrd:title>tühistamine</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="R">
+        <annotation>
+          <appinfo>
+            <xrd:title>taastamine</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="H">
+        <annotation>
+          <appinfo>
+            <xrd:title>seotud objektide muudatus</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="L">
+        <annotation>
+          <appinfo>
+            <xrd:title>Seotud liidesobjektide muudatus</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="E">
+        <annotation>
+          <appinfo>
+            <xrd:title>EHR lisaandmete muudatus</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="B">
+        <annotation>
+          <appinfo>
+            <xrd:title>aegunud (huvipunkti nime muudatus)</xrd:title>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+  <simpleType name="olekType">
+    <restriction base="string">
+      <enumeration value="K">
+        <annotation>
+          <appinfo>
+            <xrd:title>kehtiv</xrd:title>
+            <xrd:notes>versioon on viimane, objekt tervikuna on aktuaalne (olekus K)</xrd:notes>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="O">
+        <annotation>
+          <appinfo>
+            <xrd:title>Ootel</xrd:title>
+            <xrd:notes>versioon on ootel</xrd:notes>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="V">
+        <annotation>
+          <appinfo>
+            <xrd:title>vananenud versioon</xrd:title>
+            <xrd:notes>versioon ei ole viimane, objekti on pärast käesolevat logiteadet veel muudetud</xrd:notes>
+          </appinfo>
+        </annotation>
+      </enumeration>
+      <enumeration value="T">
+        <annotation>
+          <appinfo>
+            <xrd:title>tühistatud</xrd:title>
+            <xrd:notes>versioon on viimane, objekt tervikuna on tühistatud (kui muudatuse või lisamise logi puhul olek=T, siis see näitab, et varsti järgneb ka tühistamise logi</xrd:notes>
+          </appinfo>
+        </annotation>
+      </enumeration>
+    </restriction>
+  </simpleType>
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="ADSobjmuudatusedV7">
+        <wsdl:part name="body" element="tns:ADSobjmuudatusedV7"/>
+    </wsdl:message>
+    <wsdl:message name="ADSobjmuudatusedV7Response">
+        <wsdl:part name="body" element="tns:ADSobjmuudatusedV7Response"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="ADSobjmuudatusedV7">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Objekti muudatuste päring</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:ADSobjmuudatusedV7"/>
+            <wsdl:output message="tns:ADSobjmuudatusedV7Response"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="ADSobjmuudatusedV7">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

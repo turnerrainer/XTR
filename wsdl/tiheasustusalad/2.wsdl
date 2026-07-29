@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><definitions xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:kpois="http://kpois.x-road.eu/producer/" xmlns:tns="http://kpois.x-road.eu/producer/" targetNamespace="http://kpois.x-road.eu/producer/" name="TiheasustusXteeService">
+
+    <types>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://x-road.eu/xsd/identifiers" schemaLocation="http://x-road.eu/xsd/identifiers.xsd"/>
+        </xsd:schema>
+        <xsd:schema>
+            <xsd:import namespace="http://kpois.x-road.eu/producer/" schemaLocation="https://tiheasustus.kataster.ee/ws/tiheasustusService.xsd"/>
+        </xsd:schema>
+    </types>
+    <message name="tiheasustusAla">
+        <part name="body" element="kpois:tiheasustusAla"/>
+    </message>
+    <message name="tiheasustusAlaResponse">
+        <part name="body" element="kpois:tiheasustusAlaResponse"/>
+    </message>
+    <message name="tiheasustusAladeRaport">
+        <part name="body" element="kpois:tiheasustusAladeRaport"/>
+    </message>
+    <message name="tiheasustusAladeRaportResponse">
+        <part name="body" element="kpois:tiheasustusAladeRaportResponse"/>
+    </message>
+    <message name="loeTiheasustusAladeRaport">
+        <part name="body" element="kpois:loeTiheasustusAladeRaport"/>
+    </message>
+    <message name="loeTiheasustusAladeRaportResponse">
+        <part name="body" element="kpois:loeTiheasustusAladeRaportResponse"/>
+    </message>
+
+    <message name="requestHeader">
+        <part name="client" element="xrd:client"/>
+        <part name="service" element="xrd:service"/>
+        <part name="id" element="xrd:id"/>
+        <part name="userId" element="xrd:userId"/>
+        <part name="issue" element="xrd:issue"/>
+        <part name="protocolVersion" element="xrd:protocolVersion"/>
+    </message>
+
+    <portType name="tiheasustusServicePort">
+        <operation name="tiheasustusAla">
+            <documentation>
+                <xrd:title>tiheasustusAla.v1</xrd:title>
+                <xrd:notes>Antud teenusega on võimalik KPOIS süsteemist pärida, kas katastriüksuse puhul on tegemist tihedalt asustatud alaga.</xrd:notes>
+            </documentation>
+            <input message="tns:tiheasustusAla"/>
+            <output message="tns:tiheasustusAlaResponse"/>
+        </operation>
+        <operation name="tiheasustusAladeRaport">
+            <documentation>
+                <xrd:title>tiheasustusAladeRaport.v1</xrd:title>
+                <xrd:notes>Antud teenusega on võimalik KPOIS süsteemist tellida kõikide katastriüksuse tihedalt asustatud alaga kattumise raport.</xrd:notes>
+            </documentation>
+            <input message="tns:tiheasustusAladeRaport"/>
+            <output message="tns:tiheasustusAladeRaportResponse"/>
+        </operation>
+        <operation name="loeTiheasustusAladeRaport">
+            <documentation>
+                <xrd:title>loeTiheasustusAladeRaport.v1</xrd:title>
+                <xrd:notes>Loe ja lae alla eelnevalt KPOIS süsteemist tellitud kõikide katastriüksuse tihedalt asustatud alaga kattumise raport.</xrd:notes>
+            </documentation>
+            <input message="tns:loeTiheasustusAladeRaport"/>
+            <output message="tns:loeTiheasustusAladeRaportResponse"/>
+        </operation>
+    </portType>
+
+    <binding name="tiheasustusServicePortSoap11" type="tns:tiheasustusServicePort">
+        <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+        <operation name="tiheasustusAla">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="tiheasustusAladeRaport">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+        <operation name="loeTiheasustusAladeRaport">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="tiheasustusPortService">
+        <port name="tiheasustusServicePortSoap11" binding="tns:tiheasustusServicePortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </port>
+    </service>
+</definitions>

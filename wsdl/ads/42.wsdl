@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" xmlns:tns="http://www.maaamet.ee" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.maaamet.ee">
+    <wsdl:types>
+
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:ads="http://www.maaamet.ee" targetNamespace="http://www.maaamet.ee" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd">
+  <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+  <include schemaLocation="http://www.maaamet.ee/schemas/xtee6/ads_types.xsd"/>
+  <element name="ADSruumiaadress">
+    <complexType>
+      <annotation>
+        <appinfo>
+          <xrd:title>
+            Ruumiaadressi päring
+          </xrd:title>
+        </appinfo>
+      </annotation>
+      <sequence>
+        <choice>
+          <element name="ruumikuju" type="string">
+            <annotation>
+              <appinfo>
+                <xrd:title>Ruumikuju</xrd:title>
+                <xrd:notes>Stringi kujul (escaped) ruumikuju GML 3.1.1 formaadis</xrd:notes>
+              </appinfo>
+            </annotation>
+          </element>
+          <sequence>
+            <element name="punktX" type="decimal">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Punkti x-koordinaat</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="punktY" type="decimal">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Punkti y-koordinaat</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+          </sequence>
+        </choice>
+        <element name="ainultSuurim" type="boolean" minOccurs="0" default="false">
+          <annotation>
+            <appinfo>
+              <xrd:title>Ainult suurim</xrd:title>
+              <xrd:notes>Kas tagastatakse ainult suurima osakaaluga ruumiaadress või kõik ruumiaadressid, kus osakaal&gt;0.</xrd:notes>
+            </appinfo>
+          </annotation>
+        </element>
+      </sequence>
+    </complexType>
+  </element>
+  <element name="ADSruumiaadressResponse" type="ads:ADSruumiaadressVastusType"/>
+  <complexType name="ADSruumiaadressVastusType">
+    <sequence>
+      <element name="ruumiaadressTulem" minOccurs="0">
+        <complexType>
+          <sequence>
+			<element name="ruumiaadress" maxOccurs="unbounded">
+        <complexType>
+          <sequence>
+            <element name="aadress" type="string" minOccurs="0">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Ruumiaadress tekstilisel kujul</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="adsTase1" type="ads:adsTaseType" minOccurs="0">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Tase 1</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="adsTase2" type="ads:adsTaseType" minOccurs="0">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Tase 2</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="adsTase3" type="ads:adsTaseType" minOccurs="0">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Tase 3</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="osakaal" type="decimal" minOccurs="0">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Ruumiaadressi osakaalu %</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+      </sequence>
+      </complexType>
+      </element>
+      <element name="fault" minOccurs="0">
+        <complexType>
+          <sequence>
+            <element name="faultCode" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kood</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+            <element name="faultString" type="string">
+              <annotation>
+                <appinfo>
+                  <xrd:title>Vea kirjeldus</xrd:title>
+                </appinfo>
+              </annotation>
+            </element>
+          </sequence>
+        </complexType>
+      </element>
+    </sequence>
+  </complexType>
+
+</schema>
+</wsdl:types>
+    <wsdl:message name="requestHeader">
+        <wsdl:part name="client" element="xrd:client"/>
+        <wsdl:part name="service" element="xrd:service"/>
+        <wsdl:part name="id" element="xrd:id"/>
+        <wsdl:part name="userId" element="xrd:userId"/>
+        <wsdl:part name="issue" element="xrd:issue"/>
+        <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+    </wsdl:message>
+    <wsdl:message name="ADSruumiaadress">
+        <wsdl:part name="body" element="tns:ADSruumiaadress"/>
+    </wsdl:message>
+    <wsdl:message name="ADSruumiaadressResponse">
+        <wsdl:part name="body" element="tns:ADSruumiaadressResponse"/>
+    </wsdl:message>
+    <wsdl:portType name="servicePortType">
+        <wsdl:operation name="ADSruumiaadress">
+          <wsdl:documentation>
+            <xrd:title xml:lang="et">Ruumiaadressi päring</xrd:title>
+          </wsdl:documentation>
+          <wsdl:input message="tns:ADSruumiaadress"/>
+            <wsdl:output message="tns:ADSruumiaadressResponse"/>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="serviceBinding" type="tns:servicePortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="ADSruumiaadress">
+            <soap:operation soapAction="" style="document"/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+                <soap:header message="tns:requestHeader" part="client" use="literal"/>
+                <soap:header message="tns:requestHeader" part="service" use="literal"/>
+                <soap:header message="tns:requestHeader" part="id" use="literal"/>
+                <soap:header message="tns:requestHeader" part="userId" use="literal"/>
+                <soap:header message="tns:requestHeader" part="issue" use="literal"/>
+                <soap:header message="tns:requestHeader" part="protocolVersion" use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="xroadeuService">
+        <wsdl:port binding="tns:serviceBinding" name="xroadeuServicePort">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

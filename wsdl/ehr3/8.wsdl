@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:sch="http://ehr.ee.x-road.eu/producer/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://ehrdev.x-road.eu" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd" targetNamespace="http://ehrdev.x-road.eu">
+    <wsdl:types>
+        <schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:ehr="http://ehr.ee.x-road.eu/producer/" xmlns:tns="http://ehr.ee.x-road.eu/producer/" targetNamespace="http://ehr.ee.x-road.eu/producer/">
+            <import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+            <include schemaLocation="https://devkluster.ehr.ee/api/xtee/v1/services/ehr_xrd.xsd"/>
+            <element name="ehrIsikuVallasvaraParing">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:ehrIsikuVallasvaraParingRequestType"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="ehrIsikuVallasvaraParingRequestType">
+                <sequence>
+                    <element name="kood" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isikukood või ettevõtte kood</xrd:title>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                    <element name="isikuLiik" type="string">
+                        <annotation>
+                            <appinfo>
+                                <xrd:title>Isiku liik</xrd:title>
+                                <xrd:annotation>F / J</xrd:annotation>
+                            </appinfo>
+                        </annotation>
+                    </element>
+                </sequence>
+            </complexType>
+            <element name="ehrIsikuVallasvaraParingResponse">
+                <complexType>
+                    <sequence>
+                        <element name="request" type="tns:ehrIsikuVallasvaraParingRequestType"/>
+                        <element name="response" type="ehr:ehrIsikuVallasvaraParingResponseType"/>
+                    </sequence>
+                </complexType>
+            </element>
+        </schema>
+    </wsdl:types>
+    <wsdl:message name="ehrIsikuVallasvaraParing">
+        <wsdl:part element="sch:ehrIsikuVallasvaraParing" name="ehrIsikuVallasvaraParing"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="ehrIsikuVallasvaraParingResponse">
+        <wsdl:part element="sch:ehrIsikuVallasvaraParingResponse" name="ehrIsikuVallasvaraParingResponse"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:message name="requestheader">
+        <wsdl:part element="xrd:client" name="client"> </wsdl:part>
+        <wsdl:part element="xrd:service" name="service"> </wsdl:part>
+        <wsdl:part element="xrd:id" name="id"> </wsdl:part>
+        <wsdl:part element="xrd:userId" name="userId"> </wsdl:part>
+        <wsdl:part element="xrd:protocolVersion" name="protocolVersion"> </wsdl:part>
+    </wsdl:message>
+    <wsdl:portType name="ehrPort">
+        <wsdl:operation name="ehrIsikuVallasvaraParing">
+            <wsdl:documentation>
+                <xrd:title>EHR registris isiku vallasvara päring</xrd:title>
+            </wsdl:documentation>
+            <wsdl:input message="tns:ehrIsikuVallasvaraParing" name="ehrIsikuVallasvaraParing"> </wsdl:input>
+            <wsdl:output message="tns:ehrIsikuVallasvaraParingResponse" name="ehrIsikuVallasvaraParingResponse"> </wsdl:output>
+        </wsdl:operation>
+    </wsdl:portType>
+    <wsdl:binding name="ehrPortSoap11" type="tns:ehrPort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="ehrIsikuVallasvaraParing">
+            <soap:operation soapAction=""/>
+            <xrd:version>v1</xrd:version>
+            <wsdl:input name="ehrIsikuVallasvaraParing">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output name="ehrIsikuVallasvaraParingResponse">
+                <soap:header message="tns:requestheader" part="client" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="service" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="userId" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="id" use="literal"> </soap:header>
+                <soap:header message="tns:requestheader" part="protocolVersion" use="literal"> </soap:header>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+    </wsdl:binding>
+    <wsdl:service name="ehrService">
+        <wsdl:port binding="tns:ehrPortSoap11" name="ehrPortSoap11">
+            <soap:address location="http://example.org/xroad-endpoint"/>
+            <xrd:address producer="ehrdev"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>
