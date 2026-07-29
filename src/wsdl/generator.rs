@@ -169,6 +169,17 @@ fn render_input_element(env: &mut String, el: &ElementDef, indent: usize) {
             }
             env.push_str(&format!("{ind}</prod:{}>\n", el.name));
         }
+        // Unresolved TypeRef reaching the generator means the
+        // type wasn't defined anywhere in the schema. Render as
+        // a scalar placeholder so the element still exists on
+        // the wire; scalar_leaves() already treats it as a
+        // no-op for params, so this is the safest fallback.
+        ElementKind::TypeRef { .. } => {
+            env.push_str(&format!(
+                "{ind}<prod:{name}>{{{{{name}}}}}</prod:{name}>\n",
+                name = el.name
+            ));
+        }
     }
 }
 

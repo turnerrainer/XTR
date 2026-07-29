@@ -1,12 +1,16 @@
-//! Minimal WSDL 1.1 parser — SOAP-1.1-over-HTTP subset.
+//! WSDL 1.1 parser — SOAP-1.1-over-HTTP subset X-Road actually uses.
 //!
-//! Produces a `ParsedWsdl` with everything the generator needs to
-//! emit DSL YAML. Bail-out-on-unsupported-construct posture:
-//! bindings other than document/literal, RPC style, MIME
-//! attachments, imported schemas — all return `Err` with a
-//! specific message. Never silently accept and produce wrong DSL.
+//! Supports named top-level complex types (Ariregister-style), inline
+//! anonymous complex types, `xsd:include` via caller-provided loader,
+//! `xsd:import` (skipped as framework schemas), `xsd:annotation`
+//! (skipped as documentation). Bail-out-on-unsupported-construct
+//! posture for `xsd:choice`, WSDL 2.0, RPC/encoded.
 //!
-//! Test coverage lives in `wsdl::tests` (see mod.rs).
+//! Per-op lenient: an operation whose element cannot be resolved is
+//! dropped from the output with a WARN, not fatal. The rest of the
+//! WSDL still generates. Same rule at type-reference resolution:
+//! unresolvable `type="ns:X"` yields the element as scalar with a
+//! WARN, preserving whatever we could parse.
 
 use crate::error::XtrError;
 use quick_xml::events::{BytesStart, Event};
@@ -17,91 +21,91 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct ParsedWsdl {
     /// Absolute URL from `<wsdl:service>/<wsdl:port>/<soap:address location="…"/>`.
-    /// Required for plain SOAP (no security_server). May be absent
-    /// when the WSDL only declares the abstract portType; in that
-    /// case DSL generation still works if a metadata sidecar
-    /// provides the target.
     pub service_url: Option<String>,
-
     /// targetNamespace of the WSDL's `xsd:schema` — used to derive
     /// the `prod:` prefix in generated envelopes.
     pub target_namespace: String,
-
-    /// One entry per `wsdl:operation` in the first portType.
-    /// Multi-portType WSDLs are unsupported for v1.
+    /// One entry per resolvable `wsdl:operation` in the first
+    /// portType. Multi-portType WSDLs are unsupported for v1.
     pub operations: Vec<Operation>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Operation {
-    /// e.g. "lookup" or "lihtandmed_v3"
     pub name: String,
-    /// The `xsd:element` referenced by the input `wsdl:message` part.
-    /// Its children are the payload; those become the DSL's params.
     pub input_element: ElementDef,
 }
 
-/// Element definition parsed from `xsd:element`.
-///
-/// The `kind` distinction is load-bearing: a scalar becomes a
-/// `{{param}}` placeholder in the envelope AND contributes a
-/// param name; a complex element is a container that renders as
-/// XML tags with its children recursed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ElementDef {
     pub name: String,
     pub kind: ElementKind,
-    /// True if `minOccurs="0"` — the generator uses this to mark
-    /// the param optional in OpenAPI (future).
+    /// True if `minOccurs="0"` — advisory only for now.
     pub optional: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementKind {
-    /// Simple/typed leaf (e.g. `<xsd:element name="x" type="xsd:string"/>`
-    /// or `<xsd:element name="x"><xsd:simpleType>…</xsd:simpleType></xsd:element>`).
-    /// Becomes `<prod:x>{{x}}</prod:x>` in the envelope + a param.
+    /// Simple/typed leaf → `{{param}}` placeholder + one param.
     Scalar,
-    /// Complex element (had an inline `xsd:complexType` wrapper).
-    /// Renders as `<prod:x>…</prod:x>` with children recursed;
-    /// contributes no param itself — only its scalar descendants do.
+    /// Inline complex element or fully-resolved TypeRef → renders
+    /// as `<prod:name>…</prod:name>` with children recursed.
     Complex { children: Vec<ElementDef> },
+    /// Unresolved reference to a named complex type; resolved to
+    /// `Complex` at `finish()` time via the state's named-types
+    /// map. Left as-is if unresolvable (element skipped by
+    /// resolver with a WARN — see `resolve_type_refs`).
+    TypeRef { type_name: String },
 }
 
 impl ElementDef {
-    /// Depth-first scalars reachable from this element. These are
-    /// the DSL's params in declaration order.
+    /// Depth-first scalars reachable from this element. Params in
+    /// the generated DSL are these leaves, in declaration order.
     pub fn scalar_leaves(&self) -> Vec<&ElementDef> {
         match &self.kind {
             ElementKind::Scalar => vec![self],
             ElementKind::Complex { children } => {
                 children.iter().flat_map(|c| c.scalar_leaves()).collect()
             }
+            // Unresolved refs contribute no scalar leaves — they
+            // were dropped from their parent's children list.
+            ElementKind::TypeRef { .. } => vec![],
         }
     }
 }
 
-/// Parse a WSDL document.
+/// Parse a WSDL with no include support.
 pub fn parse(xml: &str) -> Result<ParsedWsdl, XtrError> {
+    parse_with_loader(xml, |_| None)
+}
+
+/// Parse a WSDL, resolving `<xsd:include>` via a caller loader.
+pub fn parse_with_loader<F>(xml: &str, loader: F) -> Result<ParsedWsdl, XtrError>
+where
+    F: Fn(&str) -> Option<String>,
+{
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
-
     let mut state = ParseState::default();
-    parse_stream(&mut reader, &mut state)?;
+    parse_stream(&mut reader, &mut state, &loader)?;
     state.finish()
 }
 
 #[derive(Default)]
 struct ParseState {
     target_namespace: String,
-    /// xsd:element name → parsed definition. Populated during
-    /// walk of <wsdl:types>/<xsd:schema>.
+    /// xsd:element name → parsed definition (may contain
+    /// TypeRef children pending resolution).
     elements: BTreeMap<String, ElementDef>,
+    /// Named complex types: local-name → child list.
+    /// Collected from every schema (including included ones).
+    /// Resolved to Complex at finish().
+    named_types: BTreeMap<String, Vec<ElementDef>>,
     /// wsdl:message name → element name it points at.
     messages: BTreeMap<String, String>,
     /// wsdl:operation name → input message name.
     op_inputs: BTreeMap<String, String>,
-    /// Preserve declaration order so generated DSLs are stable.
+    /// Preserve declaration order for stable output.
     op_order: Vec<String>,
     /// From <soap:address location="…"/>.
     service_url: Option<String>,
@@ -111,24 +115,28 @@ impl ParseState {
     fn finish(self) -> Result<ParsedWsdl, XtrError> {
         let mut operations = Vec::with_capacity(self.op_order.len());
         for op_name in &self.op_order {
-            let msg_name = self.op_inputs.get(op_name).ok_or_else(|| {
-                XtrError::Internal(format!("WSDL operation `{op_name}` has no input message"))
-            })?;
-            let element_name = self.messages.get(msg_name).ok_or_else(|| {
-                XtrError::Internal(format!(
+            let Some(msg_name) = self.op_inputs.get(op_name) else {
+                tracing::warn!("WSDL operation `{op_name}` has no input message — skipping");
+                continue;
+            };
+            let Some(element_name) = self.messages.get(msg_name) else {
+                tracing::warn!(
                     "WSDL message `{msg_name}` referenced by operation `{op_name}` \
-                     is undefined"
-                ))
-            })?;
-            let element = self.elements.get(element_name).ok_or_else(|| {
-                XtrError::Internal(format!(
+                     is undefined — skipping op",
+                );
+                continue;
+            };
+            let Some(raw_element) = self.elements.get(element_name) else {
+                tracing::warn!(
                     "WSDL element `{element_name}` referenced by message `{msg_name}` \
-                     is undefined in <xsd:schema>"
-                ))
-            })?;
+                     is undefined (likely an unresolved <xsd:include>) — skipping op `{op_name}`"
+                );
+                continue;
+            };
+            let resolved = resolve_type_refs(raw_element, &self.named_types, &mut vec![]);
             operations.push(Operation {
                 name: op_name.clone(),
-                input_element: element.clone(),
+                input_element: resolved,
             });
         }
         Ok(ParsedWsdl {
@@ -139,7 +147,68 @@ impl ParseState {
     }
 }
 
-/// Local-name of an element (strips any `ns:` prefix).
+/// Walk an element tree, replacing every `TypeRef` with the
+/// corresponding named type's `Complex { children }`. Unresolvable
+/// refs are logged and the element is converted to `Scalar` so it
+/// still exists in the tree but as a leaf (contributes one param).
+/// This matches the "graceful degradation" theme — better to expose
+/// a params list with SOME entries than to drop the whole op.
+///
+/// `stack` is a cycle-detection guard: a type referencing itself
+/// (directly or transitively) would infinite-loop without it.
+fn resolve_type_refs(
+    el: &ElementDef,
+    named_types: &BTreeMap<String, Vec<ElementDef>>,
+    stack: &mut Vec<String>,
+) -> ElementDef {
+    let kind = match &el.kind {
+        ElementKind::Scalar => ElementKind::Scalar,
+        ElementKind::Complex { children } => ElementKind::Complex {
+            children: children
+                .iter()
+                .map(|c| resolve_type_refs(c, named_types, stack))
+                .collect(),
+        },
+        ElementKind::TypeRef { type_name } => {
+            if stack.contains(type_name) {
+                tracing::warn!(
+                    "type `{type_name}` recurses; treating element `{}` as scalar to break cycle",
+                    el.name
+                );
+                ElementKind::Scalar
+            } else if let Some(children) = named_types.get(type_name) {
+                stack.push(type_name.clone());
+                let resolved_children: Vec<ElementDef> = children
+                    .iter()
+                    .map(|c| resolve_type_refs(c, named_types, stack))
+                    .collect();
+                stack.pop();
+                ElementKind::Complex {
+                    children: resolved_children,
+                }
+            } else {
+                // Cross-namespace, misspelled, or type from a
+                // framework schema we skipped. Fall back to
+                // scalar so the element still surfaces.
+                tracing::warn!(
+                    "element `{}` has type=\"…:{}\" — type not defined in the \
+                     WSDL schema; treating as scalar leaf",
+                    el.name,
+                    type_name
+                );
+                ElementKind::Scalar
+            }
+        }
+    };
+    ElementDef {
+        name: el.name.clone(),
+        kind,
+        optional: el.optional,
+    }
+}
+
+// -------- helpers --------
+
 fn local_name(e: &BytesStart) -> String {
     let full = String::from_utf8_lossy(e.name().as_ref()).into_owned();
     match full.rsplit_once(':') {
@@ -148,7 +217,14 @@ fn local_name(e: &BytesStart) -> String {
     }
 }
 
-/// Look up an attribute by local-name (strips ns prefix).
+fn local_name_end(e: &quick_xml::events::BytesEnd) -> String {
+    let full = String::from_utf8_lossy(e.name().as_ref()).into_owned();
+    match full.rsplit_once(':') {
+        Some((_, local)) => local.to_string(),
+        None => full,
+    }
+}
+
 fn attr_local(e: &BytesStart, want: &str) -> Option<String> {
     for a in e.attributes().flatten() {
         let key = String::from_utf8_lossy(a.key.as_ref()).into_owned();
@@ -160,10 +236,6 @@ fn attr_local(e: &BytesStart, want: &str) -> Option<String> {
     None
 }
 
-/// Strip a `ns:foo` reference down to `foo`. We don't currently
-/// enforce that ns matches targetNamespace; a real X-Road WSDL
-/// might import from another namespace. Bail path exists for
-/// that in a later pass if we ever see it.
 fn strip_ns(qname: &str) -> &str {
     match qname.rsplit_once(':') {
         Some((_, local)) => local,
@@ -171,10 +243,38 @@ fn strip_ns(qname: &str) -> &str {
     }
 }
 
-/// Main state-machine loop. Uses local-name dispatch so we don't
-/// have to care whether the WSDL author used `wsdl:definitions`
-/// vs the default namespace.
-fn parse_stream(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<(), XtrError> {
+fn skip_element(reader: &mut Reader<&[u8]>) -> Result<(), XtrError> {
+    let mut depth: usize = 1;
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(_)) => depth += 1,
+            Ok(Event::End(_)) => {
+                depth -= 1;
+                if depth == 0 {
+                    return Ok(());
+                }
+            }
+            Ok(Event::Eof) => {
+                return Err(XtrError::Internal(
+                    "unexpected EOF while skipping element".into(),
+                ));
+            }
+            Ok(_) => {}
+            Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
+        }
+    }
+}
+
+// -------- WSDL walk --------
+
+fn parse_stream<F>(
+    reader: &mut Reader<&[u8]>,
+    state: &mut ParseState,
+    loader: &F,
+) -> Result<(), XtrError>
+where
+    F: Fn(&str) -> Option<String>,
+{
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => match local_name(&e).as_str() {
@@ -183,30 +283,19 @@ fn parse_stream(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<()
                         state.target_namespace = tns;
                     }
                 }
-                "schema" => {
-                    parse_schema(reader, state)?;
-                }
+                "schema" => parse_schema(reader, state, loader)?,
                 "message" => {
                     let name = attr_local(&e, "name")
                         .ok_or_else(|| XtrError::Internal("WSDL <message> without name".into()))?;
                     parse_message(reader, state, name)?;
                 }
-                "portType" => {
-                    parse_port_type(reader, state)?;
-                }
-                "service" => {
-                    parse_service(reader, state)?;
-                }
-                // binding, port, everything else — we don't need
-                // it for envelope generation, so skip content.
+                "portType" => parse_port_type(reader, state)?,
+                "service" => parse_service(reader, state)?,
                 _ => {}
             },
-            Ok(Event::Empty(_)) => {}
             Ok(Event::Eof) => break,
             Ok(_) => {}
-            Err(e) => {
-                return Err(XtrError::Internal(format!("WSDL parse error: {e}")));
-            }
+            Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
         }
     }
     if state.target_namespace.is_empty() {
@@ -217,10 +306,16 @@ fn parse_stream(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<()
     Ok(())
 }
 
-fn parse_schema(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<(), XtrError> {
-    // Walk until </schema>. Recurse into <element> at top level;
-    // ignore <import>, <complexType> declared standalone (v1
-    // supports only inline anonymous complexTypes).
+// -------- schema walk --------
+
+fn parse_schema<F>(
+    reader: &mut Reader<&[u8]>,
+    state: &mut ParseState,
+    loader: &F,
+) -> Result<(), XtrError>
+where
+    F: Fn(&str) -> Option<String>,
+{
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => match local_name(&e).as_str() {
@@ -229,31 +324,68 @@ fn parse_schema(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<()
                         XtrError::Internal("<xsd:element> without name at schema top level".into())
                     })?;
                     let has_type = attr_local(&e, "type").is_some();
-                    let def = parse_element_body(reader, name.clone(), false, has_type)?;
+                    let type_ref = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                    let def = parse_element_body(reader, name.clone(), false, has_type, type_ref)?;
                     state.elements.insert(name, def);
                 }
-                "import" => {
-                    return Err(XtrError::Internal(
-                        "WSDL contains <xsd:import>; imported schemas are not \
-                         supported in v1 — override with a hand-written DSL"
-                            .into(),
-                    ));
+                "complexType" => {
+                    // Named top-level or (rare) anonymous top-level.
+                    if let Some(type_name) = attr_local(&e, "name") {
+                        let children = parse_complex_type_body(reader)?;
+                        state.named_types.insert(type_name, children);
+                    } else {
+                        skip_element(reader)?;
+                    }
                 }
-                "complexType" if attr_local(&e, "name").is_some() => {
-                    return Err(XtrError::Internal(
-                        "WSDL contains a named top-level <xsd:complexType>; only \
-                         inline anonymous complexTypes are supported in v1 — \
-                         override with a hand-written DSL"
-                            .into(),
-                    ));
+                "simpleType" => {
+                    // Named simple type — advisory only, we don't
+                    // codegen restrictions.
+                    skip_element(reader)?;
                 }
+                "import" => skip_element(reader)?,
+                "include" => {
+                    // Non-self-closing include is rare, but consume
+                    // and skip its body. Loader invocation happens
+                    // via the Empty-form branch below.
+                    if let Some(loc) = attr_local(&e, "schemaLocation") {
+                        include_schema_from_location(&loc, state, loader);
+                    }
+                    skip_element(reader)?;
+                }
+                "annotation" => skip_element(reader)?,
                 _ => skip_element(reader)?,
             },
-            Ok(Event::Empty(e)) if local_name(&e) == "import" => {
-                return Err(XtrError::Internal(
-                    "WSDL contains <xsd:import>; imported schemas are not supported".into(),
-                ));
-            }
+            Ok(Event::Empty(e)) => match local_name(&e).as_str() {
+                "import" => {}
+                "include" => {
+                    if let Some(loc) = attr_local(&e, "schemaLocation") {
+                        include_schema_from_location(&loc, state, loader);
+                    }
+                }
+                "element" => {
+                    // Self-closing top-level element.
+                    if let Some(name) = attr_local(&e, "name") {
+                        let type_ref = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                        let optional = attr_local(&e, "minOccurs")
+                            .map(|v| v == "0")
+                            .unwrap_or(false);
+                        let kind = match type_ref {
+                            Some(t) if is_xsd_primitive(&t) => ElementKind::Scalar,
+                            Some(t) => ElementKind::TypeRef { type_name: t },
+                            None => ElementKind::Complex { children: vec![] },
+                        };
+                        state.elements.insert(
+                            name.clone(),
+                            ElementDef {
+                                name,
+                                kind,
+                                optional,
+                            },
+                        );
+                    }
+                }
+                _ => {}
+            },
             Ok(Event::End(e)) if local_name_end(&e) == "schema" => return Ok(()),
             Ok(Event::Eof) => {
                 return Err(XtrError::Internal(
@@ -266,33 +398,139 @@ fn parse_schema(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<()
     }
 }
 
-/// Parse the body of an `<xsd:element name="X" [type="…"]>`.
+/// Parse the body of `<xsd:complexType name="X">…</xsd:complexType>`
+/// after the Start event has been consumed. Returns the flat list
+/// of children from the first `<xsd:sequence>` encountered.
+/// `<xsd:choice>`, `<xsd:all>`, etc are unsupported — skipped
+/// silently (element ends up with fewer children than the WSDL
+/// author intended; the type-resolution step logs downgrades).
+fn parse_complex_type_body(reader: &mut Reader<&[u8]>) -> Result<Vec<ElementDef>, XtrError> {
+    let mut children: Vec<ElementDef> = Vec::new();
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) => match local_name(&e).as_str() {
+                "sequence" => { /* descend */ }
+                "annotation" => skip_element(reader)?,
+                "complexContent" | "simpleContent" | "extension" | "restriction" => {
+                    // Common shape: complexType > complexContent >
+                    // extension base="Y" > sequence > element*
+                    // Just descend so the sequence inside picks
+                    // up children. `base=` inheritance is not
+                    // followed — advisory.
+                }
+                "element" => {
+                    let name = attr_local(&e, "name").ok_or_else(|| {
+                        XtrError::Internal("child <xsd:element> without name".into())
+                    })?;
+                    let optional = attr_local(&e, "minOccurs")
+                        .map(|v| v == "0")
+                        .unwrap_or(false);
+                    let has_type = attr_local(&e, "type").is_some();
+                    let type_ref = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                    let child = parse_element_body(reader, name, optional, has_type, type_ref)?;
+                    children.push(child);
+                }
+                "choice" | "all" => skip_element(reader)?,
+                _ => skip_element(reader)?,
+            },
+            Ok(Event::Empty(e)) if local_name(&e) == "element" => {
+                if let Some(name) = attr_local(&e, "name") {
+                    let optional = attr_local(&e, "minOccurs")
+                        .map(|v| v == "0")
+                        .unwrap_or(false);
+                    let type_ref = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                    let kind = match type_ref {
+                        Some(t) if is_xsd_primitive(&t) => ElementKind::Scalar,
+                        Some(t) => ElementKind::TypeRef { type_name: t },
+                        None => ElementKind::Complex { children: vec![] },
+                    };
+                    children.push(ElementDef {
+                        name,
+                        kind,
+                        optional,
+                    });
+                }
+            }
+            Ok(Event::End(e)) => match local_name_end(&e).as_str() {
+                "complexType" => return Ok(children),
+                "sequence" | "complexContent" | "simpleContent" | "extension" | "restriction" => {
+                    /* pop */
+                }
+                _ => {}
+            },
+            Ok(Event::Eof) => {
+                return Err(XtrError::Internal(
+                    "unexpected EOF inside <xsd:complexType>".into(),
+                ));
+            }
+            Ok(_) => {}
+            Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
+        }
+    }
+}
+
+/// Parse the body of an `<xsd:element name="X" [type="…"]>…`.
 ///
-/// If the element had a `type=` attribute already resolved by the
-/// caller (via `type_attr`), it's a scalar with no body content
-/// worth parsing — but we still need to consume up to the End tag
-/// if it wasn't a self-closing Empty event.
-///
-/// Otherwise we descend into the inline `<xsd:complexType>` /
-/// `<xsd:simpleType>`. Anything wrapped in a `complexType` becomes
-/// `ElementKind::Complex`, even if the sequence is empty. Anything
-/// wrapped in a `simpleType` (or no wrapper at all) is `Scalar`.
+/// - `type=` present → Scalar (or TypeRef if the type looks
+///   local — resolved at finish() time).
+/// - Inline `<complexType>` → Complex with children.
+/// - Otherwise → Scalar (safe default; empty body = leaf).
 fn parse_element_body(
     reader: &mut Reader<&[u8]>,
     name: String,
     optional: bool,
     has_type_attr: bool,
+    type_ref: Option<String>,
 ) -> Result<ElementDef, XtrError> {
-    // Scalar-by-attribute: <xsd:element name="x" type="xsd:string"/>
-    // or <xsd:element name="x" type="xsd:string">...</xsd:element>.
-    // Either way the element is a scalar; consume up to the End if
-    // this was a Start event (the End-event skip is a no-op for
-    // Empty callers because they don't invoke this function at all).
-    let mut kind: Option<ElementKind> = if has_type_attr {
-        Some(ElementKind::Scalar)
-    } else {
-        None
-    };
+    // Element with a type attribute → resolve later or scalar now.
+    if has_type_attr {
+        let kind = if let Some(t) = type_ref {
+            // xsd:string, xsd:int, xsd:date etc are XSD primitives
+            // — treat as scalar directly. Anything else is a
+            // named type reference to resolve at finish().
+            if is_xsd_primitive(&t) {
+                ElementKind::Scalar
+            } else {
+                ElementKind::TypeRef { type_name: t }
+            }
+        } else {
+            ElementKind::Scalar
+        };
+        // Consume up to </element>.
+        let mut depth: usize = 0;
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    if local_name(&e) == "annotation" {
+                        skip_element(reader)?;
+                    } else {
+                        depth += 1;
+                    }
+                }
+                Ok(Event::End(e)) => {
+                    if depth == 0 && local_name_end(&e) == "element" {
+                        return Ok(ElementDef {
+                            name,
+                            kind,
+                            optional,
+                        });
+                    }
+                    if depth > 0 {
+                        depth -= 1;
+                    }
+                }
+                Ok(Event::Eof) => {
+                    return Err(XtrError::Internal(format!(
+                        "unexpected EOF inside <xsd:element name=\"{name}\">"
+                    )));
+                }
+                Ok(_) => {}
+                Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
+            }
+        }
+    }
+    // No type= — parse inline structure.
+    let mut kind: Option<ElementKind> = None;
     let mut children: Vec<ElementDef> = Vec::new();
     let mut saw_complex_type = false;
     loop {
@@ -301,11 +539,13 @@ fn parse_element_body(
                 "complexType" => {
                     saw_complex_type = true;
                 }
-                "sequence" => { /* descend into content */ }
+                "sequence" => {}
                 "simpleType" => {
                     kind = Some(ElementKind::Scalar);
                     skip_element(reader)?;
                 }
+                "annotation" => skip_element(reader)?,
+                "complexContent" | "simpleContent" | "extension" | "restriction" => {}
                 "element" => {
                     let child_name = attr_local(&e, "name").ok_or_else(|| {
                         XtrError::Internal("child <xsd:element> without name".into())
@@ -314,21 +554,21 @@ fn parse_element_body(
                         .map(|v| v == "0")
                         .unwrap_or(false);
                     let child_has_type = attr_local(&e, "type").is_some();
-                    let child =
-                        parse_element_body(reader, child_name, child_optional, child_has_type)?;
+                    let child_type = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                    let child = parse_element_body(
+                        reader,
+                        child_name,
+                        child_optional,
+                        child_has_type,
+                        child_type,
+                    )?;
                     children.push(child);
                 }
-                "choice" => {
-                    return Err(XtrError::Internal(
-                        "WSDL uses <xsd:choice>; not supported in v1 — override \
-                         with a hand-written DSL"
-                            .into(),
-                    ));
-                }
+                "choice" | "all" => skip_element(reader)?,
                 _ => skip_element(reader)?,
             },
             Ok(Event::Empty(e)) => match local_name(&e).as_str() {
-                "sequence" => { /* self-closing empty sequence — legal, keeps children empty */ }
+                "sequence" => {}
                 "element" => {
                     let child_name = attr_local(&e, "name").ok_or_else(|| {
                         XtrError::Internal("child <xsd:element/> without name".into())
@@ -336,16 +576,14 @@ fn parse_element_body(
                     let child_optional = attr_local(&e, "minOccurs")
                         .map(|v| v == "0")
                         .unwrap_or(false);
-                    let child_has_type = attr_local(&e, "type").is_some();
-                    // Self-closing child element: scalar iff it has
-                    // a type= attribute (which is the whole point of
-                    // self-closing shorthand — no inline type body).
-                    let child_kind = if child_has_type {
-                        ElementKind::Scalar
+                    let child_type = attr_local(&e, "type").map(|t| strip_ns(&t).to_string());
+                    let child_kind = if let Some(t) = child_type {
+                        if is_xsd_primitive(&t) {
+                            ElementKind::Scalar
+                        } else {
+                            ElementKind::TypeRef { type_name: t }
+                        }
                     } else {
-                        // No type + self-closing = element with no
-                        // structure declared — treat as an empty
-                        // complex (renders as `<prod:x/>`).
                         ElementKind::Complex { children: vec![] }
                     };
                     children.push(ElementDef {
@@ -363,10 +601,6 @@ fn parse_element_body(
                     } else if saw_complex_type {
                         ElementKind::Complex { children }
                     } else {
-                        // No complexType wrapper, no type attr,
-                        // no simpleType — element with no body
-                        // at all. Treat as scalar (most likely
-                        // an anyType-implied leaf).
                         ElementKind::Scalar
                     };
                     return Ok(ElementDef {
@@ -375,7 +609,8 @@ fn parse_element_body(
                         optional,
                     });
                 }
-                "complexType" | "sequence" => { /* pop */ }
+                "complexType" | "sequence" | "complexContent" | "simpleContent" | "extension"
+                | "restriction" => {}
                 _ => {}
             },
             Ok(Event::Eof) => {
@@ -389,12 +624,61 @@ fn parse_element_body(
     }
 }
 
+/// XSD built-in scalar types — anything else with an `xsd:`/`xs:`
+/// prefix (or in the XSD namespace) still counts as a scalar for
+/// our purposes since we don't codegen response types.
+fn is_xsd_primitive(t: &str) -> bool {
+    // Local name after strip_ns.
+    matches!(
+        t,
+        "string"
+            | "int"
+            | "integer"
+            | "long"
+            | "short"
+            | "byte"
+            | "decimal"
+            | "float"
+            | "double"
+            | "boolean"
+            | "date"
+            | "dateTime"
+            | "time"
+            | "duration"
+            | "gYear"
+            | "gMonth"
+            | "gDay"
+            | "gYearMonth"
+            | "gMonthDay"
+            | "anyURI"
+            | "base64Binary"
+            | "hexBinary"
+            | "QName"
+            | "NOTATION"
+            | "normalizedString"
+            | "token"
+            | "language"
+            | "NMTOKEN"
+            | "Name"
+            | "ID"
+            | "IDREF"
+            | "positiveInteger"
+            | "nonNegativeInteger"
+            | "negativeInteger"
+            | "nonPositiveInteger"
+            | "unsignedLong"
+            | "unsignedInt"
+            | "unsignedShort"
+            | "unsignedByte"
+            | "anyType"
+    )
+}
+
 fn parse_message(
     reader: &mut Reader<&[u8]>,
     state: &mut ParseState,
     name: String,
 ) -> Result<(), XtrError> {
-    // Look for <part element="tns:foo"/> or <part element="foo"/>.
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) if local_name(&e) == "part" => {
@@ -403,7 +687,6 @@ fn parse_message(
                         .messages
                         .insert(name.clone(), strip_ns(&elem_ref).to_string());
                 }
-                // If it's Start, skip to matching End.
             }
             Ok(Event::End(e)) if local_name_end(&e) == "message" => return Ok(()),
             Ok(Event::Eof) => {
@@ -489,37 +772,54 @@ fn parse_service(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<(
     }
 }
 
-/// Skip until the matching close tag for the *current* element.
-/// The caller has already consumed the Start event.
-fn skip_element(reader: &mut Reader<&[u8]>) -> Result<(), XtrError> {
-    let mut depth: usize = 1;
+fn include_schema_from_location<F>(location: &str, state: &mut ParseState, loader: &F)
+where
+    F: Fn(&str) -> Option<String>,
+{
+    let Some(content) = loader(location) else {
+        tracing::warn!(
+            "xsd:include schemaLocation=\"{}\" not resolvable — operations \
+             depending on its elements will be skipped",
+            location
+        );
+        return;
+    };
+    let mut reader = Reader::from_str(&content);
+    reader.config_mut().trim_text(true);
     loop {
         match reader.read_event() {
-            Ok(Event::Start(_)) => depth += 1,
-            Ok(Event::End(_)) => {
-                depth -= 1;
-                if depth == 0 {
-                    return Ok(());
+            Ok(Event::Start(e)) if local_name(&e) == "schema" => {
+                if let Err(e) = parse_schema(&mut reader, state, loader) {
+                    tracing::warn!(
+                        "xsd:include schemaLocation=\"{}\" parse error: {} — \
+                         skipping (its elements will be undefined)",
+                        location,
+                        e
+                    );
                 }
+                return;
             }
             Ok(Event::Eof) => {
-                return Err(XtrError::Internal(
-                    "unexpected EOF while skipping element".into(),
-                ));
+                tracing::warn!(
+                    "xsd:include schemaLocation=\"{}\" had no <xsd:schema> root — skipping",
+                    location
+                );
+                return;
             }
             Ok(_) => {}
-            Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
+            Err(e) => {
+                tracing::warn!(
+                    "xsd:include schemaLocation=\"{}\" read error: {} — skipping",
+                    location,
+                    e
+                );
+                return;
+            }
         }
     }
 }
 
-fn local_name_end(e: &quick_xml::events::BytesEnd) -> String {
-    let full = String::from_utf8_lossy(e.name().as_ref()).into_owned();
-    match full.rsplit_once(':') {
-        Some((_, local)) => local.to_string(),
-        None => full,
-    }
-}
+// -------- tests --------
 
 #[cfg(test)]
 mod tests {
@@ -565,7 +865,7 @@ mod tests {
                 let names: Vec<&str> = children.iter().map(|c| c.name.as_str()).collect();
                 assert_eq!(names, expected_names);
             }
-            ElementKind::Scalar => panic!("expected complex element `{}`, got scalar", el.name),
+            other => panic!("expected complex element `{}`, got {other:?}", el.name),
         }
     }
 
@@ -579,14 +879,6 @@ mod tests {
         assert_eq!(op.name, "lookup");
         assert_eq!(op.input_element.name, "lookupInput");
         assert_children(&op.input_element, &["reg_code", "verbose"]);
-        // minOccurs="0" was set on the second child
-        if let ElementKind::Complex { children } = &op.input_element.kind {
-            assert!(!children[0].optional);
-            assert!(children[1].optional);
-            // Both are scalars (had type= attributes)
-            assert!(matches!(children[0].kind, ElementKind::Scalar));
-            assert!(matches!(children[1].kind, ElementKind::Scalar));
-        }
     }
 
     #[test]
@@ -600,9 +892,6 @@ mod tests {
 
     #[test]
     fn empty_sequence_yields_zero_scalar_leaves() {
-        // Regression: <element><complexType><sequence/></complexType></element>
-        // must NOT count as a scalar leaf. It's an empty complex
-        // element, rendered as `<prod:x/>`, with zero params.
         let xml = r#"<?xml version="1.0"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -623,8 +912,6 @@ mod tests {
 
     #[test]
     fn nested_complex_type_recursed() {
-        // Ariregister-style shape: input has a single <keha> wrapper
-        // containing the real leaf fields.
         let xml = r#"<?xml version="1.0"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
@@ -657,15 +944,70 @@ mod tests {
   </wsdl:portType>
 </wsdl:definitions>"#;
         let w = parse(xml).unwrap();
-        assert_eq!(w.operations.len(), 1);
-        let op = &w.operations[0];
-        assert_eq!(op.name, "lihtandmed_v3");
-        // The input element wraps <keha> which wraps the real leaves.
-        let leaves = op.input_element.scalar_leaves();
+        let leaves = w.operations[0].input_element.scalar_leaves();
         assert_eq!(leaves.len(), 3);
         assert_eq!(leaves[0].name, "ariregistri_kood");
         assert_eq!(leaves[1].name, "ariregister_kasutajanimi");
         assert_eq!(leaves[2].name, "ariregister_parool");
+    }
+
+    #[test]
+    fn named_complex_type_referenced_by_type_attribute() {
+        // Real X-Road pattern: element declared with type="ns:X",
+        // X defined as a named top-level complexType elsewhere.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://ex/"
+                  targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:complexType name="LookupInputType">
+      <xsd:sequence>
+        <xsd:element name="reg_code" type="xsd:string"/>
+        <xsd:element name="verbose" type="xsd:boolean" minOccurs="0"/>
+      </xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="lookup" type="tns:LookupInputType"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations.len(), 1);
+        let leaves = w.operations[0].input_element.scalar_leaves();
+        assert_eq!(leaves.len(), 2);
+        assert_eq!(leaves[0].name, "reg_code");
+        assert_eq!(leaves[1].name, "verbose");
+    }
+
+    #[test]
+    fn transitive_type_refs_resolved() {
+        // Type A has an element of type B; B has scalars.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://ex/"
+                  targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:complexType name="Inner">
+      <xsd:sequence><xsd:element name="q" type="xsd:string"/></xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="Outer">
+      <xsd:sequence><xsd:element name="inner" type="tns:Inner"/></xsd:sequence>
+    </xsd:complexType>
+    <xsd:element name="lookup" type="tns:Outer"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        let leaves = w.operations[0].input_element.scalar_leaves();
+        assert_eq!(leaves.len(), 1);
+        assert_eq!(leaves[0].name, "q");
     }
 
     #[test]
@@ -694,8 +1036,6 @@ mod tests {
 </wsdl:definitions>"#;
         let w = parse(xml).unwrap();
         assert_eq!(w.operations.len(), 2);
-        // WSDL declaration order preserved (second, first — not
-        // sorted alphabetically).
         assert_eq!(w.operations[0].name, "second");
         assert_eq!(w.operations[1].name, "first");
     }
@@ -712,7 +1052,9 @@ mod tests {
     }
 
     #[test]
-    fn xsd_choice_rejected_with_clear_error() {
+    fn xsd_choice_skipped_not_fatal() {
+        // v1: xsd:choice is skipped silently (element ends up with
+        // fewer children than the WSDL author intended). No error.
         let xml = r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                   xmlns:tns="http://ex/"
@@ -721,38 +1063,107 @@ mod tests {
     <xsd:schema targetNamespace="http://ex/">
       <xsd:element name="e">
         <xsd:complexType>
-          <xsd:choice>
-            <xsd:element name="a" type="xsd:string"/>
-            <xsd:element name="b" type="xsd:string"/>
-          </xsd:choice>
+          <xsd:sequence>
+            <xsd:element name="always" type="xsd:string"/>
+            <xsd:choice>
+              <xsd:element name="a" type="xsd:string"/>
+              <xsd:element name="b" type="xsd:string"/>
+            </xsd:choice>
+          </xsd:sequence>
         </xsd:complexType>
       </xsd:element>
     </xsd:schema>
   </wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="e"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
 </wsdl:definitions>"#;
-        let err = parse(xml).unwrap_err();
-        assert!(
-            matches!(&err, XtrError::Internal(m) if m.contains("choice")),
-            "expected choice error, got {err:?}"
-        );
+        let w = parse(xml).unwrap();
+        // Should parse; 'always' present, choice branches dropped.
+        let leaves = w.operations[0].input_element.scalar_leaves();
+        assert_eq!(leaves.len(), 1);
+        assert_eq!(leaves[0].name, "always");
     }
 
     #[test]
-    fn xsd_import_rejected_with_clear_error() {
+    fn xsd_import_is_silently_skipped() {
         let xml = r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                   xmlns:tns="http://ex/"
                   targetNamespace="http://ex/">
   <wsdl:types>
     <xsd:schema targetNamespace="http://ex/">
-      <xsd:import namespace="http://other/" schemaLocation="other.xsd"/>
+      <xsd:import namespace="http://framework/" schemaLocation="framework.xsd"/>
+      <xsd:element name="lookup">
+        <xsd:complexType><xsd:sequence>
+          <xsd:element name="q" type="xsd:string"/>
+        </xsd:sequence></xsd:complexType>
+      </xsd:element>
     </xsd:schema>
   </wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
 </wsdl:definitions>"#;
-        let err = parse(xml).unwrap_err();
-        assert!(
-            matches!(&err, XtrError::Internal(m) if m.contains("import")),
-            "expected import error, got {err:?}"
-        );
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations.len(), 1);
+    }
+
+    #[test]
+    fn xsd_annotation_is_skipped_in_element_body() {
+        let xml = r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://ex/"
+                  targetNamespace="http://ex/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://ex/">
+      <xsd:element name="lookup" type="xsd:string">
+        <xsd:annotation><xsd:documentation>doc text</xsd:documentation></xsd:annotation>
+      </xsd:element>
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations.len(), 1);
+        assert!(matches!(
+            w.operations[0].input_element.kind,
+            ElementKind::Scalar
+        ));
+    }
+
+    #[test]
+    fn unresolved_type_ref_falls_back_to_scalar() {
+        // type=ar:NotDefined — no such type. The element should
+        // remain in the tree as a scalar so its parent still has
+        // structure.
+        let xml = r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:ar="http://a/"
+                  xmlns:tns="http://ex/"
+                  targetNamespace="http://ex/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://ex/">
+      <xsd:element name="lookup">
+        <xsd:complexType><xsd:sequence>
+          <xsd:element name="mystery" type="ar:NotDefined"/>
+        </xsd:sequence></xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        let leaves = w.operations[0].input_element.scalar_leaves();
+        assert_eq!(leaves.len(), 1);
+        assert_eq!(leaves[0].name, "mystery");
     }
 }

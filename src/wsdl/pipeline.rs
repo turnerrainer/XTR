@@ -21,10 +21,10 @@
 
 use crate::error::XtrError;
 use crate::wsdl::generator::{generate_all, WsdlMeta};
-use crate::wsdl::parser::parse;
+use crate::wsdl::parser::parse_with_loader;
 use crate::wsdl::MARKER;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Scan `wsdl_watch_dir` for `<group>/*.wsdl` and write generated
 /// DSLs into `dsl_path`. Idempotent — running twice is safe as
@@ -92,7 +92,8 @@ struct Ingested {
 fn ingest_one(wsdl_path: &Path, group: &str, dsl_path: &Path) -> Result<Ingested, XtrError> {
     let bytes = fs::read_to_string(wsdl_path)
         .map_err(|e| XtrError::Internal(format!("reading WSDL {}: {}", wsdl_path.display(), e)))?;
-    let wsdl = parse(&bytes)?;
+    let wsdl_dir = wsdl_path.parent().map(PathBuf::from).unwrap_or_default();
+    let wsdl = parse_with_loader(&bytes, |location| resolve_local_schema(&wsdl_dir, location))?;
     let meta = load_meta_sidecar(wsdl_path)?;
     let group_dir = dsl_path.join(group);
     fs::create_dir_all(&group_dir).map_err(|e| {
@@ -140,6 +141,28 @@ fn is_hand_written_override(path: &Path) -> Result<bool, XtrError> {
             path.display(),
             e
         ))),
+    }
+}
+
+/// Resolve an `<xsd:include schemaLocation="URL-or-path"/>` reference
+/// against the local filesystem. Looks for the *filename portion* of
+/// the schemaLocation in the same directory as the WSDL. Absent →
+/// None (parser logs a WARN, operations using it get skipped).
+///
+/// This is deliberately offline — XTR never fetches over HTTP at
+/// boot. Operators wanting Ariregister-style WSDLs must download
+/// the included XSDs alongside the WSDL (one-liner:
+/// `for u in $(grep -oE 'schemaLocation="[^"]+"' foo.wsdl | cut -d'"' -f2); do curl -O "$u"; done`).
+fn resolve_local_schema(wsdl_dir: &Path, location: &str) -> Option<String> {
+    // Take the last path segment of the URL/path.
+    let filename = location
+        .rsplit(|c| c == '/' || c == '\\')
+        .next()
+        .filter(|s| !s.is_empty())?;
+    let candidate = wsdl_dir.join(filename);
+    match fs::read_to_string(&candidate) {
+        Ok(content) => Some(content),
+        Err(_) => None,
     }
 }
 
