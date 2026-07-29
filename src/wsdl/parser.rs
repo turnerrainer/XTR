@@ -515,9 +515,7 @@ fn parse_element_body(
                             optional,
                         });
                     }
-                    if depth > 0 {
-                        depth -= 1;
-                    }
+                    depth = depth.saturating_sub(1);
                 }
                 Ok(Event::Eof) => {
                     return Err(XtrError::Internal(format!(

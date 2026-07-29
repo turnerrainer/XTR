@@ -156,14 +156,11 @@ fn is_hand_written_override(path: &Path) -> Result<bool, XtrError> {
 fn resolve_local_schema(wsdl_dir: &Path, location: &str) -> Option<String> {
     // Take the last path segment of the URL/path.
     let filename = location
-        .rsplit(|c| c == '/' || c == '\\')
+        .rsplit(['/', '\\'])
         .next()
         .filter(|s| !s.is_empty())?;
     let candidate = wsdl_dir.join(filename);
-    match fs::read_to_string(&candidate) {
-        Ok(content) => Some(content),
-        Err(_) => None,
-    }
+    fs::read_to_string(&candidate).ok()
 }
 
 /// Try `<wsdl>.meta.yaml` or `<wsdl>.meta.yml` next to the WSDL.
