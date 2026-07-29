@@ -72,10 +72,18 @@ fn generate_one(
             yaml.push('\n');
         }
     }
+    // X-Road WSDLs use a well-known placeholder ("TURVASERVER" —
+    // Estonian for "security server") in <soap:address location=>
+    // to signal "this service is accessed via YOUR Security Server,
+    // not this URL." Drop the URL in that case so XTR's executor
+    // routes through the configured security_server instead of
+    // trying to POST to a placeholder host.
     if let Some(url) = wsdl.service_url.as_deref() {
-        yaml.push_str("service: ");
-        yaml.push_str(url);
-        yaml.push('\n');
+        if !is_xroad_placeholder_url(url) {
+            yaml.push_str("service: ");
+            yaml.push_str(url);
+            yaml.push('\n');
+        }
     }
     // Method is always POST for SOAP-over-HTTP. Task 013 v5
     // memory: XTR is POST-only by design.
@@ -145,6 +153,17 @@ fn build_xroad_envelope(wsdl: &ParsedWsdl, op: &Operation, meta: &WsdlMeta) -> S
     env.push_str("</soapenv:Body>\n");
     env.push_str("</soapenv:Envelope>");
     env
+}
+
+/// X-Road WSDLs use "TURVASERVER" (or a case variant) as the host
+/// portion of `<soap:address location=>` to signal that the caller
+/// must route through their own Security Server. Recognise the
+/// pattern so we don't emit a broken `service:` URL.
+fn is_xroad_placeholder_url(url: &str) -> bool {
+    let lower = url.to_ascii_lowercase();
+    lower.contains("turvaserver")
+        || lower.contains("security-server")
+        || lower.contains("your-security-server")
 }
 
 /// Recursively render the input element as `<prod:X>...</prod:X>`.
