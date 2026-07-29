@@ -3,11 +3,11 @@
 Rust re-implementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
 Domain design lives in
 [`docs/DESIGN.md`](https://github.com/turnerrainer/XTR/blob/dev/docs/DESIGN.md);
-the v0.2.0-rc.1 MVP slice implements it. The scaffold gives you
+the v0.2.0-rc.2 MVP slice implements it. The scaffold gives you
 the standards, the CI pipeline, and the release process from day
 one.
 
-**Version:** 0.2.0-rc.1 (first publishable release candidate) · **License:** Apache-2.0 · **Repository:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
+**Version:** 0.2.0-rc.2 (first publishable release candidate) · **License:** Apache-2.0 · **Repository:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
 
 ## What ships in the scaffold
 

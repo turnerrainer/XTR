@@ -8,9 +8,9 @@ Live smoke test loads all 6 shipped DSL samples, serves
 `/health` + `/api` (with the enhanced XtrError schema), and
 handles a real Ariregister SOAP Fault as `upstream_soap_fault`.
 **Branch**: `dev` — task 002 done, hardening sweep landed
-(tasks 003, 005, 010, 011, 012 + follow-ups). `v0.2.0-rc.1`
+(tasks 003, 005, 010, 011, 012 + follow-ups). `v0.2.0-rc.2`
 release-prep landed 2026-07-28; awaits tag push.
-**Release**: `v0.2.0-rc.1` prepared. Cargo.toml, VERSION,
+**Release**: `v0.2.0-rc.2` prepared. Cargo.toml, VERSION,
 docker-compose.yml, README, book, HANDOFF, CHANGELOG all
 bumped. Tag push is the operator's move.
 
@@ -42,7 +42,7 @@ Currently implements (per DESIGN.md §8):
 ## What this repo does NOT have yet
 
 - Published container image — the publish workflow is wired up
-  and passes locally; ships on `git push origin v0.2.0-rc.1`
+  and passes locally; ships on `git push origin v0.2.0-rc.2`
   after phase J of task 002.
 - Full Docker Hub / GHCR setup — see "Before the first tag
   push" below (one-time operator setup).
@@ -69,14 +69,14 @@ Currently implements (per DESIGN.md §8):
 
 1. ✅ **Task 001 (done)**: analysed original XTR (JVM). See
    [`docs/DESIGN.md`](./docs/DESIGN.md).
-2. ✅ **Task 002 (done)**: implemented the v0.2.0-rc.1 MVP
+2. ✅ **Task 002 (done)**: implemented the v0.2.0-rc.2 MVP
    slice per DESIGN.md §8. 10 phases (A–J), 29 tests, 12 of
    17 JVM bugs fixed. See
-   [`tasks/done/002-implement-mvp-v0.2.0-rc.1.md`](./tasks/done/002-implement-mvp-v0.2.0-rc.1.md).
+   [`tasks/done/002-implement-mvp-v0.2.0-rc.2.md`](./tasks/done/002-implement-mvp-v0.2.0-rc.2.md).
 3. **Task 009 — release prep**: metadata bump (Cargo.toml,
    VERSION, CHANGELOG, docker-compose image tag, docs) to
-   flip to `0.2.0-rc.1`. Precedes the first tag push.
-4. **First release cut**: `v0.2.0-rc.1` after task 009 merges.
+   flip to `0.2.0-rc.2`. Precedes the first tag push.
+4. **First release cut**: `v0.2.0-rc.2` after task 009 merges.
 5. **Iterate** in `0.x` line on `dev`. `main` reserved for
    `v1.0.0`. Post-MVP work is organised into **epics** under
    `tasks/backlog/epic-*/` (see below). v0.3+ roadmap lives
@@ -86,7 +86,7 @@ Currently implements (per DESIGN.md §8):
 
 | Task | Location | Status |
 |---|---|---|
-| **009** — release prep for v0.2.0-rc.1 | [`tasks/backlog/009-release-prep-v0.2.0-rc.1.md`](./tasks/backlog/009-release-prep-v0.2.0-rc.1.md) | Next up |
+| **009** — release prep for v0.2.0-rc.2 | [`tasks/backlog/009-release-prep-v0.2.0-rc.2.md`](./tasks/backlog/009-release-prep-v0.2.0-rc.2.md) | Next up |
 | **Epic — X-Road protocol compliance** | [`tasks/backlog/epic-xroad-protocol-compliance/`](./tasks/backlog/epic-xroad-protocol-compliance/) | 3 open tasks (003, 004, 005) |
 | **Epic — Operator onboarding** | [`tasks/backlog/epic-operator-onboarding/`](./tasks/backlog/epic-operator-onboarding/) | 1 open task (006) |
 | **Epic — Testing infrastructure** | [`tasks/backlog/epic-testing-infrastructure/`](./tasks/backlog/epic-testing-infrastructure/) | 2 open tasks (007, 008) |
@@ -114,7 +114,7 @@ Same one-time setup as Ruuter-on-Rust required (see STANDARDS.md §11):
 
 | Topic | File |
 |---|---|
-| **Domain design — what XTR-on-Rust must do (v0.2.0-rc.1 MVP scope + roadmap)** | [`docs/DESIGN.md`](./docs/DESIGN.md) |
+| **Domain design — what XTR-on-Rust must do (v0.2.0-rc.2 MVP scope + roadmap)** | [`docs/DESIGN.md`](./docs/DESIGN.md) |
 | Every generic rule this project follows | [`STANDARDS.md`](./STANDARDS.md) |
 | CI security gate | [`.github/workflows/security.yml`](./.github/workflows/security.yml), [`deny.toml`](./deny.toml), [`.cargo/audit.toml`](./.cargo/audit.toml) |
 | Publish workflow | [`.github/workflows/publish.yml`](./.github/workflows/publish.yml) |

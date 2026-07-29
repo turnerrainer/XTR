@@ -12,13 +12,13 @@ use std::time::Duration;
 use super::plain::{map_send_error, parse_method, read_bounded, truncate};
 
 #[derive(Clone)]
-pub struct SsExecutor {
+pub struct SecurityServerExecutor {
     client: Client,
     url: String,
     max_response_bytes: usize,
 }
 
-impl SsExecutor {
+impl SecurityServerExecutor {
     pub fn new(cfg: &SecurityServer, password: &str, limits: &Limits) -> Result<Self, XtrError> {
         let pkcs12 = std::fs::read(&cfg.keystore_path).map_err(|e| {
             XtrError::KeystoreLoadFailed(format!(
@@ -36,7 +36,7 @@ impl SsExecutor {
             .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
 
         tracing::info!(
-            "SS executor initialised (keystore={}, url={})",
+            "Security Server executor initialised (keystore={}, url={})",
             cfg.keystore_path.display(),
             cfg.url
         );
@@ -50,7 +50,7 @@ impl SsExecutor {
 
     pub async fn execute(&self, method: &str, envelope: String) -> Result<String, XtrError> {
         let method = parse_method(method)?;
-        tracing::debug!("SS mTLS {} {}", method, self.url);
+        tracing::debug!("Security Server mTLS {} {}", method, self.url);
         let resp = self
             .client
             .request(method, &self.url)

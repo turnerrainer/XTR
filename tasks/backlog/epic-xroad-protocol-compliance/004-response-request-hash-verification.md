@@ -15,14 +15,14 @@ network path between XTR and the Security Server.
 
 Every X-Road response includes a `<xroad:requestHash>` element in
 its SOAP header — a hash of the outbound request's headers,
-computed by the responding SS. Verifying that the response's hash
+computed by the responding Security Server. Verifying that the response's hash
 matches the request we actually sent proves the response is
 genuinely a reply to *our* request and not a swap by a
 compromised path segment.
 
 The JVM XTR skips this. XTR-on-Rust's MVP also skips it — the
 perimeter-trust assumption (XTR runs inside the Buerostack
-network, next to its own trusted SS) makes it acceptable but not
+network, next to its own trusted Security Server) makes it acceptable but not
 best-practice.
 
 ## Fix
@@ -57,13 +57,13 @@ best-practice.
 
 ## Dependencies
 
-- Task 007 (mock X-Road SS fixtures) — the mock needs to compute
+- Task 007 (mock X-Road Security Server fixtures) — the mock needs to compute
   and return valid `<xroad:requestHash>` values, otherwise every
   integration test breaks the moment this check lands.
 
 ## Non-goals
 
-- Verifying the SS's signature on the response (that's the SS's
+- Verifying the Security Server's signature on the response (that's the Security Server's
   contract with us, not something XTR should re-verify).
 - Any change to `<xroad:client>` or `<xroad:service>` header
   handling.

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="detailandmed_x6v4_Vastus">
+        <xsd:sequence>
+            <xsd:element name="ettevotjad" type="ar:detailandmed_x6v4_ettevotjad" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtjad</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="leitud_ettevotjate_arv" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Leitud ettevõtete arv</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_x6v4_ettevotjad">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="item" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Maakohtu_poolt_registreeritud_isik" type="ar:detailandmed_x6v4_ettevotja">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõte</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_x6v4_ettevotja">
+        <xsd:sequence>
+            <xsd:element name="ariregistri_kood" type="xsd:integer" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Maakohtu_poolt_registreeritud_isik_ariregistrikood">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtte äriregistri kood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ettevotja_id" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtte sisemine ID</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="nimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtja nimetus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="kmkr_number" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtja käibemaksukohustuslase number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="yldandmed" type="ar:detailandmed_x6v3_yldandmed" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Üldandmed</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="isikuandmed" type="ar:detailandmed_x6v4_isikuandmed" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Isikuandmed</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kommertspandiandmed" type="ar:detailandmed_x6v3_kommertspandiandmed" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kommertspandiandmed</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="menetluses_avaldused" type="ar:detailandmed_x6v3_dokumendid" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Menetluses avaldused</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maarused" type="ar:detailandmed_x6v3_maarused" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määrused</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="registrikaardid" type="ar:detailandmed_x6v3_registrikaardid" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Registrikaardid</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_x6v4_isikuandmed">
+        <xsd:sequence>
+            <xsd:element name="kaardile_kantud_isikud" type="ar:detailandmed_x6v3_kaardile_kantud_isikud" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaardil_oleva_isiku_andmed">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kaardile kantud isikud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="esindusoiguse_normaalregulatsioonid" type="ar:detailandmed_x6v3_esindusoiguse_normaalregulatsioonid" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Esindusõiguse normaalregulatsioon</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="esindusoiguse_eritingimused" type="ar:detailandmed_x6v3_esindusoiguse_eritingimused" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Esindusoiguse_erisus">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Esindusõiguse eritingimused</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="osapandid_tingimuslikud_voorandamised" type="ar:detailandmed_x6v3_osa_pandid" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Osa_pant">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Osapandid ja tingimuslikud võõrandamised</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kaardivalised_isikud" type="ar:detailandmed_x6v3_kaardivalised_isikud" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kaardivälised isikud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="hooneyhistu_liikmed" type="ar:detailandmed_x6v3_hooneyhistu_liikmed" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Hooneuhistu_liikme_andmed">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Hooneühistu liikmed</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kasusaajad" type="ar:detailandmed_x6v4_kasusaajad" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kasusaajad vastuses.</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_x6v4_kasusaajad">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <xrd:title>Kasusaajad vastuses</xrd:title>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="kasusaajate_arv_kokku" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kasusaajad arv kokku.</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="peidetud_kasusaajate_arv" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Peidetud kasusaajate arv.</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="lahknevusteade_puudumisest" type="xsd:boolean">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kas on esitatud lahknevusteade kasusaajate puudumisest.</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kasusaaja" maxOccurs="unbounded" minOccurs="0" type="ar:detailandmed_x6v4_kasusaaja">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kasusaajad vastuses.</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="detailandmed_x6v4_kasusaaja">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <xrd:title>Kasusaaja vastuses</xrd:title>
+            </xsd:appinfo>
+        </xsd:annotation>
+            <xsd:sequence>
+                <xsd:element name="kirje_id" type="xsd:integer">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>ID</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="eesnimi" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Eesnimi</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="nimi" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Perekonnanimi</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="isikukood" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Isikukood</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="valis_kood" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Väliskood</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="valis_kood_riik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaardil_oleva_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Väliskoodi riik</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="valis_kood_riik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaardil_oleva_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Väliskoodi riik tekstina</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="synniaeg" type="xsd:date" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Sünniaeg</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="aadress_riik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Aadress: riik</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="aadress_riik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kaardivalise_isiku_andmed">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Aadressi riik tekstina</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="kontrolli_teostamise_viis" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Kontrolli teostamise viis</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="kontrolli_teostamise_viis_tekstina" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Kontrolli teostamise viis tekstina</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="lopetamise_liik" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Lõpetamise liik</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="lopetamise_liik_tekstina" type="xsd:string" minOccurs="0">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Lõpetamise liik tekstina</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="algus_kpv" type="xsd:date" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kehtivus_alguse_kuupaev">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Alguskuupäev</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="lopp_kpv" type="xsd:date" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kehtivuse_loppkuupaev">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Lõppkuupäev</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+                <xsd:element name="lahknevusteade_esitatud" type="xsd:boolean">
+                    <xsd:annotation>
+                        <xsd:appinfo>
+                            <xrd:title>Kas on esitatud lahknevusteade kasusaaja kohta.</xrd:title>
+                        </xsd:appinfo>
+                    </xsd:annotation>
+                </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_v4">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:detailandmed_x6v3_Query" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="detailandmed_v4Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:detailandmed_x6v3_Query" />
+            <xsd:element name="keha" type="ar:detailandmed_x6v4_Vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="detailandmed_v4" type="ar:detailandmed_v4"/>
+    <xsd:element name="detailandmed_v4Response" type="ar:detailandmed_v4Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

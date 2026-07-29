@@ -1,21 +1,21 @@
 # Getting an X-Road Security Server
 
-XTR-on-Rust is a client to an **X-Road Security Server (SS)**. If you
+XTR-on-Rust is a client to an **X-Road Security Server**. If you
 only need the plain-HTTPS path (Ariregister public XML, other public
 SOAP endpoints), you can skip this chapter — those DSLs use `service:`
-directly and no SS is involved. Read on when you need real X-Road
+directly and no Security Server is involved. Read on when you need real X-Road
 mTLS: `listMethods`, `allowedMethods`, or any registered
 member-to-member service.
 
 ## What a Security Server actually is
 
-An SS is a Debian-based appliance published by
+A Security Server is a Debian-based appliance published by
 [NIIS](https://github.com/nordic-institute/X-Road) (Nordic Institute
 for Interoperability Solutions). It sits on the border between your
 organisation and the X-Road network and does five things:
 
 1. **Terminates mTLS** on both sides — clients present a PKCS12
-   identity to your SS; your SS presents its own cert upstream.
+   identity to your Security Server; your Security Server presents its own cert upstream.
 2. **Wraps outbound requests** in the X-Road envelope
    (`<xroad:client>` / `<xroad:service>` / `<xroad:id>` /
    `<xroad:protocolVersion>`) and forwards.
@@ -27,8 +27,8 @@ organisation and the X-Road network and does five things:
    Estonia). Your `member-class / member-code / subsystem-code`
    triple only becomes valid X-Road identity after registration.
 
-XTR-on-Rust talks to your SS over mTLS. XTR does 1-3 for the *client*
-side of the mTLS conversation and lets the SS do the X-Road-specific
+XTR-on-Rust talks to your Security Server over mTLS. XTR does 1-3 for the *client*
+side of the mTLS conversation and lets the Security Server do the X-Road-specific
 half.
 
 ## Decision tree
@@ -36,11 +36,11 @@ half.
 | Your goal | You need |
 |---|---|
 | Call Ariregister public XML | Nothing. Use `ar/*` DSLs directly. |
-| Call a public X-Road test service via the mTLS path | An `ee-test` SS, self-service certs. Cost: ~€5–15/month VM. Time: half a day. |
+| Call a public X-Road test service via the mTLS path | An `ee-test` Security Server, self-service certs. Cost: ~€5–15/month VM. Time: half a day. |
 | Call a real Estonian production service | Full RIA onboarding, real organisation registration, paid CA cert. Weeks. |
-| Different country (Finland, Iceland, ...) | Different central authority; same SS software. |
+| Different country (Finland, Iceland, ...) | Different central authority; same Security Server software. |
 
-The rest of this chapter covers the middle row: an `ee-test` SS you
+The rest of this chapter covers the middle row: an `ee-test` Security Server you
 own, connected to real (test-tier) X-Road services. That's the
 useful development target.
 
@@ -48,7 +48,7 @@ useful development target.
 
 | Item | Notes |
 |---|---|
-| Public-IP Linux VM | Ubuntu 22.04 LTS or Debian 12 recommended. 2 vCPU / 4 GB RAM is plenty for a test SS; production sizing depends on load. |
+| Public-IP Linux VM | Ubuntu 22.04 LTS or Debian 12 recommended. 2 vCPU / 4 GB RAM is plenty for a test Security Server; production sizing depends on load. |
 | Fully-qualified DNS name | Points at the VM. `ss-test.<your-domain>.tld` is a fine pattern. |
 | Firewall access | Inbound: 4000 (admin UI), 5500-5501 (message exchange), 5577 (OCSP proxy), 22 (SSH). Outbound: 80/443 to the central authority + services you plan to call. |
 | Shell access | Root (or sudo) on the VM. Everything is configured via `apt` + the admin UI. |
@@ -71,14 +71,14 @@ The high-level shape stays stable across versions:
    address and initial admin password.
 3. **Log into the admin UI** at `https://<your-vm-fqdn>:4000/`.
 4. **Import the configuration anchor** — a small XML file provided
-   by RIA that tells your SS which central authority to trust. RIA
+   by RIA that tells your Security Server which central authority to trust. RIA
    publishes the current `ee-test` anchor on their portal.
-5. **Provisional registration** — the SS generates a keypair, you
+5. **Provisional registration** — the Security Server generates a keypair, you
    submit a registration request through the admin UI, RIA (or the
    automated `ee-test` flow) approves it. For test-tier this is
    usually minutes.
 6. **Obtain test certificates**:
-   - Software token (default): the SS generates a signing key +
+   - Software token (default): the Security Server generates a signing key +
      CSR; you paste the CSR into RIA's self-service portal; the
      signed cert comes back; you upload it via the admin UI.
    - Alternative: hardware token (`opensc` + a PKCS11 device). Not
@@ -98,11 +98,11 @@ as the map so you know where you are.
 
 ## Producing the PKCS12 that XTR needs
 
-Once your SS has an admin-approved subsystem, XTR does *not* need the
-SS's internal signing key. XTR needs an **information-system client
-key** that identifies YOUR calling app (XTR itself) to the SS.
+Once your Security Server has an admin-approved subsystem, XTR does *not* need the
+Security Server's internal signing key. XTR needs an **information-system client
+key** that identifies YOUR calling app (XTR itself) to the Security Server.
 
-1. In the SS admin UI: **Keys and Certificates → generate a
+1. In the Security Server admin UI: **Keys and Certificates → generate a
    software-token key** with usage `sign` + `auth` for an
    information-system client.
 2. Export the resulting keypair as PKCS12 (`.p12`), with a strong
@@ -116,9 +116,9 @@ and [SECURITY.md](https://github.com/turnerrainer/XTR/blob/dev/SECURITY.md).
 Password comes to XTR through the `XTR_KEYSTORE_PASSWORD` env var
 (fixes JVM bug #16 — no default password baked in).
 
-## Wiring XTR to the SS
+## Wiring XTR to the Security Server
 
-Once the SS is running and you have the PKCS12, XTR needs three
+Once the Security Server is running and you have the PKCS12, XTR needs three
 things in its config:
 
 ```yaml
@@ -132,8 +132,8 @@ client_data:
   subsystem_code: test-subsystem  # what you registered in step 7 above
 
 security_server:
-  url: "https://<your-ss-fqdn>:5500/"   # your SS, NOT the central
-                                        # authority's SS
+  url: "https://<your-security-server-fqdn>:5500/"   # your Security Server, NOT the central
+                                        # authority's Security Server
   keystore_path: /app/ssl/xtr-client.p12
   keystore_password_env: XTR_KEYSTORE_PASSWORD
 ```
@@ -154,7 +154,7 @@ curl -sX POST http://127.0.0.1:8080/xroad/listMethods \
 ```
 
 If the response comes back with a JSON `body` describing the target's
-service list, the whole path — REST → SOAP wrap → mTLS to SS → X-Road
+service list, the whole path — REST → SOAP wrap → mTLS to Security Server → X-Road
 envelope to peer → response back — works.
 
 ## What can go wrong
@@ -162,10 +162,10 @@ envelope to peer → response back — works.
 | Symptom | Likely cause |
 |---|---|
 | XTR fails to start with `keystore load failed: parsing PKCS12 keystore` | Wrong password, wrong file, or the `.p12` was generated with a modern (AES) cipher that `native-tls`'s underlying OpenSSL rejects. Regenerate with `-legacy` (OpenSSL 3) or specify RC2/3DES on export. |
-| XTR starts but every X-Road call returns `502 upstream_http_error` with a SOAP Fault | Your SS accepted the mTLS connection but the fault comes from the *target service*'s SS or the target service itself. XTR translates the fault to `upstream_soap_fault` when it can parse one — check the response body for the fault `code`. |
+| XTR starts but every X-Road call returns `502 upstream_http_error` with a SOAP Fault | Your Security Server accepted the mTLS connection but the fault comes from the *target service*'s Security Server or the target service itself. XTR translates the fault to `upstream_soap_fault` when it can parse one — check the response body for the fault `code`. |
 | Every call returns `502 upstream_http_error` HTTP 401/403 | Your subsystem isn't authorized to call this service. Ask the service owner to add your subsystem to their allow-list. |
-| Every call returns `504 upstream_timeout` | Firewall — outbound 5500 to the SS's own peers is likely blocked. |
-| SS admin UI shows subsystem in `GLOBALERROR` state | Registration hasn't propagated globally yet. On `ee-test`, wait 15 minutes and refresh. On production, contact RIA. |
+| Every call returns `504 upstream_timeout` | Firewall — outbound 5500 to the Security Server's own peers is likely blocked. |
+| Security Server admin UI shows subsystem in `GLOBALERROR` state | Registration hasn't propagated globally yet. On `ee-test`, wait 15 minutes and refresh. On production, contact RIA. |
 | `SSL routines::wrong version number` in XTR logs | You're pointing `security_server.url` at the wrong port (probably 4000 = admin UI HTTPS-with-different-cert, not 5500 = X-Road message port). |
 
 ## Production heads-up
@@ -174,7 +174,7 @@ envelope to peer → response back — works.
 X-Road membership requires:
 
 - A **signed contract** with RIA (or your national X-Road authority).
-- An **operational SS** that meets RIA's operational-security
+- An **operational Security Server** that meets RIA's operational-security
   requirements — real backups, real monitoring, real cert-rotation
   procedures. Not a `t3.small` you spun up and forgot about.
 - A **paid CA-issued cert** (not the free test cert).
@@ -187,17 +187,17 @@ work assuming the `ee-test` flow scales; it doesn't.
 
 ## What XTR does NOT do
 
-- **Manage SS keys.** XTR reads a `.p12` you produced via the SS
+- **Manage Security Server keys.** XTR reads a `.p12` you produced via the Security Server
   admin UI. Rotation, expiry monitoring, HSM integration — all
   yours.
 - **Register subsystems.** XTR uses whatever identity you configured;
   it does not talk to the central authority.
 - **Verify response `requestHash`.** Task 004
   ([backlog](https://github.com/turnerrainer/XTR/blob/dev/tasks/backlog/epic-xroad-protocol-compliance/004-response-request-hash-verification.md))
-  will add this; today XTR trusts the SS's `requestHash` semantics.
-- **Log-signed request/response archival.** That happens in the SS,
+  will add this; today XTR trusts the Security Server's `requestHash` semantics.
+- **Log-signed request/response archival.** That happens in the Security Server,
   not in XTR.
 
-For the SS itself, refer to
+For the Security Server itself, refer to
 [NIIS documentation](https://github.com/nordic-institute/X-Road) and
 your national authority (RIA for `ee-test` / `EE`).

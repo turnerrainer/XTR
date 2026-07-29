@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="seotud_isiku_otsing_paring">
+        <xsd:sequence>
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kasutajanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_parool" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri parool</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_sessioon" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri sessioon</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_valjundi_formaat" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri väljundi formaat - "json", "xml" (vaikimisi)</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="isik_eesnimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise seotud isiku eesnimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="isik_perenimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise seotud isiku perekonnanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="isik_isikukood" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise seotud isiku täpne eesti isikukood või välisriigi isikukood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="isik_synniaeg" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise seotud isiku sünnipäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jurisik_nimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Juriidilise seotud isiku nimetus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jurisik_kood" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Juriidilise seotud isiku kood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="seose_kehtivus" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>K - kehtivad seosed</xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Ainult kehtivad või kehtivad ja kehtetud seosed</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="seotud_isiku_otsing_vastus">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" maxOccurs="unbounded" name="isikud" type="ar:fys_jur_isik">
+                <xsd:annotation>
+                    <xsd:documentation>Saadame ainult 100 esimest vastust!!</xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilised isikud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" maxOccurs="1" name="isikute_arv" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Isikute_arv" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:documentation>Leitud isiku seoste kogu arv</xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Leitud isikute arv</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="fys_jur_isik">
+        <xsd:sequence>
+            <xsd:element minOccurs="0" name="fys_eesnimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku eesnimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="fys_perenimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku perenimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="fys_synniaeg" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku sünniaeg</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="fys_isikukood" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku isikukood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jur_arinimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Juriidilise isiku ärinimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jur_ark" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Juriidilise isiku äriregistrikood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jur_fys_valiskood" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku välis isikukood või juriidilise isiku välis registrikood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="jur_fys_valiskoodi_riik" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Füüsilise isiku isikukoodi riik või juriidilise isiku registrikoodi riik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="seotudIsikuOtsing_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:seotud_isiku_otsing_paring" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="seotudIsikuOtsing_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:seotud_isiku_otsing_paring" />
+            <xsd:element name="keha" type="ar:seotud_isiku_otsing_vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="seotudIsikuOtsing_v1" type="ar:seotudIsikuOtsing_v1"/>
+    <xsd:element name="seotudIsikuOtsing_v1Response" type="ar:seotudIsikuOtsing_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

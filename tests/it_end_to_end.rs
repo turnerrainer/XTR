@@ -1,7 +1,7 @@
 //! End-to-end integration tests.
 //!
 //! Spins up an axum mock upstream on 127.0.0.1:0 that plays the
-//! X-Road SS role (fixture responses per DSL), points a
+//! X-Road Security Server role (fixture responses per DSL), points a
 //! test-mode DSL at it, and exercises the full request path:
 //!   HTTP POST → DSL lookup → Handlebars expand → executor →
 //!   XML → JSON translate → response.
@@ -74,7 +74,7 @@ fn write_dsl(dsl_root: &std::path::Path, group: &str, service: &str, body: &str)
     std::fs::write(dir.join(format!("{service}.yml")), body).unwrap();
 }
 
-/// Assemble the XTR router with a given DSL directory. No SS
+/// Assemble the XTR router with a given DSL directory. No Security Server
 /// configured — every DSL must have `service:` set.
 async fn build_xtr(dsl_root: &std::path::Path) -> Router {
     build_xtr_with_limits(dsl_root, Limits::default()).await

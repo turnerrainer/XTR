@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="majandusaasta_aruannete_kirjed_paring">
+        <xsd:sequence>
+
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kasutajanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="ariregister_parool" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri parool</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="ariregistri_kood" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Maakohtu_poolt_registreeritud_isik_ariregistrikood" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="aruande_liik" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Aruande_liik" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        01 - bilanss 
+                        02 - kasumiaruanne skeem 1 
+                        03 - kasumiaruanne skeem 2 
+                        04 - rahavoogude aruanne 
+                        05 - põhivara liikumine skeem 1 
+                        06 - põhivara liikumine skeem 2 
+                        07 - tulude-kulude aruanne 
+                        08 - bilanss (2003-2004) 
+                        09 - kasumiaruanne skeem 1 (alates 2003) 
+                        10 - kasumiaruanne skeem 2 (alates 2003) 
+                        11 - tulude-kulude aruanne (alates 2003) 
+                        12 - bilanss (alates 2005) 
+                        13 - rahavoogude aruanne (alates 2005) 
+                        14 – bilanss (alates 2009 XBRLis esitatud aruannete puhul kasutuses) 
+                        15 - kasumiaruanne skeem 1 
+                        16 - kasumiaruanne skeem 2 
+                        17 - tulemiaruanne 
+                        18 - rahavoogude aruanne (kaudne meetod)
+                        19 - rahavoogude aruanne (otsene meetod)
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Aruande liik
+                        </xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="aruandeaasta" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Aruandeaasta" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Aruandeaasta</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element minOccurs="0" name="keel" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Klassifikaatorite_keel" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>Pole kasutusel</xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Klassifikaatorite tõlgete keel</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="majandusaasta_aruannete_kirjed_vastus">
+        <xsd:sequence>
+
+            <xsd:element minOccurs="0" name="aruande_liik" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Aruande_liik" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Aruande Liik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element minOccurs="0" name="aruande_nimetus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Aruande_nimetus" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Aruande Nimetus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element minOccurs="0" name="majandusaasta_algus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Majandusaasta_algus" type="xsd:date">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Majandusaasta Algus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element minOccurs="0" name="majandusaasta_lopp" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Majandusaasta_lopp" type="xsd:date">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Majandusaasta Lõpp</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element minOccurs="0" maxOccurs="unbounded" name="majandusaasta_aruanded_read" type="ar:majandusaasta_aruanded_rida">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Rida</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="majandusaasta_aruanded_rida">
+        <xsd:sequence>
+
+            <xsd:element name="rea_nr" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Rea_nr" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Rea number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="rea_nimetus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Rea_nimetus" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Rea nimetus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="majandusaasta_aruanded_veerud" type="ar:majandusaasta_aruanded_rea_veerg">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Veerg ja väärtus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="majandusaasta_aruanded_rea_veerg">
+        <xsd:sequence>
+
+            <xsd:element name="veeru_kood" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Veeru_kood" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>
+                        01 – bilanss 
+                        08 - bilanss 
+                        12 - bilanss 
+                        14 - bilanss
+                        A1 - Majandusaasta lõpul 
+                        A2 - Majandusaasta algul 
+                        02 - kasumiaruanne skeem 1 
+                        09 - kasumiaruanne skeem 1 
+                        15 - kasumiaruanne skeem 1 
+                        A1 – Aruande majandusaastal 
+                        A2 – Eelmisel majandusaastal 
+                        03 - kasumiaruanne skeem 2 
+                        10 - kasumiaruanne skeem 2 
+                        16 - kasumiaruanne skeem 2 
+                        A1 - Aruande majandusaastal 
+                        A2 - Eelmisel majandusaastal 
+                        04 - rahavoogude aruanne 
+                        A1 - Muutus aasta jooksul 
+                        05 - põhivara liikumine skeem 1 
+                        A1 - Maa 
+                        A2 - Ehitised 
+                        A3 - Masinad ja seadmed 
+                        A4 - Muu inventar 
+                        A5 - Akumuleeritud kulum 
+                        A6 - Lõpetamata ehitus 
+                        A7 - Ettemaksed 
+                        A8 - Kokku 
+                        06 - põhivara liikumine skeem 2 
+                        A1 - Aasta alguseks 
+                        A2 - Sissetulek  ostmine 
+                        A3 - Sissetulek  rekonstrueerimine 
+                        A4 - Väljaminek  müük 
+                        A5 - Väljaminek  amortiseerunud  mahakandmine 
+                        A6 - Aasta lõpuks (soetusmaksumuses) 
+                        A7 - Akumuleeritud kulum aasta lõpuks 
+                        A8 - Aasta lõpuks (jääkmaksumus) 
+                        07 - tulude-kulude aruanne 
+                        11 - tulude-kulude aruanne 
+                        17 - tulemiaruanne 
+                        A1 - Majandusaasta lõpul 
+                        A2 - Majandusaasta algul 
+                        13 - rahavoogude aruanne 
+                        18 - rahavoogude aruanne (kaudne meetod) 
+                        19 - rahavoogude aruanne (otsene meetod) 
+                        A1 – Aruande majandusaastal 
+                        A2 – Eelmisel majandusaast
+                    </xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Veeru kood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="veeru_nimetus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Veeru_nimetus" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Veeru nimetus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="vaartus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Vaartus" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Väärtus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="majandusaastaAruanneteKirjed_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:majandusaasta_aruannete_kirjed_paring" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="majandusaastaAruanneteKirjed_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:majandusaasta_aruannete_kirjed_paring" />
+            <xsd:element name="keha" type="ar:majandusaasta_aruannete_kirjed_vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="majandusaastaAruanneteKirjed_v1" type="ar:majandusaastaAruanneteKirjed_v1"/>
+    <xsd:element name="majandusaastaAruanneteKirjed_v1Response" type="ar:majandusaastaAruanneteKirjed_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

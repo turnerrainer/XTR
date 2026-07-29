@@ -1,0 +1,44 @@
+# XTR-on-Rust default configuration.
+#
+# Ships with the repo so `docker compose up` / `cargo run` "just
+# works" against the vendored Ariregister WSDL under ./wsdl/.
+#
+# Full reference: book/src/ops/configuration.md
+# Search order:  --config <path>  >  XTR_CONFIG env  >  ./xtr.yaml
+# > built-in defaults.
+
+dsl_path: ./DSL
+port: 8080
+
+# X-Road identity — replace with your own on real deployments.
+# These fixture values only work against public HTTPS endpoints
+# (like Ariregister) that don't validate X-Road member identity.
+xroad_instance: ee-test
+xroad_protocol_version: "4.0"
+client_data:
+  member_class: GOV
+  member_code: "<your-registry-code>"      # see docs/DESIGN.md §2.7
+  subsystem_code: <your-subsystem>         # + task 006 for real onboarding
+
+# WSDL folder-drop (task 013). XTR walks this tree at boot and
+# generates DSL/<group>/<operation>.yml per wsdl:operation.
+# Ariregister ships with the repo under wsdl/ar/ — 1 WSDL + 34
+# companion XSDs, 33 endpoints materialised on first boot.
+wsdl_watch_dir: ./wsdl
+
+# Resource ceilings (task 011). Defaults are sensible for typical
+# X-Road payloads; raise per deployment if needed.
+limits:
+  max_request_bytes: 1048576         # 1 MiB
+  max_response_bytes: 16777216       # 16 MiB
+  request_timeout_secs: 30
+
+# Security Server routing (task 006). Uncomment + fill in when you
+# have a Security Server. Absent = DSLs without `service:` will
+# error at request time; WSDL-generated DSLs for X-Road services
+# (which use the TURVASERVER placeholder) need this configured.
+#
+# security_server:
+#   url: "https://<your-security-server-fqdn>:5500/"
+#   keystore_path: /app/ssl/xtr-client.p12
+#   keystore_password_env: XTR_KEYSTORE_PASSWORD

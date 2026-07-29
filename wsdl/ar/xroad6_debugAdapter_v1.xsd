@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="debugAdapterObjMultiHolderItem">
+        <xsd:sequence>
+            <xsd:element name="name" type="xsd:string" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapterObjMultiHolder">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="item" type="ar:debugAdapterObjMultiHolderItem" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapterStringMultiHolder">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="item" type="xsd:string" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapter_v1_IN">
+        <xsd:sequence>
+            <xsd:element name="dt_string" type="xsd:string" />
+            <xsd:element name="dt_boolean" type="xsd:boolean" />
+            <xsd:element name="dt_base64Binary" type="xsd:base64Binary" />
+            <xsd:element name="dt_hexBinary" type="xsd:hexBinary" />
+            <xsd:element name="dt_float" type="xsd:float" />
+            <xsd:element name="dt_double" type="xsd:double" />
+            <xsd:element name="dt_decimal" type="xsd:decimal" />
+            <xsd:element name="dt_integer" type="xsd:integer" />
+            <xsd:element name="dt_duration" type="xsd:duration" />
+            <xsd:element name="dt_dateTime" type="xsd:dateTime" />
+            <xsd:element name="dt_time" type="xsd:time" />
+            <xsd:element name="dt_date" type="xsd:date" />
+            <xsd:element name="dt_string_multi" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+            <xsd:element name="dt_string_multiholder" type="ar:debugAdapterStringMultiHolder" />
+            <xsd:element name="dt_obj_multiholder" type="ar:debugAdapterObjMultiHolder" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapter_v1_OUT">
+        <xsd:sequence>
+            <xsd:element name="dt_string" type="xsd:string" />
+            <xsd:element name="dt_boolean" type="xsd:boolean" />
+            <xsd:element name="dt_base64Binary" type="xsd:base64Binary" />
+            <xsd:element name="dt_hexBinary" type="xsd:hexBinary" />
+            <xsd:element name="dt_float" type="xsd:float" />
+            <xsd:element name="dt_double" type="xsd:double" />
+            <xsd:element name="dt_decimal" type="xsd:decimal" />
+            <xsd:element name="dt_integer" type="xsd:integer" />
+            <xsd:element name="dt_duration" type="xsd:duration" />
+            <xsd:element name="dt_dateTime" type="xsd:dateTime" />
+            <xsd:element name="dt_time" type="xsd:time" />
+            <xsd:element name="dt_date" type="xsd:date" />
+            <xsd:element name="dt_string_multi" type="xsd:string" minOccurs="0" maxOccurs="unbounded" />
+            <xsd:element name="dt_string_multiholder" type="ar:debugAdapterStringMultiHolder" />
+            <xsd:element name="dt_obj_multiholder" type="ar:debugAdapterObjMultiHolder" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapter_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:debugAdapter_v1_IN" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="debugAdapter_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:debugAdapter_v1_IN" />
+            <xsd:element name="keha" type="ar:debugAdapter_v1_OUT" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+
+<!-- wrapper declarations -->
+    <xsd:element name="debugAdapter_v1" type="ar:debugAdapter_v1"/>
+    <xsd:element name="debugAdapter_v1Response" type="ar:debugAdapter_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

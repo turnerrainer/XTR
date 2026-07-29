@@ -42,7 +42,7 @@ New test file: `tests/it_charset.rs`. Tests:
    SOAP response containing `<name>Peeter Kärp</name>`. XTR
    receives, translates, returns JSON. Assert the returned
    JSON string has `name: "Peeter Kärp"` (exact UTF-8 bytes).
-2. **UTF-8 body, SS path** — same, via the mock SS fixture
+2. **UTF-8 body, Security Server path** — same, via the mock Security Server fixture
    (task 007).
 3. **Numeric character reference** — response with
    `<name>Peeter K&#228;rp</name>` (which is `ä` as an XML
@@ -72,7 +72,7 @@ New test file: `tests/it_charset.rs`. Tests:
 
 ## Dependencies
 
-- Task 007 (mock SS) for cases 2, 4, 5.
+- Task 007 (mock Security Server) for cases 2, 4, 5.
 - Task 002 (MVP) has landed the XML→JSON translation code.
 
 ## Non-goals

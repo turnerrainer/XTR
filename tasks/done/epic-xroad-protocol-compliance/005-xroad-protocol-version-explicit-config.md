@@ -32,8 +32,8 @@ inside each envelope. That's the current SOAP-based X-Road wire
 protocol version. **When it changes** (X-Road v7 is REST-based
 and a different beast entirely; X-Road v6 SOAP moves versions
 occasionally), every DSL file that hardcodes `4.0` becomes
-subtly wrong — the SS may accept it under a compat shim, or may
-reject it, depending on the SS version.
+subtly wrong — the Security Server may accept it under a compat shim, or may
+reject it, depending on the Security Server version.
 
 Not something to fix in each DSL. Something to inject.
 

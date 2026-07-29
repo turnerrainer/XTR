@@ -59,7 +59,7 @@ X-Road (not public HTTPS), also have a Security Server
 | Your target | XTR path | What you need |
 |---|---|---|
 | Public HTTPS SOAP endpoint (Ariregister etc) | Plain HTTPS | Vendor's SOAP shape (WSDL, docs, or a working curl example) |
-| Real X-Road service in `ee-test` or `EE` | mTLS via your SS | The target's subsystem identity + `listMethods` output |
+| Real X-Road service in `ee-test` or `EE` | mTLS via your Security Server | The target's subsystem identity + `listMethods` output |
 
 Both paths use the same DSL format; the only difference is whether
 you set `service:` (URL of the direct endpoint) or leave it absent
@@ -94,7 +94,7 @@ names (`lihtandmed_v3`, `detailandmed_v2`, etc) map straight to the
 
 Two-step:
 
-1. Point XTR (or `curl` directly through your SS) at the target's
+1. Point XTR (or `curl` directly through your Security Server) at the target's
    `listMethods`. The response enumerates the target's service
    codes.
 2. For a specific service code, ask the target for its WSDL — real
@@ -150,7 +150,7 @@ Full reference in [DSL format](./format.md).
 values (numeric codes, names), double-brace is right and safe. For
 values that are themselves *XML fragments* (like `{{generate.client}}`
 which is `<xroad:client>…</xroad:client>`), you MUST use triple-brace
-or the SS will reject an envelope full of `&lt;xroad:client&gt;`.
+or the Security Server will reject an envelope full of `&lt;xroad:client&gt;`.
 
 **Whitespace inside braces**: `{{ foo }}` works;
 `{{generate.  client}}` does not — Handlebars rejects paths with
@@ -257,7 +257,7 @@ Turn up log verbosity temporarily:
 RUST_LOG=xtr_on_rust=debug ./xtr-on-rust --config xtr.yaml
 ```
 
-The `plain HTTPS POST <url>` / `SS mTLS POST <url>` log lines tell
+The `plain HTTPS POST <url>` / `Security Server mTLS POST <url>` log lines tell
 you exactly what URL XTR is calling. To see the actual envelope,
 add a temporary `println!` in `src/router/mod.rs` — the current
 release doesn't dump envelopes at any log level (they can contain

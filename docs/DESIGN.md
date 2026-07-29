@@ -385,7 +385,7 @@ src/
 │   └── mod.rs                    # axum router: POST /:group/:service,
 │                                 # GET /api, GET /health
 ├── executor/
-│   ├── mod.rs                    # Route to plain-HTTP or mTLS-SS
+│   ├── mod.rs                    # Route to plain-HTTP or mTLS-Security Server
 │   ├── plain_client.rs           # reqwest::Client (no client cert)
 │   └── ss_client.rs              # reqwest::Client with PKCS12 identity
 ├── translate/

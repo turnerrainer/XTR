@@ -10,7 +10,7 @@
 2026-07-28 — Ruuter-style ops chapters added:
 
   * `book/src/ops/xroad-security-server.md` — the deep dive.
-    Covers what an SS is, the decision tree (public XML vs
+    Covers what a Security Server is, the decision tree (public XML vs
     ee-test vs production), full ee-test onboarding walkthrough
     (VM prerequisites → NIIS apt package → anchor import →
     self-service test certs → subsystem registration →
@@ -25,9 +25,9 @@
     can emit + the `error` code + cause, matching Ruuter's
     equivalent chapter.
   * `book/src/getting-started/prerequisites.md` — new
-    "For real X-Road use" section pointing at the SS chapter.
+    "For real X-Road use" section pointing at the Security Server chapter.
   * `SUMMARY.md` restructured — Operations section now has
-    Configuration / Env vars / Docker / SS setup / Failure modes.
+    Configuration / Env vars / Docker / Security Server setup / Failure modes.
 
 Doc tests wired to CI:
   * `tests.yml` new `docs-build` job runs `mdbook build book`
@@ -97,14 +97,14 @@ New page: `book/src/ops/xroad-certificates.md`. Covers:
    container, how the password is provided (env var, per
    STANDARDS.md — not baked into config), how to rotate.
 5. **`security_server.url` per environment** — the well-known
-   test SS endpoints, production endpoints depend on your
-   organisation's own SS.
+   test Security Server endpoints, production endpoints depend on your
+   organisation's own Security Server.
 6. **First-run smoke test** — a `curl` recipe that exercises
    one of the sample DSLs (Ariregister is fine — it doesn't
    require full X-Road membership for the public XML feeds)
-   plus one recipe that goes through the SS.
+   plus one recipe that goes through the Security Server.
 7. **Common failures** — `SSLHandshakeException` (wrong cert
-   for wrong environment), `401 from SS` (subsystem not
+   for wrong environment), `401 from Security Server` (subsystem not
    authorized for the service), `503 from upstream service`
    (real service is down; not our fault).
 

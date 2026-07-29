@@ -14,7 +14,7 @@ cap enforced via a byte-exact check in the router handler +
 `DefaultBodyLimit` transport backstop, producing structured 413
 `XtrError::RequestTooLarge { limit }`. Outbound cap enforced via
 a new `read_bounded` streaming reader shared between plain and
-SS executors, producing structured 502
+Security Server executors, producing structured 502
 `XtrError::UpstreamBodyTooLarge { limit }` and tearing down the
 connection immediately. Timeout hoisted from hardcoded 30s to
 `Limits.request_timeout_secs`. 2 new integration tests
@@ -92,7 +92,7 @@ upstreams.
 
 ## Dependencies
 
-- Task 007 (mock X-Road SS fixtures) would provide the
+- Task 007 (mock X-Road Security Server fixtures) would provide the
   slow/hanging upstream harness. Can also be done with an
   ad-hoc axum test server if 007 slips.
 

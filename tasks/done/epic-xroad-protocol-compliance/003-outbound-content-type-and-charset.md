@@ -43,7 +43,7 @@ Content-Type: application/soap+xml; charset=utf-8
 The JVM XTR relies on Spring's default, which happens to set an
 acceptable value most of the time. Rust `reqwest` sends no
 Content-Type by default when you pass a string body — it'll
-be empty. That would produce 400 / 415 from the SS immediately.
+be empty. That would produce 400 / 415 from the Security Server immediately.
 
 ## Fix
 
@@ -54,7 +54,7 @@ In the executor step of the request path (DESIGN.md §8.6):
   regardless of the DSL. Some upstream services (public XML
   endpoints like Ariregister) may accept `application/xml` too,
   but `text/xml` is the safe default.
-- **mTLS path via SS** (`RequestExecutor::ss`): same header.
+- **mTLS path via Security Server** (`RequestExecutor::ss`): same header.
 - Emit the outbound Content-Type in the WARN/ERROR log line when
   the upstream returns 4xx, so misconfiguration is diagnosable.
 
@@ -65,7 +65,7 @@ appears.
 ## Acceptance
 
 - Integration test that captures the outbound request headers on
-  the mock SS (via task 007's mock server) and asserts
+  the mock Security Server (via task 007's mock server) and asserts
   `content-type: text/xml; charset=utf-8`.
 - Same assertion for the direct-HTTPS path against a mock upstream.
 - Documentation note in `book/src/ops/` explaining this is
@@ -78,7 +78,7 @@ in the CI regression test.
 
 ## Dependencies
 
-- Task 007 (mock X-Road SS fixtures) provides the wire-capture
+- Task 007 (mock X-Road Security Server fixtures) provides the wire-capture
   hook that makes the assertion cheap. If task 007 isn't ready,
   this task can still land using an ad-hoc `axum` capture server
   in the test.

@@ -2,7 +2,7 @@
 
 Rust re-implementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
 
-**Version:** 0.2.0-rc.1 (first publishable release candidate) · **License:** Apache-2.0 · **Author:** Rainer Türner
+**Version:** 0.2.0-rc.2 (first publishable release candidate) · **License:** Apache-2.0 · **Author:** Rainer Türner
 
 ## Status
 
@@ -31,7 +31,7 @@ Multi-arch image (linux/amd64 + linux/arm64) on Docker Hub and GHCR:
 
 ```bash
 docker run -d --name xtr -p 8080:8080 \
-    turnerrainer/xtr:0.2.0-rc.1
+    turnerrainer/xtr:0.2.0-rc.2
 ```
 
 Every published digest is signed keyless via cosign — verify with the

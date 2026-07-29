@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="ettevotja_rekvisiidid_fail_paring">
+        <xsd:sequence>
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kasutajanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_parool" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri parool</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="faili_formaat" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>
+                            Andmefaili formaat (xml, csv, json). 
+                            Kui soovite vastuses ka kustutatud ettevõtteid ja kustutamise kuupäeva, 
+                            siis andke faili formaadi sisendiks vastavalt kas 'xml2' või 'json2'.
+                        </xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="ettevotja_rekvisiidid_fail_vastus">
+        <xsd:sequence>
+            <xsd:element name="faili_loomise_kuupaev" type="xsd:date">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Faili loomise kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="leitud_ettevotjate_arv" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Faili lisatud ettevotjate arv</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="faili_nimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Faili nimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="viide_manusele" type="swa:swaRef">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Viide MIME manusele</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="ettevotjaRekvisiididFail_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:ettevotja_rekvisiidid_fail_paring" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="ettevotjaRekvisiididFail_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:ettevotja_rekvisiidid_fail_paring" />
+            <xsd:element name="keha" type="ar:ettevotja_rekvisiidid_fail_vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="ettevotjaRekvisiididFail_v1" type="ar:ettevotjaRekvisiididFail_v1"/>
+    <xsd:element name="ettevotjaRekvisiididFail_v1Response" type="ar:ettevotjaRekvisiididFail_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

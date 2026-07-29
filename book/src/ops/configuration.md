@@ -33,8 +33,8 @@ client_data:                             # your X-Road identity
   member_code: "<your-registry-code>"    # organisation registry code
   subsystem_code: <your-subsystem>       # per your RIA registration
 
-security_server:                         # mTLS to X-Road SS (optional)
-  url: "https://<your-ss-fqdn>:5500/"
+security_server:                         # mTLS to X-Road Security Server (optional)
+  url: "https://<your-security-server-fqdn>:5500/"
   keystore_path: /app/ssl/xtr-client.p12
   keystore_password_env: XTR_KEYSTORE_PASSWORD   # required env var name
 
@@ -55,8 +55,8 @@ limits:                                  # resource ceilings (task 011)
 | `client_data.member_class` | `""` | Injected into `<xroad:client>` element. |
 | `client_data.member_code` | `""` | Injected into `<xroad:client>` element. |
 | `client_data.subsystem_code` | `""` | Injected into `<xroad:client>` element. Note: **correctly spelled** — fixes JVM bug #1 (`sybsystem-code`). |
-| `security_server` | `None` | Absent → DSLs that omit `service:` will error at request time (they need the SS). |
-| `security_server.url` | required if section present | URL of YOUR SS (not the central authority's). |
+| `security_server` | `None` | Absent → DSLs that omit `service:` will error at request time (they need the Security Server). |
+| `security_server.url` | required if section present | URL of YOUR Security Server (not the central authority's). |
 | `security_server.keystore_path` | required if section present | PKCS12 identity file for mTLS. |
 | `security_server.keystore_password_env` | `XTR_KEYSTORE_PASSWORD` | Env var name to read the password from. Never a default value — fixes JVM bug #16. |
 | `limits.max_request_bytes` | `1048576` (1 MiB) | Inbound REST body cap. Overflow → 413. |

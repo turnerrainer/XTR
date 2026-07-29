@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+    <xsd:complexType name="kandedMaarused_v1_paring">
+        <xsd:sequence>
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kasutajanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_parool" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri parool</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="liik" minOccurs="1" maxOccurs="1" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kanded - K või Määrused - M</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="algus_kpv" minOccurs="1" maxOccurs="1" type="xsd:dateTime">
+                <xsd:annotation>
+                    <xsd:documentation>Näitab, mis kuupäeva kohta muudatusi päritakse.
+                    Kuupäev ei tohi olla väiksem, kui '01.01.2013'.
+                </xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Perioodi alguskuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="lopp_kpv" minOccurs="1" maxOccurs="1" type="xsd:dateTime">
+                <xsd:annotation>
+                    <xsd:documentation>Näitab, mis kuupäeva kohta muudatusi päritakse.
+                    Kuupäev ei tohi olla väiksem, kui '01.01.2013'.
+                </xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Perioodi lõppkuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="keel" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Klassifikaatorite tõlgete keel (est-eesti, eng-inglise), vaikimisi eesti</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="tulemuste_lk" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Tulemuste_lk" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:documentation>Lehekülje number, 50 tulemust lehel, vaikimisi 1.</xsd:documentation>
+                    <xsd:appinfo>
+                        <xrd:title>Tulemuste lehekülje number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_vastus">
+        <xsd:sequence>
+            <xsd:element name="ettevotjad" type="ar:kandedMaarused_v1_ettevotted">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtjad</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_ettevotted">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="item" type="ar:kandedMaarused_v1_ettevote">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtja</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_ettevote">
+        <xsd:sequence>
+            <xsd:element name="ettevotja_id" type="xsd:integer" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri sisemine ettevõtja ID</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="evnimi" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Arinimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Ettevõtja ärinimi/nimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="oiguslik_vorm" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Oiguslik_vorm_tunnus" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Õiguslik vorm</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="oiguslik_vorm_tekstina" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Oiguslik_vorm_eesti_keeles" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Õiguslik vorm tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="oigusliku_vormi_alaliik" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Õigusliku vormi alaliik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="oigusliku_vormi_alaliik_tekstina" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Õigusliku vormi alaliik tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element minOccurs="0" name="ariregistri_kood" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Maakohtu_poolt_registreeritud_isik_ariregistrikood" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kood</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="staatus" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Staatus_staatus" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Staatus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="staatus_tekstina" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Staatus_staatus_tekstina" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Staatus tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kanded" type="ar:kandedMaarused_v1_kanded" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kanded</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maarused" type="ar:kandedMaarused_v1_maarused" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määrused</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+        <xsd:complexType name="kandedMaarused_v1_kanded">
+        <xsd:sequence>
+            <xsd:element name="item" type="ar:kandedMaarused_v1_kanne" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kanne</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_maarused">
+        <xsd:sequence>
+            <xsd:element name="item" type="ar:kandedMaarused_v1_maarus" minOccurs="0" maxOccurs="unbounded" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määrus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_kanne">
+        <xsd:sequence>
+            <xsd:element name="kande_nr" type="xsd:integer" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikanne_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kande number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kande_kpv" type="xsd:dateTime" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kande kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kandeliik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kandeliik">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kandeliik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kandeliik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kandeliik_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kandeliik tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="maaruse_nr" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_kpv" type="xsd:dateTime" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kinnitamise_kuupaev">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_liik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Liik">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse liik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_liik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Liik_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse liik tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_olek" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Olek">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_olek_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Olek_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kaardi_nr" type="xsd:integer" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaart_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Registrikaardi number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kaardi_tyyp" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaart_tuup">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Registrikaardi tüüp</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_maarus">
+        <xsd:sequence>
+            <xsd:element name="kande_nr" type="xsd:integer" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikanne_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kande number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kande_kpv" type="xsd:dateTime" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kande kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kandeliik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kandeliik">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kandeliik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kandeliik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kandeliik_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kandeliik tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="maaruse_nr" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_kpv" type="xsd:dateTime" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Lahend_kinnitamise_kuupaev">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_liik" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Liik">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse liik</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_liik_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Liik_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse liik tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_olek" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Olek">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_olek_tekstina" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Olek_tekstina">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="maaruse_oleku_kpv" type="xsd:dateTime" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse oleku kuupäev</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="lisatahtaeg" type="xsd:date" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Kohtumaarus_lisatahtaeg">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Lisatähtaeg</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="kaardi_nr" type="xsd:integer" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaart_number">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Registrikaardi number</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kaardi_tyyp" type="xsd:string" minOccurs="0" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Registrikaart_tuup">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Registrikaardi tüüp</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+
+            <xsd:element name="maaruse_oleku_muudatused" type="ar:kandedMaarused_v1_maaruse_oleku_muudatused" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse oleku muudatused</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_maaruse_oleku_muudatused">
+        <xsd:sequence>
+            <xsd:element name="item" type="ar:kandedMaarused_v1_maaruse_oleku_muudatus" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse oleku muudatus</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="kandedMaarused_v1_maaruse_oleku_muudatus">
+        <xsd:sequence>
+            <xsd:element name="oleku_muutuse_id" type="xsd:integer" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri sisemine muudatuse ID</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="olek" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="olek_tekstina" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse olek tekstina</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="oleku_muutuse_kpv" type="xsd:dateTime" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Määruse oleku muutumise kpv</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="kandedMaarused_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:kandedMaarused_v1_paring" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="kandedMaarused_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:kandedMaarused_v1_paring" />
+            <xsd:element name="keha" type="ar:kandedMaarused_v1_vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="kandedMaarused_v1" type="ar:kandedMaarused_v1"/>
+    <xsd:element name="kandedMaarused_v1Response" type="ar:kandedMaarused_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

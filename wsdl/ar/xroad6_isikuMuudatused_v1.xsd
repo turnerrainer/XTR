@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xsd:schema
+        targetNamespace="http://arireg.x-road.eu/producer/"
+        elementFormDefault="qualified"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+        xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="isikuMuudatusedRequest">
+        <xsd:sequence>
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>Äriregistri kasutajanimi</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_parool" type="xsd:string" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>Äriregistri parool</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="isiku_roll" type="xsd:string" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku roll, kelle kohta muudatusi soovitakse</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="muudatuse_liik" type="ar:muudatuseLiik" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>Muudatuse liik, mille kohta infot soovitakse</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="muudatuse_kpv" type="xsd:date">
+                <xsd:annotation>
+                    <xsd:documentation>Muudatuste kuupäev</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="tulemuste_lk" type="xsd:int" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>Vastuse lehekülje number, vaikeväärtus 1</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="tulemusi_lehel" type="xsd:int" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>Mitu tulemust vastuses ühel lehel soovitakse, vaikimisi 1000 (tagastatavate ettevõtjate arv)</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="isikuMuudatusedVastus">
+        <xsd:sequence>
+            <xsd:element name="ettevotja" type="ar:ettevotja_isikumuudatus" minOccurs="0" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>Ettevõtja vastuses</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="tulemuste_arv" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:documentation>Ettevõtjate arv</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="ettevotja_isikumuudatus">
+        <xsd:sequence>
+            <xsd:element name="ariregistri_kood" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Maakohtu_poolt_registreeritud_isik_ariregistrikood"
+                         type="xsd:int">
+                <xsd:annotation>
+                    <xsd:documentation>Äriregistri kood</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="arinimi" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Arinimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>Ärinimi</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="oiguslik_vorm" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Oiguslik_vorm" type="xsd:int">
+                <xsd:annotation>
+                    <xsd:documentation>Õiguslik vorm</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="oiguslik_vorm_tekstina" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Oiguslik_vorm_eesti_keeles" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:documentation>Õiguslik vorm tekstina</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="staatus" type="xsd:string" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Staatus_staatus">
+                <xsd:annotation>
+                    <xsd:documentation>Ettevõtte staatus</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="staatus_tekstina" type="xsd:string" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Staatus_staatus_tekstina">
+                <xsd:annotation>
+                    <xsd:documentation>Ettevõtte staatus tekstina</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="isiku_muudatus" type="ar:isiku_muudatus" maxOccurs="unbounded">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku muudatus</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="isiku_muudatus">
+        <xsd:sequence>
+            <xsd:element name="isiku_roll" type="xsd:string" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Isiku_roll_roll">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku roll</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="isiku_roll_tekstina" type="xsd:string" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Isiku_roll_tekstina">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku roll tekstina</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="muudatuse_liik" type="ar:muudatuseLiik">
+                <xsd:annotation>
+                    <xsd:documentation>Muudatuse liik</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="muudatuse_aeg" type="xsd:dateTime">
+                <xsd:annotation>
+                    <xsd:documentation>Muudatuse aeg</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kirje_id_vana" minOccurs="0" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku vana ID</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="kirje_id_uus" minOccurs="0" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku uus ID</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="muudatuseLiik">
+        <xsd:restriction base="xsd:integer">
+            <xsd:enumeration value="1">
+                <xsd:annotation>
+                    <xsd:documentation>Isik lisati kehtivaks</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="2">
+                <xsd:annotation>
+                    <xsd:documentation>Isik muudeti kehtetuks</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="3">
+                <xsd:annotation>
+                    <xsd:documentation>Isiku andmeid muudeti</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="4">
+                <xsd:annotation>
+                    <xsd:documentation>Muudeti tegeliku kasusaaja kontrolli teostamise viisi</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="5">
+                <xsd:annotation>
+                    <xsd:documentation>Muudeti isiku elukoha riiki</xsd:documentation>
+                </xsd:annotation>
+            </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="isikuMuudatused_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:isikuMuudatusedRequest"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="isikuMuudatused_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:isikuMuudatusedRequest"/>
+            <xsd:element name="keha" type="ar:isikuMuudatusedVastus"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!-- wrapper declarations -->
+    <xsd:element name="isikuMuudatused_v1" type="ar:isikuMuudatused_v1"/>
+    <xsd:element name="isikuMuudatused_v1Response" type="ar:isikuMuudatused_v1Response"/>
+    <!-- /wrapper declarations -->
+
+</xsd:schema>

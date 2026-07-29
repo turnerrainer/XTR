@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc.2] - 2026-07-29
+
+Second release candidate. Adds runtime WSDL folder-drop
+(task 013), ships real Ariregister WSDL + 34 companion XSDs
+under `wsdl/ar/` as the canonical source of truth (yields 33
+auto-generated `/ar/*` endpoints on every boot), and renames
+all "SS" abbreviations to "Security Server" throughout code,
+config, DSLs, docs, and task files.
+
+### Added — Task 013 WSDL folder-drop
+
+- `wsdl_watch_dir` config field. At boot, XTR scans
+  `<dir>/<group>/*.wsdl`, parses each, and generates
+  `DSL/<group>/<operation>.yml` per `wsdl:operation`.
+- SOAP-1.1 document/literal parser in `src/wsdl/` — supports
+  inline anonymous complexTypes, named top-level complexTypes
+  (with lazy resolution + cycle guard), `xsd:include` via a
+  local-filesystem loader (offline discipline preserved),
+  `xsd:import` skipped as framework, `xsd:annotation` skipped
+  as documentation. Bail-out-on-unsupported for `xsd:choice`,
+  WSDL 2.0, RPC/encoded, MIME attachments.
+- Per-op lenient: unresolvable input elements log WARN and
+  skip that operation; sibling operations still generate.
+- Deterministic YAML output — same WSDL always produces
+  byte-equal bytes.
+- Generated DSLs carry a marker header. Hand-written DSLs
+  (no marker) always win on collision with a WARN log.
+- Optional `<wsdl>.meta.yaml` sidecar opts into X-Road
+  envelope wrapping (member_class/member_code/subsystem_code
+  → auto-generated `<xroad:*>` header block).
+- Generator recognises the X-Road `TURVASERVER` placeholder
+  in `<soap:address location=…/>` and omits `service:` so
+  the executor routes via `security_server:` instead.
+
+### Added — WSDL as source of truth
+
+- `wsdl/ar/` — real Ariregister WSDL + 34 companion XSDs
+  (~180 KB) vendored into the repo.
+- `xtr.yaml` (new) — default config that ships with the
+  repo. `docker compose up` / `cargo run` now boots with
+  33 Ariregister endpoints live via WSDL ingestion.
+- `.gitignore` — `/DSL/ar/*.yml` ignored (regenerated per
+  boot from the WSDL). Hand-written DSLs (like `DSL/xroad/*`)
+  stay tracked.
+- Removed the 4 previously hand-written Ariregister sample
+  DSLs (`lihtandmed_v3`, `detailandmed_v2`,
+  `ettevottegaSeotudIsikud_v1`, `tegelikudKasusaajad_v2`) —
+  now auto-generated with WSDL-native param names (Estonian
+  `ariregistri_kood` instead of English `reg_code`).
+
+### Changed — SS → Security Server
+
+Renamed every "SS" abbreviation to "Security Server" across
+code, configs, DSLs, book chapters, task files, comments,
+and CHANGELOG entries. Rationale: the "SS" abbreviation
+carries a well-known historical reputation that reads
+unprofessional in a European government-infrastructure
+context. See `feedback_never_abbreviate_security_server.md`.
+
+- `SsExecutor` → `SecurityServerExecutor`
+- `src/executor/ss.rs` → `src/executor/security_server.rs`
+- `Executor.ss` field → `Executor.security_server`
+- All prose in `book/`, `docs/`, `tasks/`, comments — same.
+- SOAP protocol literals unchanged (`SOAP-ENV:Server`,
+  `env:Server` etc are external error codes and must
+  stay as-is).
+
+### Docs
+
+- `book/src/ops/wsdl-ingestion.md` — folder layout, marker
+  semantics, override rules, X-Road sidecar convention,
+  "no admin HTTP endpoint" rationale.
+- `book/src/dsl/adding-a-service.md` — reframed as override
+  fallback path; WSDL-drop is primary now.
+
+Verified: 82/0/0 tests, fmt clean, clippy -D warnings
+clean, mdbook + linkcheck build clean, live smoke boots
+with 35 endpoints (33 auto-generated Ariregister + 2
+hand-written X-Road samples).
+
 ## [0.2.0-rc.1] - 2026-07-28
 
 First publishable release candidate. Working REST → SOAP →
@@ -113,7 +193,7 @@ Modules added (src/*)
                      XTR_CONFIG / ./xtr.yaml search path)
   * dsl/           — XRoadTemplate, ServiceMap, loader::load_all,
                      handlebars::expand (unified single-pass render)
-  * executor/      — PlainExecutor (system trust), SsExecutor
+  * executor/      — PlainExecutor (system trust), SecurityServerExecutor
                      (mTLS via PKCS12 identity), Executor::dispatch
   * translate/     — xml_to_json::translate_soap emits
                      {body, headers} with namespaces preserved,

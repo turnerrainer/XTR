@@ -9,7 +9,7 @@
 
 **High for the epic; medium overall**. Without this, every
 integration test either hits a real X-Road (impossible in CI)
-or uses ad-hoc mocks that drift from real SS behaviour. This
+or uses ad-hoc mocks that drift from real Security Server behaviour. This
 task establishes the shared fixture layer that tasks 003, 004,
 008 all lean on.
 

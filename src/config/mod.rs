@@ -121,7 +121,7 @@ pub struct ClientData {
 }
 
 /// Security Server routing config. Absent → DSLs that omit
-/// `service:` will error at request time (they need the SS).
+/// `service:` will error at request time (they need the Security Server).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SecurityServer {
     pub url: String,
@@ -185,7 +185,7 @@ impl AppConfig {
 
     /// Resolve the keystore password from the configured env var.
     /// Returns None if no security server is configured; errors if
-    /// the SS is configured but the env var is unset.
+    /// the Security Server is configured but the env var is unset.
     pub fn keystore_password(&self) -> Result<Option<String>, XtrError> {
         let Some(ss) = &self.security_server else {
             return Ok(None);

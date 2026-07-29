@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+<!-- earveLisaKlient -->
+    <xsd:complexType name="earveLisaKlient_v1_Klient">
+        <xsd:sequence>
+            <xsd:element name="registrikood" type="xsd:integer" />
+            <xsd:element name="kontakt_epost" type="xsd:string" minOccurs="0" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1_Kliendid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="klient" type="ar:earveLisaKlient_v1_Klient" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1_IN">
+        <xsd:sequence>
+            <xsd:element name="earve_kasutajanimi" type="xsd:string" minOccurs="0" />
+            <xsd:element name="earve_parool" type="xsd:string" minOccurs="0" />
+            <xsd:element name="kliendid" type="ar:earveLisaKlient_v1_Kliendid" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="enum_earveLisaKlient_v1Response_Klient_Staatus">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="OK">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Klient lisatud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+            <xsd:enumeration value="SE">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendil on olemasolev kehtiv seos</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+            <xsd:enumeration value="MR">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendi registrikoodi registrist ei leitud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="earveLisaKlient_v1Response_Klient">
+        <xsd:sequence>
+            <xsd:element name="registrikood" type="xsd:integer" />
+            <xsd:element name="staatus" type="ar:enum_earveLisaKlient_v1Response_Klient_Staatus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1Response_Kliendid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="klient" type="ar:earveLisaKlient_v1Response_Klient" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1_OUT">
+        <xsd:sequence>
+            <xsd:element name="kliendid" type="ar:earveLisaKlient_v1Response_Kliendid" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:earveLisaKlient_v1_IN" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveLisaKlient_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:earveLisaKlient_v1_IN" />
+            <xsd:element name="keha" type="ar:earveLisaKlient_v1_OUT" />
+        </xsd:sequence>
+    </xsd:complexType>
+<!-- /earveLisaKlient -->
+
+<!-- earveEemaldaKlient -->
+    <xsd:complexType name="earveEemaldaKlient_v1_Klient">
+        <xsd:sequence>
+            <xsd:element name="registrikood" type="xsd:integer" />
+            <xsd:element name="kontakt_epost" type="xsd:string" minOccurs="0" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1_Kliendid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="klient" type="ar:earveEemaldaKlient_v1_Klient" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1_IN">
+        <xsd:sequence>
+            <xsd:element name="earve_kasutajanimi" type="xsd:string" minOccurs="0" />
+            <xsd:element name="earve_parool" type="xsd:string" minOccurs="0" />
+            <xsd:element name="kliendid" type="ar:earveEemaldaKlient_v1_Kliendid" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="enum_earveEemaldaKlient_v1Response_Klient_Staatus">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="OK">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Klient eemaldatud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+            <xsd:enumeration value="SE">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendil ei ole aktiivset seost e-arve pakkujaga</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+            <xsd:enumeration value="MR">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendi registrikoodi registrist ei leitud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1Response_Klient">
+        <xsd:sequence>
+            <xsd:element name="registrikood" type="xsd:integer" />
+            <xsd:element name="staatus" type="ar:enum_earveEemaldaKlient_v1Response_Klient_Staatus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1Response_Kliendid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="klient" type="ar:earveEemaldaKlient_v1Response_Klient" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1_OUT">
+        <xsd:sequence>
+            <xsd:element name="kliendid" type="ar:earveEemaldaKlient_v1Response_Kliendid" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:earveEemaldaKlient_v1_IN" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveEemaldaKlient_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:earveEemaldaKlient_v1_IN" />
+            <xsd:element name="keha" type="ar:earveEemaldaKlient_v1_OUT" />
+        </xsd:sequence>
+    </xsd:complexType>
+<!-- /earveEemaldaKlient -->
+
+<!-- earveRegistriParing -->
+    <xsd:complexType name="earveRegistriParing_v1_Registrikoodid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="registrikood" type="xsd:integer" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveRegistriParing_v1_IN">
+        <xsd:sequence>
+            <xsd:element name="tagasta_nimed" type="xsd:boolean" minOccurs="0" />
+            <xsd:element name="tulemuste_lk" type="xsd:integer" />
+            <xsd:element name="registrikoodid" type="ar:earveRegistriParing_v1_Registrikoodid" minOccurs="0" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="enum_earveRegistriParing_v1Response_Klient_Staatus">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="OK">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendil on kehtiv seos registris</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+            <xsd:enumeration value="MR">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Kliendi registrikoodi registrist ei leitud</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+           </xsd:enumeration>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="earveRegistriParing_v1Response_Klient">
+        <xsd:sequence>
+            <xsd:element name="registrikood" type="xsd:integer" />
+            <xsd:element name="nimi" type="xsd:string" minOccurs="0" />
+            <xsd:element name="teenusepakkuja" type="xsd:string" minOccurs="0" />
+            <xsd:element name="staatus" type="ar:enum_earveRegistriParing_v1Response_Klient_Staatus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveRegistriParing_v1Response_Kliendid">
+        <xsd:sequence>
+            <xsd:element maxOccurs="unbounded" minOccurs="0" name="klient" type="ar:earveRegistriParing_v1Response_Klient" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveRegistriParing_v1_OUT">
+        <xsd:sequence>
+            <xsd:element name="lehekylgi" type="xsd:integer" />
+            <xsd:element name="kliendid" type="ar:earveRegistriParing_v1Response_Kliendid" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveRegistriParing_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:earveRegistriParing_v1_IN" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="earveRegistriParing_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:earveRegistriParing_v1_IN" />
+            <xsd:element name="keha" type="ar:earveRegistriParing_v1_OUT" />
+        </xsd:sequence>
+    </xsd:complexType>
+<!-- /earveRegistriParing -->
+
+<!-- wrapper declarations -->
+    <xsd:element name="earveLisaKlient_v1" type="ar:earveLisaKlient_v1"/>
+    <xsd:element name="earveLisaKlient_v1Response" type="ar:earveLisaKlient_v1Response"/>
+
+    <xsd:element name="earveEemaldaKlient_v1" type="ar:earveEemaldaKlient_v1"/>
+    <xsd:element name="earveEemaldaKlient_v1Response" type="ar:earveEemaldaKlient_v1Response"/>
+
+    <xsd:element name="earveRegistriParing_v1" type="ar:earveRegistriParing_v1"/>
+    <xsd:element name="earveRegistriParing_v1Response" type="ar:earveRegistriParing_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>

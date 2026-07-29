@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?> 
+<xsd:schema
+    targetNamespace="http://arireg.x-road.eu/producer/"
+    elementFormDefault="qualified"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:swa="http://ws-i.org/profiles/basic/1.1/xsd"
+    xmlns:sawsdl="http://www.w3.org/ns/sawsdl"
+    xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:ar="http://arireg.x-road.eu/producer/">
+
+    <xsd:complexType name="toimiku_dokument_v1_Request">
+        <xsd:sequence>
+            <xsd:element name="ariregister_kasutajanimi" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri kasutajanimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="ariregister_parool" type="xsd:string" nillable="true" minOccurs="0">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Äriregistri parool</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="dokumendi_id" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Toimikudokument_id" type="xsd:integer">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Dokumendi id</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="dokumendi_tyyp" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Dokumendi tüüp</xrd:title>
+                    </xsd:appinfo>
+                    <xsd:documentation>M – Määrus, D – Dokument,  K - Kiri.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+    <xsd:complexType name="toimiku_dokument_v1_Vastus">
+        <xsd:sequence>
+            <xsd:element name="viide_manusele" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Toimikudokument_fail" type="swa:swaRef">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Salvesta fail</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="failinimi" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Toimikudokument_faili_nimi" type="xsd:string">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Faili nimi</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="dokument" sawsdl:modelReference="https://riha.eesti.ee/riha/onto/ettevotlus.ariregister/2010/r2#Toimikudokument" type="ar:toimiku_dokumendid_dokument">
+                <xsd:annotation>
+                    <xsd:appinfo>
+                        <xrd:title>Salvesta fail</xrd:title>
+                    </xsd:appinfo>
+                </xsd:annotation>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="toimikuDokument_v1">
+        <xsd:sequence>
+            <xsd:element name="keha" type="ar:toimiku_dokument_v1_Request" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="toimikuDokument_v1Response">
+        <xsd:sequence>
+            <xsd:element name="paring" type="ar:toimiku_dokument_v1_Request" />
+            <xsd:element name="keha" type="ar:toimiku_dokument_v1_Vastus" />
+        </xsd:sequence>
+    </xsd:complexType>
+
+<!-- wrapper declarations -->
+    <xsd:element name="toimikuDokument_v1" type="ar:toimikuDokument_v1"/>
+    <xsd:element name="toimikuDokument_v1Response" type="ar:toimikuDokument_v1Response"/>
+<!-- /wrapper declarations -->
+
+</xsd:schema>
