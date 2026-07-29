@@ -116,24 +116,24 @@ impl ParseState {
         let mut operations = Vec::with_capacity(self.op_order.len());
         for op_name in &self.op_order {
             let Some(msg_name) = self.op_inputs.get(op_name) else {
-                tracing::warn!("WSDL operation `{op_name}` has no input message — skipping");
+                tracing::debug!("WSDL operation `{op_name}` has no input message — skipping");
                 continue;
             };
             let Some(element_name) = self.messages.get(msg_name) else {
-                tracing::warn!(
+                tracing::debug!(
                     "WSDL message `{msg_name}` referenced by operation `{op_name}` \
                      is undefined — skipping op",
                 );
                 continue;
             };
             let Some(raw_element) = self.elements.get(element_name) else {
-                tracing::warn!(
+                tracing::debug!(
                     "WSDL element `{element_name}` referenced by message `{msg_name}` \
                      is undefined (likely an unresolved <xsd:include>) — skipping op `{op_name}`"
                 );
                 continue;
             };
-            let resolved = resolve_type_refs(raw_element, &self.named_types, &mut vec![]);
+            let resolved = resolve_type_refs_root(raw_element, &self.named_types);
             operations.push(Operation {
                 name: op_name.clone(),
                 input_element: resolved,
@@ -149,29 +149,49 @@ impl ParseState {
 
 /// Walk an element tree, replacing every `TypeRef` with the
 /// corresponding named type's `Complex { children }`. Unresolvable
-/// refs are logged and the element is converted to `Scalar` so it
-/// still exists in the tree but as a leaf (contributes one param).
-/// This matches the "graceful degradation" theme — better to expose
-/// a params list with SOME entries than to drop the whole op.
+/// refs and refs that would blow up the tree size fall back to
+/// `Scalar` so the element still surfaces but doesn't explode
+/// the DSL YAML.
 ///
-/// `stack` is a cycle-detection guard: a type referencing itself
-/// (directly or transitively) would infinite-loop without it.
+/// Two safety limits:
+///   - `stack` cycle guard (Vec<String>) — prevents A→A→A recursion.
+///   - `budget` node cap — prevents exponential blowup on diamond
+///     dependencies (A→B, A→C, B→D, C→D → D visited 2×,
+///     descendants visited 4×, …). Real WSDLs hit this quickly
+///     on generic "any-element" reference wrappers.
 fn resolve_type_refs(
     el: &ElementDef,
     named_types: &BTreeMap<String, Vec<ElementDef>>,
     stack: &mut Vec<String>,
+    budget: &mut u32,
 ) -> ElementDef {
+    // Global node budget shared across the whole tree. Once
+    // exhausted, remaining TypeRefs stay as Scalar. Chosen empirically:
+    // ~5000 nodes is well above any real hand-written envelope but
+    // catches diamond-explosion cases that would otherwise emit
+    // millions of nodes.
+    const MAX_NODES: u32 = 5_000;
+
+    if *budget == 0 {
+        return ElementDef {
+            name: el.name.clone(),
+            kind: ElementKind::Scalar,
+            optional: el.optional,
+        };
+    }
+    *budget = budget.saturating_sub(1);
+
     let kind = match &el.kind {
         ElementKind::Scalar => ElementKind::Scalar,
         ElementKind::Complex { children } => ElementKind::Complex {
             children: children
                 .iter()
-                .map(|c| resolve_type_refs(c, named_types, stack))
+                .map(|c| resolve_type_refs(c, named_types, stack, budget))
                 .collect(),
         },
         ElementKind::TypeRef { type_name } => {
             if stack.contains(type_name) {
-                tracing::warn!(
+                tracing::debug!(
                     "type `{type_name}` recurses; treating element `{}` as scalar to break cycle",
                     el.name
                 );
@@ -180,19 +200,23 @@ fn resolve_type_refs(
                 stack.push(type_name.clone());
                 let resolved_children: Vec<ElementDef> = children
                     .iter()
-                    .map(|c| resolve_type_refs(c, named_types, stack))
+                    .map(|c| resolve_type_refs(c, named_types, stack, budget))
                     .collect();
                 stack.pop();
+                if *budget == 0 {
+                    tracing::debug!(
+                        "type expansion budget ({MAX_NODES} nodes) exhausted while \
+                         resolving type `{type_name}` under element `{}`; \
+                         remainder scalar",
+                        el.name
+                    );
+                }
                 ElementKind::Complex {
                     children: resolved_children,
                 }
             } else {
-                // Cross-namespace, misspelled, or type from a
-                // framework schema we skipped. Fall back to
-                // scalar so the element still surfaces.
-                tracing::warn!(
-                    "element `{}` has type=\"…:{}\" — type not defined in the \
-                     WSDL schema; treating as scalar leaf",
+                tracing::debug!(
+                    "element `{}` has type=\"…:{}\" — type not defined; scalar fallback",
                     el.name,
                     type_name
                 );
@@ -205,6 +229,15 @@ fn resolve_type_refs(
         kind,
         optional: el.optional,
     }
+}
+
+// Wrapper used from finish() — sets up the shared budget.
+fn resolve_type_refs_root(
+    el: &ElementDef,
+    named_types: &BTreeMap<String, Vec<ElementDef>>,
+) -> ElementDef {
+    let mut budget: u32 = 5_000;
+    resolve_type_refs(el, named_types, &mut vec![], &mut budget)
 }
 
 // -------- helpers --------
@@ -775,7 +808,9 @@ where
     F: Fn(&str) -> Option<String>,
 {
     let Some(content) = loader(location) else {
-        tracing::warn!(
+        // Debug-level: common on framework/vendor schemas we don't
+        // ship locally. Pipeline aggregates loss stats at INFO.
+        tracing::debug!(
             "xsd:include schemaLocation=\"{}\" not resolvable — operations \
              depending on its elements will be skipped",
             location

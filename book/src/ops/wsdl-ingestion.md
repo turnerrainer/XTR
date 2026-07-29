@@ -146,6 +146,39 @@ management surface stays out of XTR:
 Admin and consumer surfaces stay hard-separated at the
 infrastructure level, not muddled together via in-process auth.
 
+## Harvesting the Estonian catalog
+
+RIA publishes a public JSON catalog at
+`https://x-tee.ee/catalogue-data/EE/index.json` listing every
+registered subsystem and its WSDLs. `scripts/harvest-xtee-wsdls.sh`
+turns that catalog into a populated `wsdl/` tree:
+
+```bash
+./scripts/harvest-xtee-wsdls.sh --subsystem rr,liiklusregister
+./scripts/harvest-xtee-wsdls.sh                    # everything
+```
+
+The script auto-writes `<wsdl>.meta.yaml` sidecars from the
+catalog metadata, so every generated DSL is X-Road-wrapped and
+ready for the Security Server route.
+
+**Scale caveats — read before harvesting everything.** The full
+EE catalog is ~421 subsystems, ~637 WSDLs, ~4300 methods. XTR's
+current loader validates every Handlebars template at boot; on
+3000+ generated DSLs that takes many minutes and probably won't
+complete in a reasonable window. Practical guidance:
+
+| Harvest | Endpoints | Boot time |
+|---|---|---|
+| Ariregister only (default) | 33 | ~1 second |
+| ~5 subsystems | ~100–200 | few seconds |
+| ~20 subsystems | ~500–800 | ~10–30 seconds |
+| Everything (~421 subsystems) | ~3000+ | not viable today |
+
+Use `--subsystem` to pick specific ones. Loader speedup at
+3000+ scale is filed as a follow-up (task 014, tracked under
+`epic-developer-experience/`).
+
 ## See also
 
 - [Adding a new service](../dsl/adding-a-service.md) —

@@ -38,7 +38,9 @@ build/
 #
 # Rule: for each WSDL-driven group, add an entry here.
 # Hand-written groups (like DSL/xroad/) stay tracked.
-/DSL/ar/*.yml
+/DSL/**/*.yml
+# But keep hand-written groups tracked:
+!/DSL/xroad/*.yml
 
 # Claude Code working state
 /.claude/
