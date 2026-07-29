@@ -32,6 +32,14 @@ build/
 
 # WSDL-generated DSL files — regenerated on every boot.
 # Hand-written groups (e.g. DSL/xroad/) stay tracked.
+/DSL/keskkonnaamet/*.yml
+/DSL/kliima/*.yml
+/DSL/maa-amet/*.yml
+/DSL/rik/*.yml
+/DSL/rmk/*.yml
+
+
+# Hand-written groups (e.g. DSL/xroad/) stay tracked.
 /DSL/DHX/*.yml
 /DSL/DHX.kotkas/*.yml
 /DSL/ads/*.yml

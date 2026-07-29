@@ -73,9 +73,14 @@ if [[ $n -eq 0 ]]; then
   exit 1
 fi
 
-# Build the WSDL fetch plan + subsystemCode dir mapping.
+# Build the WSDL fetch plan + <owner>/<subsystem> dir mapping.
+# Owner is a human-friendly slug for the memberCode, kept in a
+# small static map. Unknown members fall back to the memberCode
+# itself. This nests the on-disk layout so operators can find
+# everything from Maa-amet under one folder instead of hunting
+# through 14 subsystem-code directories.
 python3 <<PYEOF > "$work/plan.tsv"
-import json, collections, re
+import json, re
 d = json.load(open('$work/index.json'))
 subset = '$SUBSET'
 members = '$MEMBERS'
@@ -87,17 +92,29 @@ subs = [
     and (not wanted_sub or s['subsystemCode'] in wanted_sub)
     and (not wanted_mem or s['memberCode'] in wanted_mem)
 ]
-code_count = collections.Counter(s['subsystemCode'] for s in subs)
-def dir_for(s):
-    code = re.sub(r'[^a-zA-Z0-9._-]', '-', s['subsystemCode'])
-    if code_count[s['subsystemCode']] > 1:
-        code = f"{code}-{s['memberCode']}"
-    return code
+
+# Ownership map — memberCode → owner-slug. Extend as needed.
+OWNERS = {
+    '70000310': 'rik',              # Registrite ja Infosysteemide Keskus (Ariregister etc)
+    '70001231': 'kliima',           # Kliimaministeerium (former Keskkonnaministeerium)
+    '70003098': 'maa-amet',         # Land Board (Maa-amet)
+    '70004459': 'rmk',              # RMK secondary
+    '70008658': 'rmk',              # RMK — Riigimetsa Majandamise Keskus
+    '70009445': 'keskkonnaamet',    # Keskkonnaamet
+}
+def slug(x):
+    return re.sub(r'[^a-zA-Z0-9._-]', '-', x)
+
+def dirs_for(s):
+    owner = OWNERS.get(s['memberCode'], f"member-{s['memberCode']}")
+    sub = slug(s['subsystemCode'])
+    return owner, sub
+
 for s in subs:
-    g = dir_for(s)
+    owner, sub = dirs_for(s)
     for w in sorted({m['wsdl'] for m in s['methods'] if m.get('wsdl')}):
-        # cols: url-rel-path, group-dir, member-class, member-code, subsystem-code
-        print(f"{w}\t{g}\t{s['memberClass']}\t{s['memberCode']}\t{s['subsystemCode']}")
+        # cols: url-rel-path, owner-dir, subsystem-dir, member-class, member-code, subsystem-code
+        print(f"{w}\t{owner}\t{sub}\t{s['memberClass']}\t{s['memberCode']}\t{s['subsystemCode']}")
 PYEOF
 
 wsdl_count=$(wc -l < "$work/plan.tsv")
@@ -105,14 +122,18 @@ echo "==> $wsdl_count unique WSDL(s) to fetch"
 
 mkdir -p "$OUT_DIR"
 echo "==> parallel fetch (20 concurrent)..."
+# plan.tsv columns: url-rel  owner-dir  subsystem-dir  mclass  mcode  subcode
+# Output line format: url|target-path|mclass|mcode|subcode
 awk -F'\t' -v base="$CATALOG_BASE" -v out="$OUT_DIR" '
 {
   fname = $1
   sub(".*/", "", fname)
-  printf "%s/%s|%s/%s/%s|%s|%s|%s\n", base, $1, out, $2, fname, $3, $4, $5
+  printf "%s/%s|%s/%s/%s/%s|%s|%s|%s\n", base, $1, out, $2, $3, fname, $4, $5, $6
 }' "$work/plan.tsv" > "$work/fetch.txt"
 
-mkdir -p $(awk -F'|' '{print $2}' "$work/fetch.txt" | xargs -I {} dirname {} | sort -u)
+# Pre-create every target directory (nested owner/subsystem paths).
+awk -F'|' '{print $2}' "$work/fetch.txt" | xargs -I {} dirname {} | sort -u | \
+  xargs -I {} mkdir -p {}
 
 fail=0
 xargs -P 20 -I {} bash -c '

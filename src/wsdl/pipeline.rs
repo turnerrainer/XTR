@@ -26,9 +26,20 @@ use crate::wsdl::MARKER;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Scan `wsdl_watch_dir` for `<group>/*.wsdl` and write generated
-/// DSLs into `dsl_path`. Idempotent — running twice is safe as
-/// long as no hand-editor sneaked in between.
+/// Scan `wsdl_watch_dir` recursively for `*.wsdl` files and write
+/// generated DSLs into `dsl_path`, preserving the relative directory
+/// path from `wsdl_watch_dir`. So:
+///   - `wsdl/ar/foo.wsdl`         → `DSL/ar/*.yml`
+///   - `wsdl/maa-amet/ads/1.wsdl` → `DSL/maa-amet/ads/*.yml`
+///
+/// The loader keys endpoints by the file's IMMEDIATE parent directory
+/// name (loader::derive_key), so the URL is always
+/// `POST /<immediate-parent>/<operation>` regardless of nesting
+/// depth. The outer directories are purely organisational — group
+/// by owner, ministry, tenant, whatever helps humans navigate.
+///
+/// Idempotent — running twice is safe as long as no hand-editor
+/// sneaked in between.
 pub fn ingest_all(wsdl_watch_dir: &Path, dsl_path: &Path) -> Result<(), XtrError> {
     if !wsdl_watch_dir.exists() {
         tracing::warn!(
@@ -37,49 +48,86 @@ pub fn ingest_all(wsdl_watch_dir: &Path, dsl_path: &Path) -> Result<(), XtrError
         );
         return Ok(());
     }
-    let mut total_ops = 0usize;
-    let mut total_wsdls = 0usize;
-    let mut skipped_overrides = 0usize;
-
-    for group_entry in read_dir_sorted(wsdl_watch_dir)? {
-        if !group_entry.is_dir() {
-            continue;
-        }
-        let Some(group) = group_entry
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(str::to_string)
-        else {
-            continue;
-        };
-        for wsdl_path in read_dir_sorted(&group_entry)? {
-            if !is_wsdl(&wsdl_path) {
-                continue;
-            }
-            total_wsdls += 1;
-            match ingest_one(&wsdl_path, &group, dsl_path) {
-                Ok(ing) => {
-                    total_ops += ing.ops_written;
-                    skipped_overrides += ing.skipped_overrides;
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "WSDL {} failed to ingest: {} — skipping (XTR will boot without \
-                         its endpoints)",
-                        wsdl_path.display(),
-                        e
-                    );
-                }
-            }
-        }
-    }
+    let mut counters = Counters::default();
+    walk_and_ingest(wsdl_watch_dir, wsdl_watch_dir, dsl_path, &mut counters)?;
     tracing::info!(
         "WSDL ingestion: {} WSDL(s) processed, {} DSL(s) generated, {} hand-written \
          override(s) preserved",
-        total_wsdls,
-        total_ops,
-        skipped_overrides
+        counters.wsdls,
+        counters.ops,
+        counters.overrides
     );
+    Ok(())
+}
+
+#[derive(Default)]
+struct Counters {
+    wsdls: usize,
+    ops: usize,
+    overrides: usize,
+}
+
+/// Recurse `dir`, ingesting every `.wsdl` found. WSDL layout maps
+/// to a FLAT DSL layout like this:
+///
+///   wsdl/<owner>/*.wsdl              → DSL/<owner>/<op>.yml
+///   wsdl/<owner>/<subsystem>/*.wsdl  → DSL/<owner>/<subsystem>-<op>.yml
+///   wsdl/<a>/<b>/<c>/*.wsdl          → DSL/<a>/<b>-<c>-<op>.yml  (etc)
+///
+/// Loader keys by immediate parent, so URLs are always
+/// `POST /<owner>/<optionally-prefixed-op>` — 2 segments. The
+/// nesting under `wsdl/` is purely for human browsability; the
+/// URL stays owner-first and doesn't leak internal subsystem
+/// codes unless there are name collisions to disambiguate.
+fn walk_and_ingest(
+    dir: &Path,
+    root: &Path,
+    dsl_path: &Path,
+    counters: &mut Counters,
+) -> Result<(), XtrError> {
+    for entry in read_dir_sorted(dir)? {
+        if entry.is_dir() {
+            walk_and_ingest(&entry, root, dsl_path, counters)?;
+            continue;
+        }
+        if !is_wsdl(&entry) {
+            continue;
+        }
+        counters.wsdls += 1;
+        // Relative subdir from wsdl_watch_dir: for
+        // wsdl/maa-amet/ads/1.wsdl with root=wsdl, gives
+        // ["maa-amet", "ads"].
+        let rel = entry
+            .parent()
+            .and_then(|p| p.strip_prefix(root).ok())
+            .map(|p| p.to_path_buf())
+            .unwrap_or_default();
+        let segments: Vec<String> = rel
+            .components()
+            .filter_map(|c| c.as_os_str().to_str().map(String::from))
+            .collect();
+        // First segment = owner (URL group). Remaining segments
+        // (if any) become a hyphen-joined operation-name prefix.
+        let (group_dir, op_prefix): (PathBuf, String) = match segments.as_slice() {
+            [] => (PathBuf::new(), String::new()),
+            [owner] => (PathBuf::from(owner), String::new()),
+            [owner, rest @ ..] => (PathBuf::from(owner), format!("{}-", rest.join("-"))),
+        };
+        match ingest_one(&entry, &group_dir, &op_prefix, dsl_path) {
+            Ok(ing) => {
+                counters.ops += ing.ops_written;
+                counters.overrides += ing.skipped_overrides;
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "WSDL {} failed to ingest: {} — skipping (XTR will boot without \
+                     its endpoints)",
+                    entry.display(),
+                    e
+                );
+            }
+        }
+    }
     Ok(())
 }
 
@@ -89,7 +137,12 @@ struct Ingested {
     skipped_overrides: usize,
 }
 
-fn ingest_one(wsdl_path: &Path, group: &str, dsl_path: &Path) -> Result<Ingested, XtrError> {
+fn ingest_one(
+    wsdl_path: &Path,
+    group: &Path,
+    op_prefix: &str,
+    dsl_path: &Path,
+) -> Result<Ingested, XtrError> {
     let bytes = fs::read_to_string(wsdl_path)
         .map_err(|e| XtrError::Internal(format!("reading WSDL {}: {}", wsdl_path.display(), e)))?;
     let wsdl_dir = wsdl_path.parent().map(PathBuf::from).unwrap_or_default();
@@ -105,7 +158,7 @@ fn ingest_one(wsdl_path: &Path, group: &str, dsl_path: &Path) -> Result<Ingested
     })?;
     let mut ing = Ingested::default();
     for (op_name, yaml) in generate_all(&wsdl, meta.as_ref())? {
-        let out_path = group_dir.join(format!("{op_name}.yml"));
+        let out_path = group_dir.join(format!("{op_prefix}{op_name}.yml"));
         if is_hand_written_override(&out_path)? {
             tracing::warn!(
                 "hand-written override at {} shadows generated DSL from {} (op={}) — \
@@ -259,6 +312,42 @@ mod tests {
         assert!(contents.starts_with(MARKER));
         assert!(contents.contains("service: https://example.com/soap"));
         assert!(contents.contains("- q"));
+    }
+
+    #[test]
+    fn owner_grouped_wsdl_layout_flattens_to_prefixed_dsl() {
+        // Owner-grouped WSDL layout: wsdl/<owner>/<subsystem>/*.wsdl.
+        // Generated DSLs FLATTEN one level to DSL/<owner>/
+        // with the subsystem name prefixed onto the operation:
+        //   wsdl/maa-amet/ads/1.wsdl (operation "lookup")
+        //     → DSL/maa-amet/ads-lookup.yml
+        //     → POST /maa-amet/ads-lookup
+        // This keeps URLs 2-segment (unchanged router), keeps
+        // the DSL/<owner>/*.yml shape the operator asked for,
+        // and disambiguates when two subsystems under the same
+        // owner have same-named operations.
+        let watch = TempDir::new().unwrap();
+        let dsl = TempDir::new().unwrap();
+        let nested = watch.path().join("maa-amet").join("ads");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("1.wsdl"), MINIMAL_WSDL).unwrap();
+
+        ingest_all(watch.path(), dsl.path()).unwrap();
+
+        let out = dsl.path().join("maa-amet").join("ads-lookup.yml");
+        assert!(
+            out.exists(),
+            "expected flattened DSL at {} — pipeline should collapse \
+             wsdl/<owner>/<subsystem>/ into DSL/<owner>/<subsystem>-<op>.yml",
+            out.display()
+        );
+        // No accidental nested DSL/<owner>/<subsystem>/ directory:
+        let nested_dsl = dsl.path().join("maa-amet").join("ads");
+        assert!(
+            !nested_dsl.exists(),
+            "did NOT expect nested DSL subdir at {}",
+            nested_dsl.display()
+        );
     }
 
     #[test]

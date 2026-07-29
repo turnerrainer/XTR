@@ -1,48 +1,60 @@
-# Shipped WSDLs
+# Shipped WSDLs — owner-grouped
 
 XTR's default `xtr.yaml` sets `wsdl_watch_dir: ./wsdl`, so every
-`<group>/*.wsdl` file below becomes live REST endpoints on boot
+`*.wsdl` file below becomes live REST endpoints on boot
 (task 013 folder-drop). Each `.wsdl` has a companion
-`.meta.yaml` sidecar with `member_class` / `member_code` /
-`subsystem_code` that triggers XTR's X-Road envelope wrapping.
+`.meta.yaml` sidecar for X-Road envelope wrapping.
+
+## Layout
+
+```
+wsdl/
+├── <owner>/                    # organisation slug — becomes URL prefix
+│   └── <subsystem>/            # X-Road subsystem code — organisational only
+│       ├── N.wsdl              # one WSDL per operation-set
+│       └── N.meta.yaml         # sidecar: member_class/code/subsystem
+```
+
+Boots as `POST /<owner>/<subsystem>-<operation>` — the pipeline
+collapses `wsdl/<owner>/<subsystem>/N.wsdl` into
+`DSL/<owner>/<subsystem>-<op>.yml` so the URL is 2-segment and
+per-owner listing groups everything from one ministry/agency.
 
 ## What ships
 
-| Group prefix | Origin | Notes |
+| Owner slug | Organisation | Subsystems |
 |---|---|---|
-| `ar/` | Ariregister (RIK, GOV/70000310) — the Estonian Business Register public XML API. 33 auto-generated endpoints. Runs against `ariregxmlv6.rik.ee` directly (public HTTPS, no Security Server required — vendor username/password in the SOAP body). |
-| `ads/`, `ehr3/`, `mis/`, `kpois/`, `kkrmn/`, `knr/`, `maaok/`, `maais/`, `maais-klient/`, `etak/`, `tiheasustusalad/`, `aks-ads/`, `aks-knr/`, `mtp-katri/` | **Maa-amet** (Land Board, GOV/70003098) — under Ministry of Climate since 2023 reorg. Address system, buildings register, topographic maps, land-cadastre operations. |
-| `kotkas-70008658/`, `okas/` | **RMK** — State Forest Management Centre (GOV/70008658). Forest permits + operations. |
-| `kotkas-70009445/`, `metsaregister/`, `DHX/`, `DHX.kotkas/` | **Keskkonnaamet** — Environmental Board (GOV/70009445). Environmental permits + forest register. |
-| `ljvis/` | **Keskkonnaministeerium / Kliimaministeerium** (Ministry of Climate, GOV/70001231) — waste tracking system. |
+| `rik/` | RIK — Registrite ja Infosysteemide Keskus (Centre of Registers and Information Systems) | `ariregister` (public HTTPS demo, no Security Server needed — see sidecar `service_url` override) |
+| `maa-amet/` | Maa-amet (Land Board — under Kliimaministeerium since 2023) | `ads`, `ehr3`, `mis`, `kpois`, `kkrmn`, `knr`, `maaok`, `maais`, `maais-klient`, `etak`, `tiheasustusalad`, `aks-ads`, `aks-knr`, `mtp-katri` |
+| `keskkonnaamet/` | Keskkonnaamet (Environmental Board) | `kotkas`, `metsaregister`, `DHX`, `DHX.kotkas` |
+| `rmk/` | RMK (State Forest Management Centre) | `kotkas`, `okas` |
+| `kliima/` | Kliimaministeerium (Ministry of Climate, ex-Keskkonnaministeerium) | `ljvis` |
 
 ## Reproducing / expanding
 
-Everything under this directory (except `ar/`, which is a
-special-case public-HTTPS service) came from RIA's public
-X-Road catalog via `scripts/harvest-xtee-wsdls.sh`. To add
-more subsystems:
+Everything under `wsdl/` (except `rik/ariregister/`, which is the
+public HTTPS special case) came from RIA's public X-Road catalog
+via `scripts/harvest-xtee-wsdls.sh`:
 
 ```bash
-./scripts/harvest-xtee-wsdls.sh --member <memberCode>[,memberCode...]
-./scripts/harvest-xtee-wsdls.sh --subsystem <subsystemCode>[,subsystemCode...]
+./scripts/harvest-xtee-wsdls.sh --member <memberCode>
+./scripts/harvest-xtee-wsdls.sh --subsystem <subsystemCode>
 ```
 
-For the full RIA catalog (~421 subsystems, ~4300 methods),
-run without flags — but the DSL loader currently stalls at
-that scale. See task 014.
+The script's built-in ownership map (memberCode → slug) puts
+new fetches under `wsdl/<owner>/<subsystem>/`. Add more mappings
+in the script's `OWNERS` dict for new memberCodes.
 
 ## Security Server requirement
 
-Every group EXCEPT `ar/` needs a configured `security_server:`
-in `xtr.yaml` to actually work — the sidecars produce
-X-Road-wrapped envelopes that route via mTLS through YOUR
-Security Server. Without SS, `/api` lists all endpoints but
-every call returns "no security_server configured". See
-`book/src/ops/xroad-security-server.md`.
+Every group EXCEPT `rik/ariregister/` needs a configured
+`security_server:` in `xtr.yaml` to actually work — the sidecars
+produce X-Road-wrapped envelopes that route via mTLS through
+YOUR Security Server. Without SS, `/api` lists all endpoints but
+every call returns "no security_server configured".
 
-`ar/` is the exception because Ariregister publishes a public
-HTTPS fallback endpoint — the generator's TURVASERVER
-detection replaces the placeholder with the vendor URL for
-these DSLs. Vendor username/password in the SOAP body is
-still required.
+`ariregister` is the exception because its sidecar sets
+`service_url: https://ariregxmlv6.rik.ee/` — direct-HTTPS
+fallback endpoint the vendor publishes alongside their X-Road
+subsystem. Vendor username/password in the SOAP body still
+required.
