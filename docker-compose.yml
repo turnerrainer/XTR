@@ -9,13 +9,25 @@ services:
     container_name: xtr-on-rust
     ports:
       - "8080:8080"
+    # The image ships xtr.yaml + wsdl/ + DSL/ baked in as the
+    # demo. Override any of those with bind mounts:
+    #
     # volumes:
-    #   - ./config:/app/config:ro           # add once XTR domain lands
-    #   - ./constants.ini:/app/constants.ini:ro
+    #   - ./xtr.yaml:/app/xtr.yaml:ro
+    #   - ./wsdl:/app/wsdl:ro                # your own WSDLs
+    #   - ./DSL:/app/DSL:ro                  # hand-written DSLs
+    #   - ./ssl:/app/ssl:ro                  # PKCS12 for X-Road SS
     environment:
       - RUST_LOG=info
+      # XTR_KEYSTORE_PASSWORD=<from-your-secret-manager>
     restart: unless-stopped
-    read_only: true
+    # Not read-only: WSDL folder-drop (task 013) regenerates
+    # DSL/*.yml files under /app/DSL on every boot. Other
+    # hardening (cap_drop, no-new-privileges, non-root uid,
+    # resource limits) stays in place. To harden further,
+    # pre-generate DSLs on host and set `wsdl_watch_dir:` to
+    # empty in a mounted xtr.yaml override — then re-enable
+    # `read_only: true`.
     tmpfs:
       - /tmp:size=64M
     security_opt:

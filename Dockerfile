@@ -18,6 +18,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /build/target/release/xtr-on-rust /app/xtr-on-rust
+# Ship the demo self-contained: xtr.yaml + wsdl/ (Ariregister +
+# Ministry-of-Climate orbit) + hand-written DSL/xroad/ samples.
+# Operators can bind-mount over any of these to override.
+COPY xtr.yaml /app/xtr.yaml
+COPY wsdl /app/wsdl
+COPY DSL /app/DSL
 
 EXPOSE 8080
 RUN useradd -m -u 1000 xtr && chown -R xtr:xtr /app
