@@ -1,18 +1,21 @@
 # HANDOFF
 
-**Written**: 2026-07-28
-**Last verified green**: 2026-07-28 — cargo test 58/0/0
-(47 unit + 11 integration); fmt + clippy -D warnings clean;
-cargo audit clean (0 advisories); cargo deny check clean.
-Live smoke test loads all 6 shipped DSL samples, serves
-`/health` + `/api` (with the enhanced XtrError schema), and
-handles a real Ariregister SOAP Fault as `upstream_soap_fault`.
+**Written**: 2026-07-29
+**Last verified green**: 2026-07-29 — cargo test 82/0/0
+(71 unit + 11 integration); fmt + clippy -D warnings clean;
+cargo audit clean (0 advisories); cargo deny check clean;
+mdbook + linkcheck build clean. Default boot (with shipped
+`wsdl/ar/`) takes ~1 second, materialises 35 endpoints
+(33 auto-generated Ariregister + 2 hand-written X-Road).
 **Branch**: `dev` — task 002 done, hardening sweep landed
-(tasks 003, 005, 010, 011, 012 + follow-ups). `v0.2.0-rc.2`
-release-prep landed 2026-07-28; awaits tag push.
-**Release**: `v0.2.0-rc.2` prepared. Cargo.toml, VERSION,
-docker-compose.yml, README, book, HANDOFF, CHANGELOG all
-bumped. Tag push is the operator's move.
+(tasks 003, 005, 010, 011, 012), task 013 (WSDL folder-drop)
+landed, task 006 (Security Server onboarding docs) landed.
+Task 014 (loader scale optimization) filed. `v0.2.0-rc.2`
+tag exists **locally** (2 commits ahead of tag: harvest
+script + linkcheck fix). Not pushed yet.
+**Release**: `v0.2.0-rc.2` locally tagged at `9434245`. HEAD
+(`7b03f97`) is the current-truth working state. Whether to
+move the tag or ship as-is is operator's call.
 
 This file is the entry point for the next contributor (human or
 agent). Read this, run the first-run checklist, then dive into the
@@ -32,12 +35,26 @@ Currently implements (per DESIGN.md §8):
   XML → JSON translation → response
 - `GET /health` — `{"status":"ok"}`
 - `GET /api` — auto-generated OpenAPI 3.1 from loaded DSLs
+- **WSDL folder-drop** (task 013) — `wsdl_watch_dir:` config
+  field. XTR ingests `<wsdl_watch_dir>/<group>/*.wsdl` at boot,
+  parses each with the in-tree SOAP-1.1 parser
+  (`src/wsdl/`), and generates `DSL/<group>/<operation>.yml`
+  per operation. Marker-header collision rules: hand-written
+  DSLs (no marker) always win.
+- **Ariregister shipped as default** — `wsdl/ar/ariregister.wsdl`
+  + 34 companion XSDs bundled in the repo. Default `xtr.yaml`
+  points `wsdl_watch_dir` at `./wsdl`, yielding 33
+  auto-generated `/ar/*` endpoints on boot.
+- **Estonian catalog harvest script** —
+  `scripts/harvest-xtee-wsdls.sh` fetches ALL public WSDLs
+  from RIA's x-tee.ee catalog (~637 WSDLs, ~4300 methods).
+  Fully reproducible; catalog data itself is NOT committed
+  (see task 014 for the scale caveat).
 - 12 of the 17 JVM XTR bugs from DESIGN.md §7 fixed
   (subsystem_code typo, single-pass Handlebars, system trust
   store, structured errors, /:group/:service route, /health
   endpoint, port 8080 everywhere, OpenAPI schema type
   "string" not "String", etc.)
-- 6 shipped DSL samples imported from JVM XTR
 
 ## What this repo does NOT have yet
 
@@ -67,29 +84,47 @@ Currently implements (per DESIGN.md §8):
 
 ## Roadmap (planned order)
 
-1. ✅ **Task 001 (done)**: analysed original XTR (JVM). See
-   [`docs/DESIGN.md`](./docs/DESIGN.md).
-2. ✅ **Task 002 (done)**: implemented the v0.2.0-rc.2 MVP
-   slice per DESIGN.md §8. 10 phases (A–J), 29 tests, 12 of
-   17 JVM bugs fixed. See
-   [`tasks/done/002-implement-mvp-v0.2.0-rc.2.md`](./tasks/done/002-implement-mvp-v0.2.0-rc.2.md).
-3. **Task 009 — release prep**: metadata bump (Cargo.toml,
-   VERSION, CHANGELOG, docker-compose image tag, docs) to
-   flip to `0.2.0-rc.2`. Precedes the first tag push.
-4. **First release cut**: `v0.2.0-rc.2` after task 009 merges.
-5. **Iterate** in `0.x` line on `dev`. `main` reserved for
-   `v1.0.0`. Post-MVP work is organised into **epics** under
-   `tasks/backlog/epic-*/` (see below). v0.3+ roadmap lives
-   in [`docs/DESIGN.md`](./docs/DESIGN.md#9-roadmap-beyond-mvp).
+Landed 2026-07-28 through 2026-07-29:
+
+- ✅ **Task 001** — analysed original XTR (JVM). See
+  [`docs/DESIGN.md`](./docs/DESIGN.md).
+- ✅ **Task 002** — MVP per DESIGN.md §8 (working proxy).
+- ✅ **Task 003** — Content-Type + charset (closed as
+  landed with 002 Phase D).
+- ✅ **Task 005** — X-Road protocol version in config.
+- ✅ **Task 006** — Security Server onboarding docs.
+- ✅ **Task 009** — release prep for v0.2.0-rc.1 (then
+  bumped to rc.2 with WSDL folder-drop landing).
+- ✅ **Task 010** — SOAP Fault detection (200 + non-2xx).
+- ✅ **Task 011** — request/response size caps + timeout.
+- ✅ **Task 012** — opt-in JSON type coercion.
+- ✅ **Task 013** — WSDL folder-drop + auto-generation.
+  Ariregister ships as default demo.
+- Security sweep — quick-xml CVE upgrade, XXE guard,
+  nesting-depth cap, regression coverage.
+
+Next up:
+
+- **Task 004** — response requestHash verification
+  (needs a real Security Server or task 007's mock).
+- **Task 007** — mock X-Road Security Server for CI.
+- **Task 008** — extend UTF-8 / Estonian character
+  coverage (largely covered already).
+- **Task 014** — DSL loader scale optimization (parallel
+  loader / lazy Handlebars validation) — needed for
+  operators who harvest the full RIA catalog via
+  `scripts/harvest-xtee-wsdls.sh`.
+- **First tag push**: `v0.2.0-rc.2` (already exists
+  locally at `9434245`).
 
 ## Open backlog
 
 | Task | Location | Status |
 |---|---|---|
-| **009** — release prep for v0.2.0-rc.2 | [`tasks/backlog/009-release-prep-v0.2.0-rc.2.md`](./tasks/backlog/009-release-prep-v0.2.0-rc.2.md) | Next up |
-| **Epic — X-Road protocol compliance** | [`tasks/backlog/epic-xroad-protocol-compliance/`](./tasks/backlog/epic-xroad-protocol-compliance/) | 3 open tasks (003, 004, 005) |
-| **Epic — Operator onboarding** | [`tasks/backlog/epic-operator-onboarding/`](./tasks/backlog/epic-operator-onboarding/) | 1 open task (006) |
+| **Epic — X-Road protocol compliance** | [`tasks/backlog/epic-xroad-protocol-compliance/`](./tasks/backlog/epic-xroad-protocol-compliance/) | 1 open task (004) |
 | **Epic — Testing infrastructure** | [`tasks/backlog/epic-testing-infrastructure/`](./tasks/backlog/epic-testing-infrastructure/) | 2 open tasks (007, 008) |
+| **Epic — Operational hardening** | [`tasks/backlog/epic-operational-hardening/`](./tasks/backlog/epic-operational-hardening/) | Empty (011 landed) |
+| **Epic — Developer experience** | [`tasks/backlog/epic-developer-experience/`](./tasks/backlog/epic-developer-experience/) | 1 open task (014) |
 
 Each epic directory has its own `README.md` explaining scope +
 closing criteria. See STANDARDS.md §13 for the epic filing
