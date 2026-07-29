@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: xtr-on-rust:0.2.0-rc.2
+    image: xtr-on-rust:0.1.0-rc.2
     container_name: xtr-on-rust
     ports:
       - "8080:8080"

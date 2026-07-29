@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0-rc.2] - 2026-07-29
+## [0.1.0-rc.2] - 2026-07-29
 
 Second release candidate. Adds runtime WSDL folder-drop
 (task 013), ships real Ariregister WSDL + 34 companion XSDs
@@ -87,7 +87,7 @@ clean, mdbook + linkcheck build clean, live smoke boots
 with 35 endpoints (33 auto-generated Ariregister + 2
 hand-written X-Road samples).
 
-## [0.2.0-rc.1] - 2026-07-28
+## [0.1.0-rc.1] - 2026-07-28
 
 First publishable release candidate. Working REST → SOAP →
 X-Road proxy in Rust, live-verified against public Ariregister
@@ -166,7 +166,7 @@ entity XXE guard.
 Final audit posture: `cargo audit` 0 advisories, `cargo deny
 check` green on advisories/bans/licenses/sources.
 
-### Added — Task 002 MVP (v0.2.0-rc.1 candidate)
+### Added — Task 002 MVP (v0.1.0-rc.2 candidate)
 
 Working REST → SOAP → X-Road proxy per DESIGN.md §8. Implements
 the module tree, HTTP surface, DSL loader, Handlebars expansion,
@@ -245,11 +245,11 @@ Docs
   read of the original [buerokratt/XTR](https://github.com/buerokratt/XTR).
   Documents the JVM XTR's public surface, DSL format, config,
   request lifecycle, and 17 known bugs. Defines the XTR-on-Rust
-  MVP scope (`v0.2.0-rc.1`), correctness fixes applied, non-goals,
+  MVP scope (`v0.1.0-rc.2`), correctness fixes applied, non-goals,
   crate layout, roadmap to v1.0. Now includes **§2.7 X-Road
   protocol context** — the domain gotchas beyond mechanical
   translation, each cross-linked to a follow-up task.
-- **`tasks/backlog/002-implement-mvp-v0.2.0-rc.1.md`** — next
+- **`tasks/backlog/002-implement-mvp-v0.1.0-rc.2.md`** — next
   task on the roadmap: implement DESIGN.md §8 (the MVP slice).
 - **Task epic system** in `tasks/backlog/epic-*/`. Three epics
   filed after the task 001 review, each with its own README:
@@ -331,7 +331,7 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.2...HEAD
-[0.2.0-rc.2]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.2.0-rc.2
-[0.2.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.1.0...v0.2.0-rc.1
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...HEAD
+[0.1.0-rc.2]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.1...v0.1.0-rc.2
+[0.1.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.1.0...v0.1.0-rc.1
 [0.1.0]: https://github.com/turnerrainer/XTR/releases/tag/v0.1.0

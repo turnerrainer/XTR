@@ -10,10 +10,10 @@ mdbook + linkcheck build clean. Default boot (with shipped
 **Branch**: `dev` — task 002 done, hardening sweep landed
 (tasks 003, 005, 010, 011, 012), task 013 (WSDL folder-drop)
 landed, task 006 (Security Server onboarding docs) landed.
-Task 014 (loader scale optimization) filed. `v0.2.0-rc.2`
+Task 014 (loader scale optimization) filed. `v0.1.0-rc.2`
 tag exists **locally** (2 commits ahead of tag: harvest
 script + linkcheck fix). Not pushed yet.
-**Release**: `v0.2.0-rc.2` locally tagged at `9434245`. HEAD
+**Release**: `v0.1.0-rc.2` locally tagged at `9434245`. HEAD
 (`7b03f97`) is the current-truth working state. Whether to
 move the tag or ship as-is is operator's call.
 
@@ -59,7 +59,7 @@ Currently implements (per DESIGN.md §8):
 ## What this repo does NOT have yet
 
 - Published container image — the publish workflow is wired up
-  and passes locally; ships on `git push origin v0.2.0-rc.2`
+  and passes locally; ships on `git push origin v0.1.0-rc.2`
   after phase J of task 002.
 - Full Docker Hub / GHCR setup — see "Before the first tag
   push" below (one-time operator setup).
@@ -114,7 +114,7 @@ Next up:
   loader / lazy Handlebars validation) — needed for
   operators who harvest the full RIA catalog via
   `scripts/harvest-xtee-wsdls.sh`.
-- **First tag push**: `v0.2.0-rc.2` (already exists
+- **First tag push**: `v0.1.0-rc.2` (already exists
   locally at `9434245`).
 
 ## Open backlog
@@ -149,7 +149,7 @@ Same one-time setup as Ruuter-on-Rust required (see STANDARDS.md §11):
 
 | Topic | File |
 |---|---|
-| **Domain design — what XTR-on-Rust must do (v0.2.0-rc.2 MVP scope + roadmap)** | [`docs/DESIGN.md`](./docs/DESIGN.md) |
+| **Domain design — what XTR-on-Rust must do (v0.1.0-rc.2 MVP scope + roadmap)** | [`docs/DESIGN.md`](./docs/DESIGN.md) |
 | Every generic rule this project follows | [`STANDARDS.md`](./STANDARDS.md) |
 | CI security gate | [`.github/workflows/security.yml`](./.github/workflows/security.yml), [`deny.toml`](./deny.toml), [`.cargo/audit.toml`](./.cargo/audit.toml) |
 | Publish workflow | [`.github/workflows/publish.yml`](./.github/workflows/publish.yml) |
