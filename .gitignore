@@ -30,50 +30,9 @@ build/
 # mdBook output
 /book/book/
 
-# WSDL-generated DSL files — regenerated on every boot.
-# Hand-written groups (e.g. DSL/xroad/) stay tracked.
-/DSL/keskkonnaamet/*.yml
-/DSL/kliima/*.yml
-/DSL/maa-amet/*.yml
-/DSL/rik/*.yml
-/DSL/rmk/*.yml
-
-
-# Hand-written groups (e.g. DSL/xroad/) stay tracked.
-/DSL/DHX/*.yml
-/DSL/DHX.kotkas/*.yml
-/DSL/ads/*.yml
-/DSL/aks-ads/*.yml
-/DSL/aks-knr/*.yml
-/DSL/ar/*.yml
-/DSL/ehr3/*.yml
-/DSL/etak/*.yml
-/DSL/kkrmn/*.yml
-/DSL/knr/*.yml
-/DSL/kotkas-70008658/*.yml
-/DSL/kotkas-70009445/*.yml
-/DSL/kpois/*.yml
-/DSL/ljvis/*.yml
-/DSL/maais/*.yml
-/DSL/maais-klient/*.yml
-/DSL/maaok/*.yml
-/DSL/metsaregister/*.yml
-/DSL/mis/*.yml
-/DSL/mtp-katri/*.yml
-/DSL/okas/*.yml
-/DSL/tiheasustusalad/*.yml
-
-
-# source of truth; XTR regenerates the .yml files under
-# DSL/<group>/ on every boot. Ignoring the outputs keeps PRs
-# from churning on marker-header lines and preserves the
-# "WSDL is canonical" invariant. Task 013.
-#
-# Rule: for each WSDL-driven group, add an entry here.
-# Hand-written groups (like DSL/xroad/) stay tracked.
-/DSL/**/*.yml
-# But keep hand-written groups tracked:
-!/DSL/xroad/*.yml
+# WSDL-generated DSL files ARE committed for review — they're
+# regenerated deterministically per boot from wsdl/, so `git diff`
+# after a boot should be empty. Commit any drift you see.
 
 # Claude Code working state
 /.claude/
