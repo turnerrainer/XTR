@@ -2,26 +2,11 @@
 
 [Introduction](./introduction.md)
 
-# Getting started
-
-- [Prerequisites](./getting-started/prerequisites.md)
-- [Run it locally](./getting-started/run-locally.md)
-- [Watch the automated tests pass](./getting-started/automated-tests.md)
-- [What to read next](./getting-started/next-steps.md)
-
-# DSL
-
-- [DSL format](./dsl/format.md)
-- [Adding a new service](./dsl/adding-a-service.md)
-
-# Operations
-
-- [Configuration](./ops/configuration.md)
-- [Environment variables](./ops/env.md)
-- [Docker](./ops/docker.md)
-- [X-Road Security Server setup](./ops/xroad-security-server.md)
-- [WSDL folder-drop](./ops/wsdl-ingestion.md)
-- [Failure modes](./ops/failure-modes.md)
+- [Getting started](./getting-started.md)
+- [Configuration](./configuration.md)
+- [WSDL folder-drop](./wsdl-ingestion.md)
+- [X-Road Security Server setup](./security-server.md)
+- [Failure modes](./failure-modes.md)
 
 # Reference
 
