@@ -18,16 +18,30 @@ use quick_xml::Reader;
 use serde_json::{json, Value};
 
 /// Hard cap on element nesting depth. Real X-Road envelopes rarely
-/// exceed 10 levels; 512 leaves plenty of headroom while stopping a
+/// exceed 10 levels; 128 leaves plenty of headroom while stopping a
 /// pathological "billion laughs"-style nested-element DoS from
 /// blowing the stack via unbounded recursion in `parse_children`.
-const MAX_NESTING_DEPTH: u32 = 512;
+/// Lowered from 512 in audit-v1: debug builds have ~2 MB test-thread
+/// stacks and the higher cap was on the edge — a defensive cap that
+/// can itself cause a stack overflow is a self-own.
+const MAX_NESTING_DEPTH: u32 = 128;
+
+/// Audit-v1 C2 second-layer cap. Depth doesn't catch "wide-and-flat"
+/// bombs (a million siblings at depth 3); this per-document event
+/// counter does. Legit X-Road envelopes are hundreds to low
+/// thousands of events. 100k is well above real payloads (a 16 MiB
+/// response body of `<a/>` elements is roughly ~2M events) and
+/// still bounds parse-time work regardless of payload shape.
+/// Also serves as a safety net if quick-xml's DOCTYPE/entity
+/// posture ever regresses.
+const MAX_XML_EVENTS: usize = 100_000;
 
 pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
 
-    let root = parse_element(&mut reader)?;
+    let mut event_budget: usize = MAX_XML_EVENTS;
+    let root = parse_element(&mut reader, &mut event_budget)?;
 
     // Envelope's children should include Header + Body. Extract
     // both under stable keys. If neither present, return the raw
@@ -57,7 +71,8 @@ pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
 pub fn try_extract_soap_fault(xml: &str) -> Option<XtrError> {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
-    let root = parse_element(&mut reader).ok()?;
+    let mut event_budget: usize = MAX_XML_EVENTS;
+    let root = parse_element(&mut reader, &mut event_budget).ok()?;
     let (_, body) = extract_header_and_body(&root);
     let fault = find_child_endswith(&body, "Fault")?;
     Some(fault_to_error(fault))
@@ -141,17 +156,36 @@ fn find_child_endswith<'a>(node: &'a Value, suffix: &str) -> Option<&'a Value> {
     })
 }
 
+/// Bump the per-document event budget. Returns Err when exhausted
+/// — the counter stops wide-and-flat XML bombs (millions of siblings
+/// at shallow depth) that the depth cap wouldn't catch. Also a
+/// safety net if quick-xml's DOCTYPE/entity posture ever regresses.
+fn charge_event(budget: &mut usize) -> Result<(), XtrError> {
+    if *budget == 0 {
+        return Err(XtrError::XmlParseError(format!(
+            "XML event budget exhausted ({MAX_XML_EVENTS}) — refusing possible XML bomb"
+        )));
+    }
+    *budget -= 1;
+    Ok(())
+}
+
 /// Recursively parse the next element (assumes reader is
 /// positioned at the start of the document or immediately after
 /// a Start event for the parent). Returns a single-key JSON
 /// object `{ "elementName": <content> }`.
-fn parse_element(reader: &mut Reader<&[u8]>) -> Result<Value, XtrError> {
+fn parse_element(
+    reader: &mut Reader<&[u8]>,
+    event_budget: &mut usize,
+) -> Result<Value, XtrError> {
     loop {
+        charge_event(event_budget)?;
         match reader.read_event() {
             Ok(Event::Decl(_)) | Ok(Event::Comment(_)) | Ok(Event::PI(_)) => continue,
             Ok(Event::Start(e)) => {
                 let name = element_name(&e);
-                let content = parse_children(reader, &name, attrs_to_object(&e), 1)?;
+                let content =
+                    parse_children(reader, &name, attrs_to_object(&e), 1, event_budget)?;
                 return Ok(json!({ name: content }));
             }
             Ok(Event::Empty(e)) => {
@@ -179,6 +213,7 @@ fn parse_children(
     close_name: &str,
     attrs_seed: Value,
     depth: u32,
+    event_budget: &mut usize,
 ) -> Result<Value, XtrError> {
     if depth > MAX_NESTING_DEPTH {
         return Err(XtrError::XmlParseError(format!(
@@ -194,11 +229,17 @@ fn parse_children(
     let mut text_buf = String::new();
 
     loop {
+        charge_event(event_budget)?;
         match reader.read_event() {
             Ok(Event::Start(e)) => {
                 let child_name = element_name(&e);
-                let child_content =
-                    parse_children(reader, &child_name, attrs_to_object(&e), depth + 1)?;
+                let child_content = parse_children(
+                    reader,
+                    &child_name,
+                    attrs_to_object(&e),
+                    depth + 1,
+                    event_budget,
+                )?;
                 insert_merging(&mut obj, &child_name, child_content);
             }
             Ok(Event::Empty(e)) => {
@@ -729,5 +770,67 @@ mod tests {
         // string — coercion only fires on bare leaves.
         let v = coerced(r#"<x kind="int">42</x>"#);
         assert_eq!(v, json!({ "x": { "@kind": "int", "#text": "42" } }));
+    }
+
+    // ---------- Audit-v1 C2 regression pins ----------
+
+    #[test]
+    fn audit_c2_billion_laughs_rejected_no_expansion() {
+        // Classic entity-expansion bomb. quick-xml 0.41 rejects
+        // custom entities at the parser level and our
+        // Event::GeneralRef handler rejects unresolved references.
+        // This test locks in that a bomb never expands, whether
+        // via DOCTYPE or GeneralRef surface.
+        let bomb = r#"<?xml version="1.0"?>
+<!DOCTYPE lolz [
+  <!ENTITY lol "lol">
+  <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+  <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+]>
+<SOAP:Envelope xmlns:SOAP="http://schemas.xmlsoap.org/soap/envelope/">
+  <SOAP:Body><result>&lol3;</result></SOAP:Body>
+</SOAP:Envelope>"#;
+        let err = translate_soap(bomb).unwrap_err();
+        assert!(
+            matches!(&err, XtrError::XmlParseError(m)
+                if m.contains("custom entities") || m.contains("XXE")),
+            "expected entity-guard error, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn audit_c2_wide_and_flat_bomb_capped_by_event_budget() {
+        // Depth cap alone doesn't stop a bomb that goes wide-and-
+        // flat: 200k `<x/>` siblings at depth 3. Verify the
+        // event-count safety net rejects it. Use MAX_XML_EVENTS +
+        // some slack so a legit large payload just under the cap
+        // still succeeds (covered by a separate test).
+        let mut body = String::from("<soap:Envelope><soap:Body>");
+        // Each `<x/>` is one Empty event, so > MAX_XML_EVENTS empties
+        // will trip the counter regardless of nesting depth.
+        for _ in 0..(super::MAX_XML_EVENTS + 100) {
+            body.push_str("<x/>");
+        }
+        body.push_str("</soap:Body></soap:Envelope>");
+        let err = translate_soap(&body).unwrap_err();
+        assert!(
+            matches!(&err, XtrError::XmlParseError(m) if m.contains("event budget")),
+            "expected event-budget error, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn audit_c2_doctype_without_entity_body_does_not_error() {
+        // A DOCTYPE with no entity table is harmless (used e.g.
+        // by some SOAP toolchains to name the root). The parser
+        // should ignore it, not error out — that behaviour is
+        // covered by the DocType branch of parse_children.
+        let xml = r#"<?xml version="1.0"?>
+<!DOCTYPE soap:Envelope>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body><ok>1</ok></soap:Body>
+</soap:Envelope>"#;
+        let v = translate_soap(xml).unwrap();
+        assert_eq!(body(&v), &json!({ "ok": 1 }));
     }
 }

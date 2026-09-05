@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — h2ck.me audit-v1 fixes (2026-09-05)
+
+Pre-publication audit findings from `h2ck.me/projects/XTR/v1`.
+Two Critical, four High, five Medium — all closed on this branch.
+
+- **C1 (SSRF via WSDL upstream URL)** — new
+  `src/wsdl/url_guard.rs` validates every URL discovered in a
+  `<soap:address location=…/>` or metadata-sidecar
+  `service_url:` override. Rejects `http` by default, private /
+  loopback / link-local / CGNAT / ULA / v4-mapped-v6 ranges,
+  and non-http(s) schemes. New config: `wsdl.allow_http_upstream`,
+  `wsdl.upstream_host_allowlist`.
+- **C2 (XML bomb safety net)** — added `MAX_XML_EVENTS = 100_000`
+  per-document event budget in `src/translate/xml_to_json.rs`.
+  Complements the existing depth cap (lowered from 512 → 128
+  for debug-stack safety) and the pre-existing custom-entity
+  rejection. Regression test bombs → error, no expansion.
+- **H1 (path traversal in WSDL schema-include loader)** —
+  `resolve_local_schema` now applies filename charset restriction,
+  symlink rejection via `symlink_metadata`, and canonicalisation
+  with `starts_with(wsdl_dir)` containment check.
+- **H2 (X-Road client impersonation via sidecar)** — sidecar
+  `member_class` / `member_code` / `subsystem_code` are now
+  validated against `client_data` at load time. Mismatch →
+  refuse to load the sidecar (WSDL is skipped with a WARN).
+- **H3 (SOAP fault detail leak)** — `IntoResponse` for
+  `UpstreamSoapFault` now strips `detail` and caps `faultstring`
+  at 200 chars by default. Full detail always logged at
+  `warn!` level for operators. Config
+  `expose_soap_fault_detail: bool` re-enables the raw response
+  for internal debugging.
+- **H4 (TLS defaults not tested)** — both executors now pin
+  `min_tls_version(TLS_1_2)` explicitly on the reqwest builder.
+- **M1 (xroad_protocol_version typos)** — `AppConfig::validate()`
+  called at boot; rejects any value not in `{"4.0", "4.1"}`
+  with an error naming both the bad value and the accepted set.
+- **M2 (gzip invariant)** — both executors set `.no_gzip()`,
+  `.no_brotli()`, `.no_deflate()` so the 16 MiB wire-body cap
+  in `read_bounded` stays meaningful regardless of upstream
+  content-encoding.
+- **M3 (attribute-safe Handlebars helper)** — registered
+  `{{xml_attr foo}}` helper that emits `&quot; &apos; &lt; &gt; &amp;`
+  for interpolation into XML attribute values. Default `{{foo}}`
+  is still safe in element text.
+
+New crate dependency: `url = "2"` (already a transitive of
+`reqwest` — promoted to a direct dep for `url_guard.rs`).
+
 ## [0.1.0-rc.2] - 2026-07-29
 
 Second release candidate. Adds runtime WSDL folder-drop

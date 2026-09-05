@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
     // cfg.dsl_path and the loader picks them up alongside any
     // hand-written DSLs.
     if let Some(watch) = &cfg.wsdl_watch_dir {
-        wsdl::ingest_all(watch, &cfg.dsl_path)?;
+        wsdl::ingest_all(watch, &cfg.dsl_path, &cfg.wsdl, &cfg.client_data)?;
     }
 
     let services = loader::load_all(&cfg.dsl_path)?;

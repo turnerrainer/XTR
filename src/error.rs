@@ -86,20 +86,71 @@ impl XtrError {
 
 impl IntoResponse for XtrError {
     fn into_response(self) -> Response {
-        tracing::warn!("request failed: {}", self);
+        self.into_response_with_options(false)
+    }
+}
+
+/// Audit-v1 H3 — cap on `faultstring` exposed to REST callers when
+/// the upstream SOAP fault leaks server internals into that field.
+/// Full text is always logged via `tracing::warn!` for operators.
+pub const SOAP_FAULT_STRING_MAX: usize = 200;
+
+impl XtrError {
+    /// Render as an HTTP response. When `expose_soap_fault_detail`
+    /// is false (the default), upstream SOAP fault `detail` blocks
+    /// and any `faultstring` beyond `SOAP_FAULT_STRING_MAX` chars
+    /// are stripped from the client-visible body. The full,
+    /// untruncated fault is emitted at `warn!` level so operators
+    /// still have it for debugging. Set the flag true only inside
+    /// trusted environments where callers should see raw upstream
+    /// diagnostics.
+    pub fn into_response_with_options(self, expose_soap_fault_detail: bool) -> Response {
+        // Always log the full error for the operator, including
+        // fault detail — the flag only affects the response body.
+        match &self {
+            Self::UpstreamSoapFault {
+                code,
+                string,
+                detail,
+            } => {
+                tracing::warn!(
+                    fault_code = %code,
+                    fault_string = %string,
+                    fault_detail = ?detail,
+                    "upstream SOAP fault (full detail)"
+                );
+            }
+            _ => tracing::warn!("request failed: {}", self),
+        }
+
         let status = self.status();
         let body = match &self {
             Self::UpstreamSoapFault {
                 code,
                 string,
                 detail,
-            } => json!({
-                "error": "upstream_soap_fault",
-                "message": self.to_string(),
-                "code": code,
-                "string": string,
-                "detail": detail,
-            }),
+            } => {
+                if expose_soap_fault_detail {
+                    json!({
+                        "error": "upstream_soap_fault",
+                        "message": self.to_string(),
+                        "code": code,
+                        "string": string,
+                        "detail": detail,
+                    })
+                } else {
+                    let truncated = truncate_chars(string, SOAP_FAULT_STRING_MAX);
+                    json!({
+                        "error": "upstream_soap_fault",
+                        "message": format!("upstream returned SOAP Fault ({code})"),
+                        "code": code,
+                        "string": truncated,
+                        // `detail` deliberately omitted from the
+                        // client response — full contents live in
+                        // the `tracing::warn!` above.
+                    })
+                }
+            }
             Self::RequestTooLarge { limit } | Self::UpstreamBodyTooLarge { limit } => json!({
                 "error": self.code(),
                 "message": self.to_string(),
@@ -111,5 +162,73 @@ impl IntoResponse for XtrError {
             }),
         };
         (status, Json(body)).into_response()
+    }
+}
+
+/// Byte-based truncation would slice mid-codepoint on multibyte
+/// Estonian characters; use char count instead. Adds "… (truncated)"
+/// only when trimming actually happened so short strings look normal.
+fn truncate_chars(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        return s.to_string();
+    }
+    let cut: String = s.chars().take(max_chars).collect();
+    format!("{cut}… (truncated)")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::to_bytes;
+
+    async fn body_json(resp: Response) -> serde_json::Value {
+        let bytes = to_bytes(resp.into_body(), 65536).await.unwrap();
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[tokio::test]
+    async fn audit_h3_soap_fault_detail_stripped_by_default() {
+        let err = XtrError::UpstreamSoapFault {
+            code: "Server".into(),
+            string: "backend unavailable".into(),
+            detail: Some(json!({ "stack": "at internal.jsp:42" })),
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        assert!(body.get("detail").is_none(), "detail must not leak: {body}");
+        assert_eq!(body["code"], "Server");
+        assert_eq!(body["string"], "backend unavailable");
+    }
+
+    #[tokio::test]
+    async fn audit_h3_long_faultstring_truncated() {
+        let big = "x".repeat(500);
+        let err = XtrError::UpstreamSoapFault {
+            code: "Server".into(),
+            string: big.clone(),
+            detail: None,
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        let out = body["string"].as_str().unwrap();
+        assert!(
+            out.ends_with("… (truncated)"),
+            "should end with truncation marker: {out}"
+        );
+        assert!(out.chars().count() < big.chars().count());
+    }
+
+    #[tokio::test]
+    async fn audit_h3_opt_in_exposes_detail() {
+        let err = XtrError::UpstreamSoapFault {
+            code: "Server".into(),
+            string: "x".repeat(300),
+            detail: Some(json!({ "why": "diag" })),
+        };
+        let resp = err.into_response_with_options(true);
+        let body = body_json(resp).await;
+        assert_eq!(body["detail"], json!({ "why": "diag" }));
+        // Full string returned, no truncation marker.
+        assert!(!body["string"].as_str().unwrap().contains("truncated"));
     }
 }
