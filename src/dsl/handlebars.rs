@@ -19,7 +19,9 @@
 
 use crate::config::AppConfig;
 use crate::error::XtrError;
-use ::handlebars::Handlebars;
+use ::handlebars::{
+    Context, Handlebars, Helper, HelperResult, Output, RenderContext, RenderErrorReason,
+};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -45,9 +47,51 @@ pub fn expand(
         }
     }
 
-    let hbs = Handlebars::new();
+    let mut hbs = Handlebars::new();
+    // Audit-v1 M3: xml_attr helper produces attribute-safe escaping
+    // (quotes and apostrophes as well as <, >, &). Default `{{x}}`
+    // uses handlebars' HTML escaping which is safe in XML element
+    // *text* but breaks attribute values when the operator writes
+    // `<x attr="{{userInput}}">`. Give DSL authors an unambiguous
+    // helper for that case so it doesn't have to be re-derived.
+    hbs.register_helper("xml_attr", Box::new(xml_attr_helper));
     hbs.render_template(template, &Value::Object(ctx.into_iter().collect()))
         .map_err(|e| XtrError::HandlebarsError(e.to_string()))
+}
+
+fn xml_attr_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let value = h
+        .param(0)
+        .ok_or_else(|| RenderErrorReason::ParamNotFoundForIndex("xml_attr", 0))?;
+    let s = value.value().as_str().unwrap_or("");
+    out.write(&xml_attr_escape(s))?;
+    Ok(())
+}
+
+/// Escape a string for inclusion between XML attribute quotes.
+/// Order matters — `&` must be replaced first or later expansions
+/// double-escape existing entities. Attribute-safe means every one
+/// of `< > & " '` becomes an entity; that's a strict superset of
+/// what element-text escaping covers.
+fn xml_attr_escape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            _ => out.push(ch),
+        }
+    }
+    out
 }
 
 fn build_auto_context(cfg: &AppConfig) -> HashMap<String, Value> {
@@ -223,6 +267,33 @@ mod tests {
         )
         .unwrap();
         assert_eq!(out, "<v>4.1</v>");
+    }
+
+    #[test]
+    fn audit_m3_xml_attr_helper_escapes_quotes() {
+        let mut params = HashMap::new();
+        params.insert(
+            "id".into(),
+            Value::String(r#"a"b'c<d>&e"#.into()),
+        );
+        let out = expand(
+            r#"<x attr="{{xml_attr id}}"/>"#,
+            &["id".to_string()],
+            params,
+            &cfg(),
+        )
+        .unwrap();
+        assert_eq!(
+            out,
+            r#"<x attr="a&quot;b&apos;c&lt;d&gt;&amp;e"/>"#
+        );
+    }
+
+    #[test]
+    fn audit_m3_xml_attr_escape_ordering_is_stable() {
+        assert_eq!(super::xml_attr_escape("a&<b"), "a&amp;&lt;b");
+        assert_eq!(super::xml_attr_escape("plain"), "plain");
+        assert_eq!(super::xml_attr_escape(""), "");
     }
 
     #[test]

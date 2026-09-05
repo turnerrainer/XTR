@@ -32,6 +32,15 @@ impl SecurityServerExecutor {
         let client = Client::builder()
             .identity(identity)
             .timeout(Duration::from_secs(limits.request_timeout_secs))
+            // Audit-v1 H4: explicit TLS 1.2 floor — same rationale
+            // as PlainExecutor. Especially important on the SS
+            // path where the connection carries a client identity.
+            .min_tls_version(reqwest::tls::Version::TLS_1_2)
+            // Audit-v1 M2: mirror the plain executor's decompression
+            // stance so response cap accounting stays honest.
+            .no_gzip()
+            .no_brotli()
+            .no_deflate()
             .build()
             .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
 

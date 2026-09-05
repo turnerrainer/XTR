@@ -42,3 +42,29 @@ limits:
 #   url: "https://<your-security-server-fqdn>:5500/"
 #   keystore_path: /app/ssl/xtr-client.p12
 #   keystore_password_env: XTR_KEYSTORE_PASSWORD
+
+# WSDL ingestion trust-boundary controls (audit-v1 C1). WSDLs and
+# metadata sidecars live in an operator-controlled directory but
+# ANY URL discovered in them is passed through url_guard.rs
+# before landing in a generated DSL.
+wsdl:
+  # Allow http:// upstream URLs. Default false — every real Estonian
+  # X-Road producer serves HTTPS. Flip to true only for local test
+  # setups where you're pointing at a mock over plain HTTP.
+  allow_http_upstream: false
+  # Optional hostname allowlist. Empty = no pinning (still subject
+  # to the private-IP / scheme / v4-mapped-v6 guards). Recommended
+  # in production; keeps a compromised WSDL mount from redirecting
+  # traffic to an attacker-controlled public host.
+  upstream_host_allowlist: []
+  # Example:
+  # upstream_host_allowlist:
+  #   - ariregxmlv6.rik.ee
+  #   - jvis.envir.ee
+
+# Audit-v1 H3: expose upstream SOAP fault `detail` and full
+# faultstring to REST callers. Default false — server logs still
+# carry the full detail at warn! level. Set true only inside
+# trusted environments where callers should see raw upstream
+# diagnostics.
+expose_soap_fault_detail: false

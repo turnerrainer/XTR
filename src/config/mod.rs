@@ -68,6 +68,40 @@ pub struct AppConfig {
     /// any name collision.
     #[serde(default)]
     pub wsdl_watch_dir: Option<PathBuf>,
+
+    /// Audit-v1 — WSDL ingestion trust-boundary controls
+    /// (SSRF guard on `<soap:address location=…/>` and metadata
+    /// sidecar `service_url:` overrides).
+    #[serde(default)]
+    pub wsdl: WsdlIngest,
+
+    /// Audit-v1 H3 — when true, upstream SOAP fault `detail` and
+    /// full `faultstring` are echoed to REST callers. Default
+    /// false; full detail is always kept in `tracing::warn!` for
+    /// operator debugging.
+    #[serde(default)]
+    pub expose_soap_fault_detail: bool,
+}
+
+/// WSDL ingestion trust-boundary controls. WSDL and metadata
+/// sidecar files live in an operator-controlled directory and
+/// are treated as trusted for structure but never for the URL
+/// they name — the audit-v1 SSRF finding was that a malicious
+/// WSDL could dial the AWS metadata endpoint.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct WsdlIngest {
+    /// Allow `http://` upstream URLs. Default false — public
+    /// SOAP producers (Ariregister, Ministry of Climate) all
+    /// serve HTTPS. Set true only in local test setups.
+    #[serde(default)]
+    pub allow_http_upstream: bool,
+
+    /// Optional hostname allowlist for upstream URLs discovered
+    /// in WSDLs or sidecars. Empty = no pinning (still subject
+    /// to the private-IP / scheme guards). Non-empty = every
+    /// upstream URL must resolve to a host on this list.
+    #[serde(default)]
+    pub upstream_host_allowlist: Vec<String>,
 }
 
 /// Resource ceilings. Defaults chosen for typical X-Road payload
@@ -159,6 +193,8 @@ impl Default for AppConfig {
             security_server: None,
             limits: Limits::default(),
             wsdl_watch_dir: None,
+            wsdl: WsdlIngest::default(),
+            expose_soap_fault_detail: false,
         }
     }
 }
@@ -177,10 +213,27 @@ impl AppConfig {
                 let cfg: AppConfig = serde_yaml_ng::from_str(&body).map_err(|e| {
                     XtrError::Internal(format!("parsing config {}: {}", path.display(), e))
                 })?;
+                cfg.validate()?;
                 return Ok((cfg, Some(path)));
             }
         }
         Ok((Self::default(), None))
+    }
+
+    /// Audit-v1 M1 — catch typos in `xroad_protocol_version` at
+    /// boot instead of failing every request cryptically at the
+    /// Security Server. The accepted set is small and stable
+    /// (X-Road message-protocol 4.0 has been the only shipping
+    /// version for years; 4.1 is the next slot).
+    pub fn validate(&self) -> Result<(), XtrError> {
+        const ACCEPTED: &[&str] = &["4.0", "4.1"];
+        if !ACCEPTED.contains(&self.xroad_protocol_version.as_str()) {
+            return Err(XtrError::Internal(format!(
+                "xroad_protocol_version '{}' is not one of the accepted values {:?}",
+                self.xroad_protocol_version, ACCEPTED
+            )));
+        }
+        Ok(())
     }
 
     /// Resolve the keystore password from the configured env var.
@@ -224,4 +277,40 @@ fn config_search_paths() -> Vec<PathBuf> {
     out.push(PathBuf::from("./xtr.yaml"));
     out.push(PathBuf::from("./xtr.yml"));
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg_with_protocol(v: &str) -> AppConfig {
+        AppConfig {
+            xroad_protocol_version: v.into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn audit_m1_default_config_validates() {
+        AppConfig::default().validate().unwrap();
+    }
+
+    #[test]
+    fn audit_m1_typo_in_protocol_version_rejected() {
+        let err = cfg_with_protocol("9.9").validate().unwrap_err();
+        assert!(
+            matches!(&err, XtrError::Internal(m) if m.contains("9.9") && m.contains("accepted")),
+            "expected validation error naming bad value and accepted set, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn audit_m1_accepts_4_1() {
+        cfg_with_protocol("4.1").validate().unwrap();
+    }
+
+    #[test]
+    fn audit_m1_empty_string_rejected() {
+        assert!(cfg_with_protocol("").validate().is_err());
+    }
 }
