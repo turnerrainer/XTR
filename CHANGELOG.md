@@ -40,6 +40,13 @@ Two Critical, four High, five Medium — all closed on this branch.
   for internal debugging.
 - **H4 (TLS defaults not tested)** — both executors now pin
   `min_tls_version(TLS_1_2)` explicitly on the reqwest builder.
+  Added `tests/tls_defaults_enforced.rs` integration test
+  (post-h2ck.me-v1 nit): spins a self-signed TLS server via
+  `rcgen` + `tokio-native-tls` on a random port, asserts a
+  default-trust-store reqwest client refuses the handshake AND
+  a bypass-flagged client succeeds against the same server
+  (counter-test guards against false-positive greens from a
+  broken server setup).
 - **M1 (xroad_protocol_version typos)** — `AppConfig::validate()`
   called at boot; rejects any value not in `{"4.0", "4.1"}`
   with an error naming both the bad value and the accepted set.
