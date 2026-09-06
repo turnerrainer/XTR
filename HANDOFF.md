@@ -1,18 +1,17 @@
 # HANDOFF
 
 **Written**: 2026-07-29
-**Last verified green**: 2026-07-29 — cargo test 84/0/0
-(73 unit + 11 integration); fmt + clippy -D warnings clean;
-cargo audit clean (0 advisories); cargo deny check clean;
-mdbook + linkcheck build clean. Container image
-`turnerrainer/xtr:0.1.0-rc.2` (== `:rc`) live on Docker Hub +
-GHCR, multi-arch, cosign-signed. `docker pull` from a fresh
-machine → 194 endpoints in ~1 s.
-**Branch**: `dev` — released as `v0.1.0-rc.2` (tag pushed to
-GitHub; publish workflow succeeded 2026-07-29).
-**Release**: `v0.1.0-rc.2` published to `docker.io/turnerrainer/xtr`
-and `ghcr.io/turnerrainer/xtr` (both `:0.1.0-rc.2` and moving
-`:rc` suffix tag).
+**Last touched**: 2026-09-06 — audit-v1 fix branch + version
+bump to `0.2.0-rc`.  See [`MIGRATION.md`](./MIGRATION.md) if
+you're upgrading a live deployment from `0.1.0-rc.2`.
+**Current published**: `turnerrainer/xtr:0.1.0-rc.2` (== `:rc`,
+digest `sha256:61d441d00f75`, 2026-07-29). New tag
+`v0.2.0-rc` will publish on merge of PR #2 + tag push.
+**Branch**: `feat/audit-v1-security-fixes` — 5 commits ahead of
+`dev`; open PR [#2](https://github.com/turnerrainer/XTR/pull/2).
+**Last verified green** (on branch): `cargo test` 129/0/0
+(118 unit + 11 e2e + 7 doctor + 2 tls-defaults); fmt + clippy
+`-D warnings` clean; cargo audit clean; cargo deny check clean.
 
 Next contributor (human or Claude) must:
 
@@ -80,6 +79,10 @@ Landed (see [CHANGELOG.md](./CHANGELOG.md) for detail):
 - ✅ Task 013 — WSDL folder-drop + auto-generation
 - ✅ Security sweep — quick-xml CVE upgrade, XXE guard, nesting cap
 - ✅ First publish — v0.1.0-rc.2 on both registries
+- ✅ h2ck.me audit v1 — C1/C2 + H1-H4 + M1-M3 closed on
+  `feat/audit-v1-security-fixes` (PR #2, pending merge);
+  version bumped to `0.2.0-rc`; ships `xtr-on-rust doctor`
+  config validator + `MIGRATION.md` upgrade guide
 
 Open:
 

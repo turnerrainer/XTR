@@ -60,10 +60,18 @@ jobs:
           unzip -o mdbook-linkcheck.zip -d /usr/local/bin/ mdbook-linkcheck
           chmod +x /usr/local/bin/mdbook-linkcheck
           rm mdbook-linkcheck.zip
-      # Match docs.yml: CHANGELOG.md is the source of truth; book
-      # renders a synced copy under reference/. Regenerating in CI
-      # guarantees the two never drift.
-      - name: Sync CHANGELOG into book
-        run: cp CHANGELOG.md book/src/reference/changelog.md
+      # Match docs.yml: CHANGELOG.md + MIGRATION.md are sources
+      # of truth; book renders synced copies under reference/.
+      # sed rewrite: repo-root cross-links (./CHANGELOG.md,
+      # ./MIGRATION.md) → book-local (./changelog.md,
+      # ./migration.md) so linkcheck passes.
+      - name: Sync CHANGELOG + MIGRATION into book
+        run: |
+          sed -e 's|(\./MIGRATION\.md|(./migration.md|g' \
+              -e 's|(\./CHANGELOG\.md|(./changelog.md|g' \
+              CHANGELOG.md > book/src/reference/changelog.md
+          sed -e 's|(\./MIGRATION\.md|(./migration.md|g' \
+              -e 's|(\./CHANGELOG\.md|(./changelog.md|g' \
+              MIGRATION.md > book/src/reference/migration.md
       - name: Build book (fails on broken internal links)
         run: mdbook build book

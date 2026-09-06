@@ -10,15 +10,22 @@
 dsl_path: ./DSL
 port: 8080
 
-# X-Road identity — replace with your own on real deployments.
-# These fixture values only work against public HTTPS endpoints
-# (like Ariregister) that don't validate X-Road member identity.
+# X-Road identity — fill in with your real values from RIA before
+# deploying with sidecar-tagged WSDLs. Leaving these empty makes
+# the shipped Ariregister demo work end-to-end (public HTTPS
+# endpoints don't validate X-Road member identity), but every
+# X-Road-routed request will go out with empty identity fields
+# and be rejected by a real Security Server. `xtr-on-rust doctor`
+# will flag empty-here as WEAK; the shipped placeholder pattern
+# (< > in the value) is upgraded to FATAL to catch a
+# copy-paste-and-forget deploy. See docs/DESIGN.md §2.7 and
+# task 006 for real-org onboarding.
 xroad_instance: ee-test
 xroad_protocol_version: "4.0"
 client_data:
   member_class: GOV
-  member_code: "<your-registry-code>"      # see docs/DESIGN.md §2.7
-  subsystem_code: <your-subsystem>         # + task 006 for real onboarding
+  member_code: ""     # e.g. "70000000"
+  subsystem_code: ""  # e.g. "myservice"
 
 # WSDL folder-drop (task 013). XTR walks this tree at boot and
 # generates DSL/<group>/<operation>.yml per wsdl:operation.

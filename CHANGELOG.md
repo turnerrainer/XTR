@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc] - 2026-09-06
+
+Third release candidate. Closes the h2ck.me pre-publication
+audit (v1) — two Critical, four High, five Medium findings on
+the WSDL trust boundary. Because several fixes changed
+externally-visible behaviour (SOAP fault response shape most
+notably), this ships as a minor bump, not a patch.
+
+Snyk-driven base-image bump `debian:bookworm-slim` →
+`debian:13.6-slim` (PR #1) is included; runtime-verified with
+end-to-end TLS calls to real Ariregister.
+
+### Migration from 0.1.0-rc.2
+
+Read [`MIGRATION.md`](./MIGRATION.md) and run
+`xtr-on-rust doctor` (new subcommand — see below) against
+your `xtr.yaml`. The doctor prints a per-finding table
+(FATAL / BREAK / WEAK / INFO) with exact recovery flags.
+
+### Breaking changes vs 0.1.0-rc.2
+
+Four externally-visible changes. All have recovery flags for
+strict behaviour equivalence; the defaults were changed
+because the safer posture is a better fit for a public
+release.
+
+1. **SOAP fault response shape** (H3). The JSON body for a
+   `502 upstream_soap_fault` no longer includes the `detail`
+   field; `string` (faultstring) is capped at 200 characters;
+   `message` is shortened from
+   `"upstream returned SOAP Fault (X): Y"` to
+   `"upstream returned SOAP Fault (X)"`.
+   - Server logs still carry the full fault detail at `warn!`
+     level via structured `tracing` fields.
+   - **Recover exact-equivalence** by setting
+     `expose_soap_fault_detail: true` in `xtr.yaml`.
+
+2. **`xroad_protocol_version` enum validation at boot** (M1).
+   Values other than `"4.0"` or `"4.1"` now hard-fail startup
+   with an error naming the bad value and the accepted set.
+   - Default remains `"4.0"`; vast majority of configs
+     unaffected. Empty string, typos, or a value set by an
+     operator experimenting with a newer protocol will now
+     refuse to boot.
+   - **Recover** by setting `xroad_protocol_version` to one
+     of the accepted values.
+
+3. **X-Road sidecar identity validation** (H2). If a
+   `<wsdl>.meta.yaml` sidecar declares `member_class`,
+   `member_code`, or `subsystem_code`, they must equal the
+   corresponding `client_data` field in `xtr.yaml`. Mismatch
+   → whole WSDL is skipped with a WARN. Empty `client_data`
+   fields (default state) skip the check per-field so
+   pre-onboarding operators still get all endpoints.
+   - The shipped `xtr.yaml` uses placeholder
+     `member_code: "<your-registry-code>"`. Any real sidecar
+     with a real member code will now be rejected against
+     the placeholder — set `client_data` before deploying
+     with sidecars.
+   - **Recover** by either aligning sidecar values with
+     config OR removing the identity fields from the sidecar
+     (sidecar can still override `service_code` /
+     `service_url`).
+
+4. **URL guard on WSDL upstreams** (C1). Every URL discovered
+   in a WSDL `<soap:address location=…>` or metadata sidecar
+   `service_url:` override is validated at ingest. Private,
+   loopback, link-local, CGNAT, ULA, IPv4-mapped-IPv6, and
+   non-http(s) schemes are rejected; the offending URL is
+   dropped from the DSL (WSDL operations then fall back to
+   Security Server routing). Also, `http://` upstreams are
+   rejected by default.
+   - **Recover** by setting `wsdl.allow_http_upstream: true`
+     for plaintext HTTP upstreams, or by adding legitimate
+     internal hostnames to `wsdl.upstream_host_allowlist`.
+     Private-IP upstreams cannot be recovered — that is by
+     design.
+
+### Behaviour changes worth calling out
+
+Not breaking in the SemVer sense (unlikely to affect real
+deployments) but observable if you're at an edge:
+
+- **HTTP client no longer decompresses response bodies**
+  (M2). Both executors now build the reqwest client with
+  `.no_gzip()`, `.no_brotli()`, `.no_deflate()`. reqwest's
+  default WAS to decompress transparently, which would let a
+  16 MiB wire-body cap silently protect a much larger
+  in-memory payload. If any upstream sends
+  `Content-Encoding: gzip` unconditionally, XTR now
+  surfaces the compressed bytes to the XML parser and it
+  will error. No recovery flag; if you hit this, open an
+  issue and we'll add one.
+- **XML depth cap 512 → 128**. Real X-Road envelopes are
+  single-digit-deep; 128 leaves ~10x headroom while keeping
+  the debug-build test-thread stack safe.
+- **Schema-include filenames restricted** to
+  `[A-Za-z0-9._-]+`. Symlinks under the WSDL dir are also
+  rejected. Any WSDL corpus that ships XSDs with non-ASCII
+  filenames or symlink-organized includes now silently
+  drops those includes.
+
+### Added
+
+- **`xtr-on-rust doctor` subcommand** — new. Validates the
+  operator's `xtr.yaml` against the audit-v1 ruleset and the
+  known breaking-change recovery matrix. Emits FATAL /
+  BREAK / WEAK / INFO findings; exit code 1 on any FATAL
+  (or on WEAK under `--strict`). See
+  [`MIGRATION.md`](./MIGRATION.md) for the recipe.
+- **`MIGRATION.md`** — machine-readable + human-readable
+  guide for both operators and LLMs walking through the
+  0.1 → 0.2 upgrade.
+
 ### Security — h2ck.me audit-v1 fixes (2026-09-05)
 
 Pre-publication audit findings from `h2ck.me/projects/XTR/v1`.
@@ -386,7 +500,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...HEAD
+[0.2.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...v0.2.0-rc
 [0.1.0-rc.2]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.1...v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.1.0...v0.1.0-rc.1
 [0.1.0]: https://github.com/turnerrainer/XTR/releases/tag/v0.1.0

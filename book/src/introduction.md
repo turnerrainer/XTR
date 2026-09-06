@@ -9,7 +9,7 @@ and translates SOAP responses to JSON. Ships with **194 live
 endpoints** from real Estonian X-Road services (Ariregister + Maa-amet
 + Keskkonnaamet + RMK + Kliimaministeerium) ready to call.
 
-**Version:** 0.1.0-rc.2 · **License:** Apache-2.0
+**Version:** 0.2.0-rc · **License:** Apache-2.0
 · **Repo:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
 · **Images:** `docker.io/turnerrainer/xtr:rc`, `ghcr.io/turnerrainer/xtr:rc`
 

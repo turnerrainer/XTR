@@ -35,11 +35,19 @@ jobs:
           unzip -o mdbook-linkcheck.zip -d /usr/local/bin/ mdbook-linkcheck
           chmod +x /usr/local/bin/mdbook-linkcheck
           rm mdbook-linkcheck.zip
-      # Root CHANGELOG.md is the source of truth. The book renders
-      # a synced copy under reference/; regenerate here so they
-      # never drift.
-      - name: Sync CHANGELOG into book
-        run: cp CHANGELOG.md book/src/reference/changelog.md
+      # Root CHANGELOG.md + MIGRATION.md are the source of truth.
+      # The book renders synced copies under reference/; rewrite
+      # cross-links from the repo-root form (./CHANGELOG.md,
+      # ./MIGRATION.md) to the book-local form
+      # (./changelog.md, ./migration.md) so linkcheck passes.
+      - name: Sync CHANGELOG + MIGRATION into book
+        run: |
+          sed -e 's|(\./MIGRATION\.md|(./migration.md|g' \
+              -e 's|(\./CHANGELOG\.md|(./changelog.md|g' \
+              CHANGELOG.md > book/src/reference/changelog.md
+          sed -e 's|(\./MIGRATION\.md|(./migration.md|g' \
+              -e 's|(\./CHANGELOG\.md|(./changelog.md|g' \
+              MIGRATION.md > book/src/reference/migration.md
       - name: Build book (linkcheck fails on broken internal links)
         run: mdbook build book
       - name: Upload Pages artifact
