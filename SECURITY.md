@@ -1,5 +1,12 @@
 # Security policy
 
+Upgrading from `0.1.0-rc.2` to `0.2.0-rc`? Read
+[`MIGRATION.md`](./MIGRATION.md) first — it lists the four
+behaviour changes and the concrete recovery flags. Then run
+`xtr-on-rust doctor` against your `xtr.yaml` to catch
+placeholder credentials, weak URL-guard postures, or
+security-server misconfig before you deploy.
+
 ## Reporting a vulnerability
 
 Please **do not open a public GitHub issue** for security-sensitive

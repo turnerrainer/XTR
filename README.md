@@ -43,8 +43,18 @@ docker compose up -d --build
 
 - **Book** — [turnerrainer.github.io/XTR](https://turnerrainer.github.io/XTR/)
   (getting started, config, WSDL folder-drop, Security Server, failure modes)
+- **Migration** — [`MIGRATION.md`](./MIGRATION.md) — `0.1.0-rc.2` → `0.2.0-rc`
+  upgrade guide with doctor recipe, per-breaking-change before/after,
+  LLM prompt template, CI gate recipe
+- **Config validator** — [`book/src/doctor.md`](./book/src/doctor.md) —
+  `xtr-on-rust doctor` subcommand recipe
 - **Design** — [`docs/DESIGN.md`](./docs/DESIGN.md) — what XTR does and why
+- **Security** — [`SECURITY.md`](./SECURITY.md) — reporting, supply-chain
+  posture, SSRF operator recipe
 - **Standards** — [`STANDARDS.md`](./STANDARDS.md) — every generic
   build/docs/test/publish rule the project meets
-- **Changelog** — [`CHANGELOG.md`](./CHANGELOG.md)
+- **Changelog** — [`CHANGELOG.md`](./CHANGELOG.md) — includes
+  `[0.2.0-rc]` breaking-changes subsection
+- **AI-assistant context** — [`CLAUDE.md`](./CLAUDE.md) — first
+  file to read for Claude Code + friends
 - **Original JVM XTR** — <https://github.com/buerokratt/XTR>
