@@ -129,7 +129,14 @@ fn walk_and_ingest(
             [owner] => (PathBuf::from(owner), String::new()),
             [owner, rest @ ..] => (PathBuf::from(owner), format!("{}-", rest.join("-"))),
         };
-        match ingest_one(&entry, &group_dir, &op_prefix, dsl_path, wsdl_cfg, client_data) {
+        match ingest_one(
+            &entry,
+            &group_dir,
+            &op_prefix,
+            dsl_path,
+            wsdl_cfg,
+            client_data,
+        ) {
             Ok(ing) => {
                 counters.ops += ing.ops_written;
                 counters.overrides += ing.skipped_overrides;
@@ -378,8 +385,7 @@ fn validate_meta_identity(
             client_data.member_code,
         )));
     }
-    if !client_data.subsystem_code.is_empty() && meta.subsystem_code != client_data.subsystem_code
-    {
+    if !client_data.subsystem_code.is_empty() && meta.subsystem_code != client_data.subsystem_code {
         return Err(XtrError::Internal(format!(
             "meta sidecar {} subsystem_code '{}' != config client_data.subsystem_code '{}' — refusing to load (audit-v1 H2)",
             sidecar_path.display(),

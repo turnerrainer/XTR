@@ -174,18 +174,14 @@ fn charge_event(budget: &mut usize) -> Result<(), XtrError> {
 /// positioned at the start of the document or immediately after
 /// a Start event for the parent). Returns a single-key JSON
 /// object `{ "elementName": <content> }`.
-fn parse_element(
-    reader: &mut Reader<&[u8]>,
-    event_budget: &mut usize,
-) -> Result<Value, XtrError> {
+fn parse_element(reader: &mut Reader<&[u8]>, event_budget: &mut usize) -> Result<Value, XtrError> {
     loop {
         charge_event(event_budget)?;
         match reader.read_event() {
             Ok(Event::Decl(_)) | Ok(Event::Comment(_)) | Ok(Event::PI(_)) => continue,
             Ok(Event::Start(e)) => {
                 let name = element_name(&e);
-                let content =
-                    parse_children(reader, &name, attrs_to_object(&e), 1, event_budget)?;
+                let content = parse_children(reader, &name, attrs_to_object(&e), 1, event_budget)?;
                 return Ok(json!({ name: content }));
             }
             Ok(Event::Empty(e)) => {

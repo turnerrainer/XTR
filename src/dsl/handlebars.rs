@@ -272,10 +272,7 @@ mod tests {
     #[test]
     fn audit_m3_xml_attr_helper_escapes_quotes() {
         let mut params = HashMap::new();
-        params.insert(
-            "id".into(),
-            Value::String(r#"a"b'c<d>&e"#.into()),
-        );
+        params.insert("id".into(), Value::String(r#"a"b'c<d>&e"#.into()));
         let out = expand(
             r#"<x attr="{{xml_attr id}}"/>"#,
             &["id".to_string()],
@@ -283,10 +280,7 @@ mod tests {
             &cfg(),
         )
         .unwrap();
-        assert_eq!(
-            out,
-            r#"<x attr="a&quot;b&apos;c&lt;d&gt;&amp;e"/>"#
-        );
+        assert_eq!(out, r#"<x attr="a&quot;b&apos;c&lt;d&gt;&amp;e"/>"#);
     }
 
     #[test]

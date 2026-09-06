@@ -35,9 +35,8 @@ use url::{Host, Url};
 /// on failure the error carries the URL text (safe to log — this
 /// data came from operator-controlled files).
 pub fn validate_upstream_url(raw: &str, cfg: &WsdlIngest) -> Result<Url, XtrError> {
-    let parsed = Url::parse(raw).map_err(|e| {
-        XtrError::Internal(format!("upstream URL '{raw}' failed to parse: {e}"))
-    })?;
+    let parsed = Url::parse(raw)
+        .map_err(|e| XtrError::Internal(format!("upstream URL '{raw}' failed to parse: {e}")))?;
 
     // Scheme guard — reject anything that isn't http(s), and http
     // only when the operator explicitly opts in. `Url::scheme()`
@@ -64,9 +63,9 @@ pub fn validate_upstream_url(raw: &str, cfg: &WsdlIngest) -> Result<Url, XtrErro
     // no-ops. Use the enum to avoid that footgun. Userinfo is
     // stripped either way — `http://LEGIT@169.254.169.254/`
     // exposes the real host here, not the userinfo half.
-    let host = parsed.host().ok_or_else(|| {
-        XtrError::Internal(format!("upstream URL '{raw}' has no host"))
-    })?;
+    let host = parsed
+        .host()
+        .ok_or_else(|| XtrError::Internal(format!("upstream URL '{raw}' has no host")))?;
 
     // Literal IP → check ranges. Domains pass through range checks
     // (DNS deferred by design — see module docs).
@@ -207,8 +206,8 @@ mod tests {
 
     #[test]
     fn rejects_aws_metadata_ip() {
-        let err = validate_upstream_url("http://169.254.169.254/latest/", &allow_http())
-            .unwrap_err();
+        let err =
+            validate_upstream_url("http://169.254.169.254/latest/", &allow_http()).unwrap_err();
         assert!(
             matches!(&err, XtrError::Internal(m) if m.contains("blocked IP range")),
             "expected blocked-range error, got {err:?}"
@@ -226,8 +225,7 @@ mod tests {
 
     #[test]
     fn rejects_loopback_ipv4() {
-        let err =
-            validate_upstream_url("http://127.0.0.1:8080/", &allow_http()).unwrap_err();
+        let err = validate_upstream_url("http://127.0.0.1:8080/", &allow_http()).unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
     }
 
@@ -245,8 +243,7 @@ mod tests {
 
     #[test]
     fn rejects_cgnat_100_64() {
-        let err =
-            validate_upstream_url("http://100.64.0.1/", &allow_http()).unwrap_err();
+        let err = validate_upstream_url("http://100.64.0.1/", &allow_http()).unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
     }
 
@@ -274,8 +271,7 @@ mod tests {
         // A naive v6-only check would miss this; the guard
         // unwraps mapped addresses first.
         let err =
-            validate_upstream_url("http://[::ffff:169.254.169.254]/", &allow_http())
-                .unwrap_err();
+            validate_upstream_url("http://[::ffff:169.254.169.254]/", &allow_http()).unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
     }
 
@@ -284,11 +280,8 @@ mod tests {
         // Naive parsers might treat "LEGIT.example.com" as the
         // host; url::Url correctly places it as userinfo and
         // exposes 169.254.169.254 as host_str().
-        let err = validate_upstream_url(
-            "http://LEGIT.example.com@169.254.169.254/",
-            &allow_http(),
-        )
-        .unwrap_err();
+        let err = validate_upstream_url("http://LEGIT.example.com@169.254.169.254/", &allow_http())
+            .unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
     }
 
@@ -318,8 +311,7 @@ mod tests {
 
     #[test]
     fn rejects_gopher_scheme() {
-        let err =
-            validate_upstream_url("gopher://example.com:1234/", &allow_http()).unwrap_err();
+        let err = validate_upstream_url("gopher://example.com:1234/", &allow_http()).unwrap_err();
         assert!(matches!(err, XtrError::Internal(_)));
     }
 
@@ -338,8 +330,7 @@ mod tests {
             allow_http_upstream: false,
             upstream_host_allowlist: vec!["ariregxmlv6.rik.ee".into()],
         };
-        let err =
-            validate_upstream_url("https://evil.example.com/", &cfg).unwrap_err();
+        let err = validate_upstream_url("https://evil.example.com/", &cfg).unwrap_err();
         assert!(
             matches!(&err, XtrError::Internal(m) if m.contains("upstream_host_allowlist")),
             "expected allowlist error, got {err:?}"
