@@ -14,8 +14,9 @@ subcommand shape documented in `MIGRATION.md` and
 `book/src/doctor.md`. The recipe
 `docker run --rm turnerrainer/xtr:0.2.0-rc doctor` was
 supposed to invoke the doctor subcommand but instead tini
-tried to exec a non-existent `doctor` binary (tini
-"[FATAL … exec doctor failed: No such file or directory]").
+tried to exec a non-existent `doctor` binary — the tini
+error surfaced was
+`FATAL tini (7) exec doctor failed: No such file or directory`.
 Discovered when local-testing the just-published
 `0.2.0-rc` image against the operator flow.
 
