@@ -1,17 +1,32 @@
 # HANDOFF
 
 **Written**: 2026-07-29
-**Last touched**: 2026-09-06 — audit-v1 fix branch + version
-bump to `0.2.0-rc`.  See [`MIGRATION.md`](./MIGRATION.md) if
+**Last touched**: 2026-09-07 — dev now reflects the merged
+`0.2.0-rc.1` state (audit-v1 fixes + release gate + Dockerfile
+ENTRYPOINT hotfix). See [`MIGRATION.md`](./MIGRATION.md) if
 you're upgrading a live deployment from `0.1.0-rc.2`.
-**Current published**: `turnerrainer/xtr:0.1.0-rc.2` (== `:rc`,
-digest `sha256:61d441d00f75`, 2026-07-29). New tag
-`v0.2.0-rc` will publish on merge of PR #2 + tag push.
-**Branch**: `feat/audit-v1-security-fixes` — 5 commits ahead of
-`dev`; open PR [#2](https://github.com/turnerrainer/XTR/pull/2).
-**Last verified green** (on branch): `cargo test` 129/0/0
-(118 unit + 11 e2e + 7 doctor + 2 tls-defaults); fmt + clippy
-`-D warnings` clean; cargo audit clean; cargo deny check clean.
+**Current published**: `turnerrainer/xtr:0.2.0-rc.1` (and
+`ghcr.io/turnerrainer/xtr:0.2.0-rc.1`). Moving tag
+`:rc` currently floats to `0.2.0-rc.1`. Older immutable pins
+still resolve: `:0.2.0-rc` (pre-hotfix; server works,
+`docker run … doctor` recipe broken), `:0.1.0-rc.2`
+(digest `sha256:61d441d00f75`).
+**Branch**: `dev` — clean; the three release-line PRs
+[#2](https://github.com/turnerrainer/XTR/pull/2)
+(audit-v1 fixes),
+[#3](https://github.com/turnerrainer/XTR/pull/3)
+(release gate to `0.2.0-rc`), and
+[#4](https://github.com/turnerrainer/XTR/pull/4)
+(hotfix `0.2.0-rc.1` for Dockerfile ENTRYPOINT) are all merged.
+**Last verified green** (on `dev`, 2026-09-07): `cargo test`
+156/0/0; fmt + clippy `-D warnings` clean; cargo audit clean;
+cargo deny check clean; `docker run --rm -v
+$(pwd)/xtr.yaml:/app/xtr.yaml:ro turnerrainer/xtr:rc doctor
+--strict` → 0 FATAL, 0 BREAK, 1 WEAK
+(`weak-wsdl-allowlist-empty` — the shipped demo posture; close
+it in prod by pinning `wsdl.upstream_host_allowlist` per
+[`SECURITY.md`](./SECURITY.md)), 3 INFO, exit 1 (WEAK promoted
+by `--strict`).
 
 Next contributor (human or Claude) must:
 
@@ -79,10 +94,16 @@ Landed (see [CHANGELOG.md](./CHANGELOG.md) for detail):
 - ✅ Task 013 — WSDL folder-drop + auto-generation
 - ✅ Security sweep — quick-xml CVE upgrade, XXE guard, nesting cap
 - ✅ First publish — v0.1.0-rc.2 on both registries
-- ✅ h2ck.me audit v1 — C1/C2 + H1-H4 + M1-M3 closed on
-  `feat/audit-v1-security-fixes` (PR #2, pending merge);
-  version bumped to `0.2.0-rc`; ships `xtr-on-rust doctor`
-  config validator + `MIGRATION.md` upgrade guide
+- ✅ h2ck.me audit v1 — C1/C2 + H1-H4 + M1-M3 closed; merged
+  via PR #2. Ships `xtr-on-rust doctor` config validator +
+  `MIGRATION.md` upgrade guide.
+- ✅ Release `0.2.0-rc` — merged via PR #3; multi-arch
+  Docker Hub + GHCR publish signed + SBOM + provenance.
+- ✅ Hotfix `0.2.0-rc.1` — merged via PR #4. Dockerfile
+  `ENTRYPOINT` now pins the binary; `docker run … doctor`
+  recipe (documented in `MIGRATION.md` and `book/src/doctor.md`)
+  works on `:rc` / `:0.2.0-rc.1`. New contract test
+  `tests/dockerfile_entrypoint.rs` guards against regression.
 
 Open:
 
@@ -137,7 +158,7 @@ Common questions answered by files in this repo:
 
 ## h2ck.me security-audit pipeline
 
-**Added**: 2026-09-06. Describes the ongoing pre-publication security audit + fix + review flow with the `h2ckme` private GitHub org. If you land in this repo cold and see an open `feat/audit-v1-*` PR, start here.
+**Added**: 2026-09-06. Describes the ongoing pre-publication security audit + fix + review flow with the `h2ckme` private GitHub org. v1 is closed (PR #2 merged); if a `feat/audit-vN-*` PR is open when you land here, start with this section.
 
 ### What it is
 
@@ -151,17 +172,17 @@ h2ck.me runs a versioned audit → fix → validate cycle against every Bürosta
 
 ### Where feedback lives (hybrid pipeline as of 2026-09-06)
 
-1. **The open v1 audit PR carries a comment** starting with `## h2ck.me v1 review`.
+1. **The v1 audit PR (now merged) carries a comment** starting with `## h2ck.me v1 review`.
 2. **Full per-PR write-up** at [`h2ckme/XTR/v1/PR-REVIEWS/`](https://github.com/h2ckme/XTR/tree/main/v1/PR-REVIEWS).
 3. **Audit + fix-kit context**: [`h2ckme/XTR/v1/AUDIT.md`](https://github.com/h2ckme/XTR/blob/main/v1/AUDIT.md) + [`v1/FIX-KIT.md`](https://github.com/h2ckme/XTR/blob/main/v1/FIX-KIT.md).
 
 **h2ckme access**: `git clone git@github.com:h2ckme/XTR.git` (private, read via org membership).
 
-### Open v1 PR on this repo
+### v1 PR on this repo (merged 2026-09-06)
 
 | PR | Branch | Findings | h2ck.me verdict |
 |---|---|---|---|
-| [#2](https://github.com/turnerrainer/XTR/pull/2) | `feat/audit-v1-security-fixes` | C1 WSDL SSRF, C2 XML bomb safety net, H1 schema-include path traversal, H2 sidecar client impersonation, H3 SOAP fault detail leak, H4 TLS defaults, M1-M3 | ⚠️ pass-with-note (verdict is approve; one architectural note re: DNS resolution deferred — see below) |
+| [#2](https://github.com/turnerrainer/XTR/pull/2) | `feat/audit-v1-security-fixes` (merged) | C1 WSDL SSRF, C2 XML bomb safety net, H1 schema-include path traversal, H2 sidecar client impersonation, H3 SOAP fault detail leak, H4 TLS defaults, M1-M3 | ⚠️ pass-with-note (verdict is approve; one architectural note re: DNS resolution deferred — see below) |
 
 ### Architectural note (⚠️ verdict source)
 
@@ -175,12 +196,20 @@ h2ck.me runs a versioned audit → fix → validate cycle against every Bürosta
 
 ### Next action for a maintainer landing here
 
-1. **Open [PR #2](https://github.com/turnerrainer/XTR/pull/2)** and read the `## h2ck.me v1 review` comment.
-2. Follow the link for the full acceptance table + break-the-fix probes.
-3. Address the SECURITY.md paragraph on the same fix branch (small doc change).
-4. **Merge** on your release cadence. XTR moves from 🟡 FIX FIRST → 🟢 SHIP after the merge + doc addition.
-5. Bump version + tag + push image.
-6. **Wait ~2 weeks**, then h2ck.me opens `v2/` as an adversarial re-audit.
+The v1 pipeline is closed on our side: PRs #2, #3, #4 all
+merged and `:rc` on both registries points at `0.2.0-rc.1`.
+What's left:
+
+1. **Wait** — h2ck.me opens `v2/` as an adversarial re-audit
+   ~2 weeks after the `0.2.0-rc` publish (target ~2026-09-20).
+2. **When v2 lands**, follow the same pipeline: read
+   `h2ckme/XTR/v2/AUDIT.md` + `FIX-KIT.md`; open a
+   `feat/audit-v2-*` branch off `dev`; land findings; open PR
+   for h2ck.me review; merge on green.
+3. **Between now and v2**, safe work: v2 backlog items below
+   (extraction to workspace crate, DNS-check-at-fire-time
+   opt-in, symlink race verification), the open task epics
+   (004/007/008/014/015), or unrelated features.
 
 ### v2 backlog (from the review)
 

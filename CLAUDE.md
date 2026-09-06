@@ -14,22 +14,28 @@ to/from JSON.
 - **Language**: Rust 1.88 (edition 2021).
 - **Framework**: axum + reqwest + quick-xml + handlebars.
 - **License**: Apache-2.0.
-- **Current version**: `0.2.0-rc` (SemVer pre-1.0).
-- **Published**: `docker.io/turnerrainer/xtr:rc` (last stable
-  `0.1.0-rc.2` at digest `sha256:61d441d00f75`; `0.2.0-rc`
-  publishes on merge of PR #2 + tag push).
+- **Current version**: `0.2.0-rc.1` (SemVer pre-1.0). Source of
+  truth: [`VERSION`](./VERSION) + `Cargo.toml`.
+- **Published**: `docker.io/turnerrainer/xtr:rc` and
+  `ghcr.io/turnerrainer/xtr:rc` — the `:rc` tag is the moving
+  pointer to the latest release-candidate (currently
+  `0.2.0-rc.1`). Immutable pins: `:0.2.0-rc.1`, `:0.2.0-rc`,
+  `:0.1.0-rc.2` (digest `sha256:61d441d00f75`). Always recommend
+  operators pin an immutable tag for prod.
 
 ## First files to read
 
 Path | Read when
 ---|---
-[`README.md`](./README.md) | "What is this?" — 45-line landing page + demo curl.
-[`MIGRATION.md`](./MIGRATION.md) | "How do I upgrade from 0.1.0-rc.2 to 0.2.0-rc?" — definitive machine + human guide with per-breaking-change before/after, doctor recipe, LLM prompt template.
-[`CHANGELOG.md`](./CHANGELOG.md) | "What changed?" — `[0.2.0-rc]` section has an explicit "Breaking changes vs 0.1.0-rc.2" subsection.
-[`SECURITY.md`](./SECURITY.md) | "How do I harden it?" — includes the "Operator recipe — SSRF hardening on shared WSDL mounts" section.
+[`README.md`](./README.md) | "What is this?" — landing page + demo curl.
+[`MIGRATION.md`](./MIGRATION.md) | "How do I upgrade from 0.1.0-rc.2 to 0.2.0-rc(.1)?" — definitive machine + human guide with per-breaking-change before/after, doctor recipe, LLM prompt template, CI-gate snippet.
+[`CHANGELOG.md`](./CHANGELOG.md) | "What changed?" — `[0.2.0-rc]` has an explicit "Breaking changes vs 0.1.0-rc.2" subsection; `[0.2.0-rc.1]` documents the Dockerfile ENTRYPOINT hotfix that unblocks the doctor recipe.
+[`SECURITY.md`](./SECURITY.md) | "How do I harden it?" — includes the "Operator recipe — SSRF hardening on shared WSDL mounts" section (host allowlist vs egress netpol). Point operators here for the best-practice posture behind `weak-wsdl-allowlist-empty`.
 [`HANDOFF.md`](./HANDOFF.md) | "What's the current state of the branch?" — last-touched date, next-contributor pointers, open tasks.
 [`docs/DESIGN.md`](./docs/DESIGN.md) | "Why does XTR work the way it does?" — domain design decisions.
 [`STANDARDS.md`](./STANDARDS.md) | "What's the coding / build / release ruleset?"
+[`book/src/doctor.md`](./book/src/doctor.md) | User-facing recipe + findings model + CI gate for the `doctor` subcommand.
+[`book/src/configuration.md`](./book/src/configuration.md) | Annotated `xtr.yaml` reference — every field, every default, every WEAK-vs-strict posture.
 [`book/`](./book/src/) | Full mdBook (published at [turnerrainer.github.io/XTR](https://turnerrainer.github.io/XTR/)).
 
 ## Common LLM prompts and where they land
@@ -44,11 +50,28 @@ Then have the operator run:
 
 ```bash
 docker run --rm -v "$(pwd)/xtr.yaml:/app/xtr.yaml:ro" \
-  turnerrainer/xtr:0.2.0-rc doctor --strict
+  turnerrainer/xtr:rc doctor --strict
 ```
 
+Use `:rc` for the latest RC or `:0.2.0-rc.1` for a pinned run.
+Do NOT recommend `:0.2.0-rc` for the doctor recipe — that image
+predates the ENTRYPOINT hotfix and `docker run … doctor` fails
+with `FATAL tini (7) exec doctor failed`. The `:rc` and
+`:0.2.0-rc.1` tags carry the fix.
+
 The `doctor` subcommand emits stable-`code` findings you can
-map to `MIGRATION.md` §"Doctor rule catalogue" 1:1.
+map to `MIGRATION.md` §"Doctor rule catalogue" 1:1. JSON shape:
+`{severity, code, field, headline, rationale, recovery}` per
+finding; pin CI rules to `code`, never to `headline`.
+
+**Gotcha to warn operators about**: an invalid
+`xroad_protocol_version` fails at `AppConfig::validate()` before
+the doctor pipeline runs. Symptom: bare `Error: internal error:
+xroad_protocol_version '<X>' is not one of the accepted values
+["4.0", "4.1"]` on stderr, exit 1, empty JSON. Fix the value and
+re-run — the doctor's `fatal-config-xroad-protocol-invalid` code
+exists but is defensive: `validate()` beats it to the punch on
+the real load path.
 
 ### "What's the breaking change surface?"
 
@@ -82,13 +105,37 @@ rationale in `MIGRATION.md` §"Doctor rule catalogue".
 ### "How do I run the tests?"
 
 ```bash
-cargo test                                # 147 tests
+cargo test                                # 156 tests as of 0.2.0-rc.1
 cargo clippy --all-targets -- -D warnings  # style/lint gate
-cargo audit --deny warnings               # supply-chain gate
-mdbook build book                          # docs + linkcheck
+cargo audit --deny warnings                # supply-chain gate
+( cd book && mdbook build )                # docs + linkcheck
 ```
 
 CI mirror in `.github/workflows/{tests,security,docs}.yml`.
+
+### "What best-practice `xtr.yaml` should I recommend?"
+
+Start from the shipped [`xtr.yaml`](./xtr.yaml) (its comments
+double as the tour) and layer on:
+
+```yaml
+wsdl:
+  allow_http_upstream: false               # keep default
+  upstream_host_allowlist:                 # pin the SSRF DNS lane
+    - ariregxmlv6.rik.ee                   # (adjust to your corpus)
+    - jvis.envir.ee
+expose_soap_fault_detail: false            # keep default in prod
+client_data:                               # fill from RIA before deploy
+  member_class: GOV
+  member_code: "70000000"
+  subsystem_code: "myservice"
+```
+
+Then verify: `docker run --rm -v $(pwd)/xtr.yaml:/app/xtr.yaml:ro
+turnerrainer/xtr:rc doctor --strict` → expect 0 FATAL, 0 WEAK.
+For the alternative "close the DNS lane via container network
+policy" posture, see [`SECURITY.md`](./SECURITY.md)
+§"Operator recipe — SSRF hardening on shared WSDL mounts".
 
 ## Layout at a glance
 
@@ -132,10 +179,16 @@ tests/
 
 ## Recent history worth knowing
 
-- **2026-09-06**: `0.2.0-rc` prepared on
-  `feat/audit-v1-security-fixes`. Closes h2ck.me audit-v1;
-  ships `xtr-on-rust doctor` + `MIGRATION.md`. See
-  `HANDOFF.md` for verification-green status.
+- **2026-09-07**: `dev` reflects the merged state — PRs #2
+  (audit-v1 fixes), #3 (release gate to `0.2.0-rc`), and #4
+  (hotfix `0.2.0-rc.1` for Dockerfile ENTRYPOINT). `:rc` on
+  Docker Hub + GHCR floats to `0.2.0-rc.1`.
+- **2026-09-06**: `0.2.0-rc` cut. Closes h2ck.me audit-v1;
+  ships `xtr-on-rust doctor` + `MIGRATION.md`. Same-day hotfix
+  `0.2.0-rc.1` fixed a Dockerfile ENTRYPOINT/CMD interaction
+  that broke `docker run … doctor` — the recipe now works only
+  on `:0.2.0-rc.1` / `:rc`, not on the frozen `:0.2.0-rc` tag.
+  See `CHANGELOG.md` `[0.2.0-rc.1]` for the postmortem.
 - **2026-07-29**: `0.1.0-rc.2` published on both registries.
 
 ## Sister repos
