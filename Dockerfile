@@ -29,5 +29,10 @@ EXPOSE 8080
 RUN useradd -m -u 1000 xtr && chown -R xtr:xtr /app
 USER xtr
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/app/xtr-on-rust"]
+# tini as PID 1 forwards signals; the binary is pinned into the
+# entrypoint (not CMD) so that `docker run <image> doctor` appends
+# `doctor` as an argv to the binary instead of REPLACING it as a
+# new exec target. CMD stays empty so bare `docker run <image>`
+# still boots the server (no args → server path in main.rs).
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/xtr-on-rust"]
+CMD []
