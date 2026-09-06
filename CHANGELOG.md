@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-09-06
+
+Hotfix — Dockerfile ENTRYPOINT / CMD interaction broke the
+subcommand shape documented in `MIGRATION.md` and
+`book/src/doctor.md`. The recipe
+`docker run --rm turnerrainer/xtr:0.2.0-rc doctor` was
+supposed to invoke the doctor subcommand but instead tini
+tried to exec a non-existent `doctor` binary (tini
+"[FATAL … exec doctor failed: No such file or directory]").
+Discovered when local-testing the just-published
+`0.2.0-rc` image against the operator flow.
+
+### Fixed
+
+- `Dockerfile`: `ENTRYPOINT ["/usr/bin/tini", "--", "/app/xtr-on-rust"]`
+  + `CMD []`. Extra args to `docker run` now APPEND as argv to
+  the binary instead of REPLACING CMD. Bare `docker run <image>`
+  still boots the server (no argv → server path in main.rs).
+- `tests/dockerfile_entrypoint.rs` (new): contract test parses
+  the Dockerfile and refuses any shape where ENTRYPOINT doesn't
+  pin the binary. Guards against this class of regression before
+  publish.
+
+Everything else about `0.2.0-rc` still applies — see below.
+
 ## [0.2.0-rc] - 2026-09-06
 
 Third release candidate. Closes the h2ck.me pre-publication
@@ -500,7 +525,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...HEAD
+[0.2.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...v0.2.0-rc.1
 [0.2.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...v0.2.0-rc
 [0.1.0-rc.2]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.1...v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.1.0...v0.1.0-rc.1
