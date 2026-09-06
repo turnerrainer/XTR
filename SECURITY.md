@@ -1,5 +1,12 @@
 # Security policy
 
+Upgrading from `0.1.0-rc.2` to `0.2.0-rc`? Read
+[`MIGRATION.md`](./MIGRATION.md) first — it lists the four
+behaviour changes and the concrete recovery flags. Then run
+`xtr-on-rust doctor` against your `xtr.yaml` to catch
+placeholder credentials, weak URL-guard postures, or
+security-server misconfig before you deploy.
+
 ## Reporting a vulnerability
 
 Please **do not open a public GitHub issue** for security-sensitive
@@ -80,3 +87,57 @@ defined. As a general rule, the operator is responsible for:
 - Persistent state / cross-replica coordination
 - Rate limiting (terminate at a reverse proxy)
 - IAM / JWT validation at the boundary
+
+## Operator recipe — SSRF hardening on shared WSDL mounts
+
+The [audit-v1 C1](./CHANGELOG.md) URL guard rejects literal-IP
+metadata endpoints (`169.254.169.254`, RFC-1918 ranges, IPv6
+link-local, IPv4-mapped-IPv6, etc.) at WSDL ingest time. It
+**does not** resolve hostnames — a WSDL that names
+`metadata.attacker.example` and DNS-resolves it to
+`169.254.169.254` at request time will pass the guard, and
+reqwest will then connect. This is deliberate: DNS at boot
+gives a stale-cache false confidence, and per-request DNS
+enforcement raises latency for every call.
+
+Close the hostname-DNS lane with one of these two operator
+recipes (pick either; both together for high-value
+deployments):
+
+1. **Host allowlist in `xtr.yaml`** — pin the set of upstreams:
+   ```yaml
+   wsdl:
+     upstream_host_allowlist:
+       - ariregxmlv6.rik.ee
+       - jvis.envir.ee
+   ```
+   Any WSDL or sidecar that names a host outside this set fails
+   at boot; DNS trickery becomes irrelevant because unknown
+   hostnames never reach the resolver.
+
+2. **Container egress network policy** — deny outbound to
+   metadata/loopback/private ranges at the network layer.
+   Example for the shipped `docker-compose.yml`:
+   ```yaml
+   # docker-compose.override.yml
+   services:
+     xtr:
+       # Deny the AWS/GCP metadata IP outright.
+       # Add equivalent rules for Azure (169.254.169.254 too),
+       # AliCloud (100.100.100.200), and your VPC-private ranges.
+       cap_add:
+         - NET_ADMIN
+       command:
+         - sh
+         - -c
+         - |
+           iptables -A OUTPUT -d 169.254.169.254 -j REJECT &&
+           iptables -A OUTPUT -d 100.100.100.200 -j REJECT &&
+           exec /usr/bin/tini -- /app/xtr-on-rust
+   ```
+   Or, at the Kubernetes layer, a `NetworkPolicy` egress rule
+   with `ipBlock.except` covering all the metadata IPs.
+
+If neither is applied, treat the WSDL mount as a trust boundary
+equivalent to code review: only load WSDLs from sources you
+would accept commits from.

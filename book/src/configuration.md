@@ -23,14 +23,24 @@ port: 8080
 
 xroad_instance: ee-test                  # → {{generate.instance}}
 xroad_protocol_version: "4.0"            # → {{generate.protocol_version}}
+                                         # (must be "4.0" or "4.1")
 
 client_data:                             # → {{{generate.client}}}
   member_class: GOV                      # GOV / COM / NGO / NEE
-  member_code: "<your-registry-code>"
-  subsystem_code: <your-subsystem>
+  member_code: ""                        # e.g. "70000000"
+  subsystem_code: ""                     # e.g. "myservice"
 
 wsdl_watch_dir: ./wsdl                   # auto-generate DSLs from WSDLs
                                          # (unset = feature off)
+
+wsdl:                                    # WSDL ingestion trust boundary
+  allow_http_upstream: false             # opt-in for plaintext http upstreams
+  upstream_host_allowlist: []            # optional hostname pinning
+  # upstream_host_allowlist:
+  #   - ariregxmlv6.rik.ee
+  #   - jvis.envir.ee
+
+expose_soap_fault_detail: false          # echo raw upstream fault to REST callers
 
 security_server:                         # X-Road mTLS routing
   url: "https://<your-ss-fqdn>:5500/"
@@ -43,6 +53,14 @@ limits:                                  # resource ceilings
   request_timeout_secs: 30
 ```
 
+## Validating your config before deploying
+
+Run `xtr-on-rust doctor` (shipped in the same image) — it
+walks the loaded config, emits FATAL / BREAK / WEAK / INFO
+findings, and exits non-zero when something will fail at boot
+or when a stronger security posture is available. See
+[Doctor & migration](./doctor.md) for the recipe.
+
 ## Fields
 
 | Field | Default | Purpose |
@@ -50,11 +68,14 @@ limits:                                  # resource ceilings
 | `dsl_path` | `./DSL` | Directory walked for `*.yml` / `*.yaml` DSL files. |
 | `port` | `8080` | HTTP listen port. |
 | `xroad_instance` | `ee-test` | Injected as `{{generate.instance}}`. |
-| `xroad_protocol_version` | `"4.0"` | Injected as `{{generate.protocol_version}}`. |
-| `client_data.member_class` | `""` | Injected into `<xroad:client>`. |
-| `client_data.member_code` | `""` | Injected into `<xroad:client>`. |
-| `client_data.subsystem_code` | `""` | Injected into `<xroad:client>` (correctly spelled — fixes JVM bug #1). |
+| `xroad_protocol_version` | `"4.0"` | Injected as `{{generate.protocol_version}}`. **Boot-validated**: must be one of `"4.0"` / `"4.1"` (audit-v1 M1). |
+| `client_data.member_class` | `""` | Injected into `<xroad:client>`. Empty skips sidecar identity check. |
+| `client_data.member_code` | `""` | Injected into `<xroad:client>`. Empty skips sidecar identity check. |
+| `client_data.subsystem_code` | `""` | Injected into `<xroad:client>` (correctly spelled — fixes JVM bug #1). Empty skips sidecar identity check. |
 | `wsdl_watch_dir` | absent | Feature off when unset. See [WSDL folder-drop](./wsdl-ingestion.md). |
+| `wsdl.allow_http_upstream` | `false` | When false, `<soap:address>` URLs must be `https://`. Set true only for local test setups. Audit-v1 C1. |
+| `wsdl.upstream_host_allowlist` | `[]` | Optional. When non-empty, every WSDL upstream host must appear on the list. Closes the DNS-rebinding lane on top of the literal-IP guard. Audit-v1 C1. |
+| `expose_soap_fault_detail` | `false` | When false, upstream SOAP `Fault.detail` is stripped from REST responses and `faultstring` is capped at 200 chars; server logs still carry the full detail at `warn!` level. Set true only inside trusted environments. Audit-v1 H3. |
 | `security_server` | absent | DSLs that omit `service:` will error at request time when this is unset. |
 | `security_server.url` | required if section set | URL of YOUR Security Server (not the central authority's). |
 | `security_server.keystore_path` | required if section set | PKCS12 identity file for mTLS. |

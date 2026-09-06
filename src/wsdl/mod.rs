@@ -12,6 +12,7 @@
 pub mod generator;
 pub mod parser;
 pub mod pipeline;
+pub mod url_guard;
 
 pub use pipeline::ingest_all;
 

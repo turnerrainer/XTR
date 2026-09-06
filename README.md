@@ -3,9 +3,16 @@
 REST proxy for X-Road SOAP services. Rust reimplementation of
 [buerokratt/XTR](https://github.com/buerokratt/XTR).
 
-**Version:** 0.1.0-rc.2 · **License:** Apache-2.0
+**Version:** 0.2.0-rc · **License:** Apache-2.0
 · **Docs:** [turnerrainer.github.io/XTR](https://turnerrainer.github.io/XTR/)
 · **Images:** `docker.io/turnerrainer/xtr:rc`, `ghcr.io/turnerrainer/xtr:rc`
+
+> **Upgrading from `0.1.0-rc.2`?** Read [`MIGRATION.md`](./MIGRATION.md)
+> and run `docker run --rm -v $(pwd)/xtr.yaml:/app/xtr.yaml:ro
+> turnerrainer/xtr:0.2.0-rc doctor --strict` — the doctor
+> subcommand prints exactly what to change in your config
+> to keep behaviour equivalent and where the stronger
+> hardening postures live.
 
 Point XTR at a folder of WSDL files → 194 live `POST /group/operation`
 REST endpoints (Ariregister + Ministry of Climate portfolio) ready
@@ -36,8 +43,18 @@ docker compose up -d --build
 
 - **Book** — [turnerrainer.github.io/XTR](https://turnerrainer.github.io/XTR/)
   (getting started, config, WSDL folder-drop, Security Server, failure modes)
+- **Migration** — [`MIGRATION.md`](./MIGRATION.md) — `0.1.0-rc.2` → `0.2.0-rc`
+  upgrade guide with doctor recipe, per-breaking-change before/after,
+  LLM prompt template, CI gate recipe
+- **Config validator** — [`book/src/doctor.md`](./book/src/doctor.md) —
+  `xtr-on-rust doctor` subcommand recipe
 - **Design** — [`docs/DESIGN.md`](./docs/DESIGN.md) — what XTR does and why
+- **Security** — [`SECURITY.md`](./SECURITY.md) — reporting, supply-chain
+  posture, SSRF operator recipe
 - **Standards** — [`STANDARDS.md`](./STANDARDS.md) — every generic
   build/docs/test/publish rule the project meets
-- **Changelog** — [`CHANGELOG.md`](./CHANGELOG.md)
+- **Changelog** — [`CHANGELOG.md`](./CHANGELOG.md) — includes
+  `[0.2.0-rc]` breaking-changes subsection
+- **AI-assistant context** — [`CLAUDE.md`](./CLAUDE.md) — first
+  file to read for Claude Code + friends
 - **Original JVM XTR** — <https://github.com/buerokratt/XTR>

@@ -1,6 +1,6 @@
 [package]
 name = "xtr-on-rust"
-version = "0.1.0-rc.2"
+version = "0.2.0-rc"
 edition = "2021"
 rust-version = "1.88"
 authors = ["Rainer Türner"]
@@ -36,9 +36,19 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 thiserror = "2"
 anyhow = "1"
 once_cell = "1"
+url = "2"
 
 [dev-dependencies]
 tempfile = "3"
+# Audit-v1 H4 regression test: generate a self-signed cert in
+# memory + spin a local TLS server; assert reqwest (system trust
+# store) refuses the handshake. rcgen is the standard pure-Rust
+# cert generator; native-tls + tokio-native-tls are already in
+# the runtime tree via reqwest — promoted here so the test can
+# name them explicitly.
+rcgen = "0.13"
+native-tls = "0.2"
+tokio-native-tls = "0.3"
 
 [[bin]]
 name = "xtr-on-rust"

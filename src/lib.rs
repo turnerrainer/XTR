@@ -4,6 +4,7 @@
 //! for the domain design.
 
 pub mod config;
+pub mod doctor;
 pub mod dsl;
 pub mod error;
 pub mod executor;

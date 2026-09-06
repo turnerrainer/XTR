@@ -15,7 +15,7 @@ use crate::executor::Executor;
 use crate::translate::xml_to_json;
 use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Path, State};
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::{json, Value};
@@ -60,7 +60,22 @@ async fn invoke(
     State(state): State<AppState>,
     Path((group, service)): Path<(String, String)>,
     body: Bytes,
-) -> Result<Json<Value>, XtrError> {
+) -> Response {
+    match invoke_inner(&state, group, service, body).await {
+        Ok(v) => Json(v).into_response(),
+        // Audit-v1 H3: route errors through the config-aware
+        // renderer so `expose_soap_fault_detail` can opt back in
+        // to sharing SOAP fault detail with REST callers.
+        Err(e) => e.into_response_with_options(state.cfg.expose_soap_fault_detail),
+    }
+}
+
+async fn invoke_inner(
+    state: &AppState,
+    group: String,
+    service: String,
+    body: Bytes,
+) -> Result<Value, XtrError> {
     // Task 011: enforce the byte-exact request cap here — the
     // DefaultBodyLimit layer is a coarse backstop; this is the
     // authoritative check that produces the structured 413.
@@ -100,5 +115,5 @@ async fn invoke(
 
     let xml_response = state.executor.dispatch(&template, envelope).await?;
     let translated = xml_to_json::translate_soap(&xml_response)?;
-    Ok(Json(translated))
+    Ok(translated)
 }
