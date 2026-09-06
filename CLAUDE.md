@@ -31,7 +31,6 @@ Path | Read when
 [`MIGRATION.md`](./MIGRATION.md) | "How do I upgrade from 0.1.0-rc.2 to 0.2.0-rc(.1)?" — definitive machine + human guide with per-breaking-change before/after, doctor recipe, LLM prompt template, CI-gate snippet.
 [`CHANGELOG.md`](./CHANGELOG.md) | "What changed?" — `[0.2.0-rc]` has an explicit "Breaking changes vs 0.1.0-rc.2" subsection; `[0.2.0-rc.1]` documents the Dockerfile ENTRYPOINT hotfix that unblocks the doctor recipe.
 [`SECURITY.md`](./SECURITY.md) | "How do I harden it?" — includes the "Operator recipe — SSRF hardening on shared WSDL mounts" section (host allowlist vs egress netpol). Point operators here for the best-practice posture behind `weak-wsdl-allowlist-empty`.
-[`HANDOFF.md`](./HANDOFF.md) | "What's the current state of the branch?" — last-touched date, next-contributor pointers, open tasks.
 [`docs/DESIGN.md`](./docs/DESIGN.md) | "Why does XTR work the way it does?" — domain design decisions.
 [`STANDARDS.md`](./STANDARDS.md) | "What's the coding / build / release ruleset?"
 [`book/src/doctor.md`](./book/src/doctor.md) | User-facing recipe + findings model + CI gate for the `doctor` subcommand.
@@ -188,7 +187,7 @@ tests/
   `0.2.0-rc.1` fixed a Dockerfile ENTRYPOINT/CMD interaction
   that broke `docker run … doctor` — the recipe now works only
   on `:0.2.0-rc.1` / `:rc`, not on the frozen `:0.2.0-rc` tag.
-  See `CHANGELOG.md` `[0.2.0-rc.1]` for the postmortem.
+  See [`CHANGELOG.md`](./CHANGELOG.md) `[0.2.0-rc.1]` for the postmortem.
 - **2026-07-29**: `0.1.0-rc.2` published on both registries.
 
 ## Sister repos

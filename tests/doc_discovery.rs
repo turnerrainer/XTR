@@ -137,16 +137,6 @@ fn security_md_cross_links_migration_and_ssrf_recipe() {
 }
 
 #[test]
-fn handoff_points_at_migration_for_upgraders() {
-    let handoff = read("HANDOFF.md");
-    assert!(
-        handoff.contains("MIGRATION.md"),
-        "HANDOFF.md must cross-link to MIGRATION.md so a \
-         next-contributor coming in cold sees the upgrade guide"
-    );
-}
-
-#[test]
 fn book_summary_lists_doctor_and_migration_entries() {
     let summary = read("book/src/SUMMARY.md");
     assert!(

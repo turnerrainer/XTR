@@ -41,3 +41,8 @@ build/
 .env
 .env.local
 constants.local.ini
+
+# HANDOFF is an internal maintainer note — kept local, never
+# committed. Public entry points are README.md + CLAUDE.md +
+# MIGRATION.md + the book.
+/HANDOFF.md
