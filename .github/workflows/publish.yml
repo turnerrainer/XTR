@@ -29,7 +29,10 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  # contents: write — needed to create the GitHub Release at the
+  # end of the job. Everything else stays scoped to what each
+  # step needs.
+  contents: write
   packages: write
   id-token: write
   attestations: write
@@ -209,3 +212,55 @@ jobs:
             echo "Signing ${registry_image}@${DIGEST}"
             cosign sign --yes "${registry_image}@${DIGEST}"
           done
+
+      # Extract the CHANGELOG.md section for this version so the
+      # GitHub Release body carries the same notes maintainers
+      # already write for the changelog. Falls back to a stub
+      # line if no section is found (e.g. tag pushed ahead of a
+      # CHANGELOG entry).
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          awk -v ver="[${VERSION}]" '
+            $0 ~ "^## " ver { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release_notes.md
+          # Trim leading/trailing blank lines.
+          awk 'NF { p=1 } p { print }' release_notes.md \
+            | awk 'BEGIN { RS="" } { print }' > release_notes.trimmed.md \
+            && mv release_notes.trimmed.md release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "::warning::No CHANGELOG section for [${VERSION}]"
+            printf 'Release %s. See CHANGELOG.md for details.\n' "${VERSION}" \
+              > release_notes.md
+          fi
+          {
+            echo "### Images"
+            echo
+            echo '```'
+            echo "docker pull docker.io/turnerrainer/xtr:${VERSION}"
+            echo "docker pull ghcr.io/turnerrainer/xtr:${VERSION}"
+            echo '```'
+            echo
+            echo "Multi-arch (amd64 + arm64), cosign-signed, digest:"
+            echo '`${{ steps.build.outputs.digest }}`'
+          } >> release_notes.md
+
+      # Idempotent: if the release for this tag already exists,
+      # softprops/action-gh-release@v2 updates it instead of
+      # failing. Pre-releases (any `-suffix` version) are marked
+      # as such so consumers pinning to `:latest` on GitHub's UI
+      # aren't misled.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.meta.outputs.version }}
+          tag_name: v${{ steps.meta.outputs.version }}
+          body_path: release_notes.md
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          make_latest: ${{ steps.meta.outputs.prerelease == 'false' && 'true' || 'false' }}
+          fail_on_unmatched_files: false
