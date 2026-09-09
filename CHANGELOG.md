@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **REST passthrough lane** (issue
+  [#5](https://github.com/turnerrainer/XTR/issues/5)). Spec-compliant
+  implementation of the
+  [X-Road Message Protocol for REST v1.0.4](https://github.com/nordic-institute/X-Road/blob/develop/doc/Protocols/pr-rest_x-road_message_protocol_for_rest.md).
+  DSL files declare `kind: rest` with a `target:` block; XTR
+  constructs the `/r1/{instance}/{class}/{code}/{subsystem}/{service_code}[{path}]`
+  URL (§4.1) with percent-encoded identifier segments (§4.2), sets
+  `X-Road-Client` (§4.3) and `X-Road-Id`, and forwards all inbound
+  headers (Accept, Content-Type, Cache-Control, X-Road-UserId,
+  user-defined) unmodified (§4.3). Query params pass unmodified by
+  default (§4.5), with an optional DSL-level allow-list.
+  Response returns as-is with all upstream X-Road response headers
+  (`X-Road-Service`, `X-Road-Request-Hash`, `X-Road-Error`, etc.)
+  passed to the caller. Redirects pinned to `Policy::none()` per
+  §4.4. See [`book/src/rest-passthrough.md`](./book/src/rest-passthrough.md).
+- **`security_server.trust_ca_path`** config field. Real X-Road
+  Security Server TLS certs are typically issued by an
+  operator-managed private CA that isn't in the system trust store;
+  this field points at a PEM bundle so the mTLS handshake can
+  verify the server cert. Applies to both SOAP and REST lanes.
+- **`XtrError::MethodNotAllowed`** (`405`) — emitted when the
+  DSL-declared method doesn't match the inbound HTTP method.
+  Applies to both SOAP (POST-only) and REST DSLs. Previously
+  axum routed non-POST to a bare 405; the new `any` route needs
+  an explicit variant so the wire shape (`{error, message}`)
+  stays consistent.
+- **Doctor rules for the REST lane**: `fatal-rest-no-security-server`,
+  `fatal-rest-ss-not-https`, `fatal-rest-target-fields-missing`,
+  `weak-rest-identifier-charset` (per spec §4.8),
+  `info-rest-lane-ready`, `info-rest-trust-ca-system`.
+- **Full-mTLS integration test** (`tests/it_rest_mtls.rs`) —
+  `rcgen` + `openssl` (PKCS12) + `tokio-rustls` (client-cert
+  verifying server) drive the production `RestLaneExecutor::new`
+  code path end-to-end with a real handshake. Complements the
+  plain-HTTP router tests in `tests/it_rest_passthrough.rs`.
+
+### Changed
+
+- `XRoadTemplate` is now `{ method, kind: TemplateKind }` where
+  `TemplateKind` is `Soap` or `Rest`. Existing DSL files without a
+  `kind:` field deserialise as `Soap` — full backward compatibility.
+- `POST /:group/:service` route widened to `any /:group/:service`.
+  DSL `method:` is now enforced at the handler; mismatches return
+  `405 method_not_allowed` for both SOAP and REST kinds.
+- `Executor` gained `dispatch_rest()`; existing `dispatch()` renamed
+  to `dispatch_soap()`. External callers were only via the router.
+- The mTLS client builder is now a shared `build_mtls_client()`
+  helper used by both `SecurityServerExecutor` (SOAP) and
+  `RestLaneExecutor` (REST). Applies redirect policy, TLS floor,
+  decompression posture, and CA bundle from one place.
+
 ## [0.2.0-rc.1] - 2026-09-06
 
 Hotfix — Dockerfile ENTRYPOINT / CMD interaction broke the

@@ -383,8 +383,15 @@ mod tests {
             let parsed: crate::dsl::XRoadTemplate = serde_yaml_ng::from_str(yaml)
                 .unwrap_or_else(|e| panic!("op {op_name} DSL failed to parse: {e}\n{yaml}"));
             assert_eq!(parsed.method, "POST");
-            assert!(parsed.service.is_some());
-            assert!(parsed.envelope.contains("<prod:"));
+            match &parsed.kind {
+                crate::dsl::TemplateKind::Soap(s) => {
+                    assert!(s.service.is_some());
+                    assert!(s.envelope.contains("<prod:"));
+                }
+                crate::dsl::TemplateKind::Rest(_) => {
+                    panic!("generator must emit SOAP-kind DSLs, got REST for {op_name}");
+                }
+            }
         }
     }
 
@@ -397,11 +404,14 @@ mod tests {
         let files = generate_all(&wsdl, None).unwrap();
         for (op_name, yaml) in &files {
             let parsed: crate::dsl::XRoadTemplate = serde_yaml_ng::from_str(yaml).unwrap();
-            handlebars::Template::compile(&parsed.envelope).unwrap_or_else(|e| {
-                panic!(
-                    "op {op_name} envelope failed Handlebars validation: {e}\n{}",
-                    parsed.envelope
-                );
+            let envelope = match &parsed.kind {
+                crate::dsl::TemplateKind::Soap(s) => &s.envelope,
+                crate::dsl::TemplateKind::Rest(_) => {
+                    panic!("generator must emit SOAP-kind DSLs, got REST for {op_name}");
+                }
+            };
+            handlebars::Template::compile(envelope).unwrap_or_else(|e| {
+                panic!("op {op_name} envelope failed Handlebars validation: {e}\n{envelope}");
             });
         }
     }

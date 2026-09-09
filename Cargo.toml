@@ -37,9 +37,13 @@ thiserror = "2"
 anyhow = "1"
 once_cell = "1"
 url = "2"
+# Issue #5 REST lane: X-Road REST protocol §4.2 requires
+# percent-encoded UTF-8 for identifier segments in the /r1/… URL.
+percent-encoding = "2"
 
 [dev-dependencies]
 tempfile = "3"
+tower = { version = "0.4", features = ["util"] }
 # Audit-v1 H4 regression test: generate a self-signed cert in
 # memory + spin a local TLS server; assert reqwest (system trust
 # store) refuses the handshake. rcgen is the standard pure-Rust
@@ -49,6 +53,16 @@ tempfile = "3"
 rcgen = "0.13"
 native-tls = "0.2"
 tokio-native-tls = "0.3"
+# Issue #5 REST-lane full-mTLS test:
+# * `openssl` — package the rcgen-generated client cert into PKCS12
+#   (matching the shipping keystore format XTR loads at boot).
+# * `rustls` + `tokio-rustls` — used server-side because
+#   `native-tls` doesn't expose client-cert verification. Client
+#   side stays on native-tls (reqwest's `native-tls` feature owns
+#   the production mTLS path we're actually testing).
+openssl = "0.10"
+rustls = "0.23"
+tokio-rustls = "0.26"
 
 [[bin]]
 name = "xtr-on-rust"
