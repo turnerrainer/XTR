@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Response returns as-is with all upstream X-Road response headers
   (`X-Road-Service`, `X-Road-Request-Hash`, `X-Road-Error`, etc.)
   passed to the caller. Redirects pinned to `Policy::none()` per
-  §4.4. See [`book/src/rest-passthrough.md`](./book/src/rest-passthrough.md).
+  §4.4. See the "REST passthrough" chapter of the mdBook for the
+  operator-facing setup guide.
 - **`security_server.trust_ca_path`** config field. Real X-Road
   Security Server TLS certs are typically issued by an
   operator-managed private CA that isn't in the system trust store;

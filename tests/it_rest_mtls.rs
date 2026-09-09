@@ -29,8 +29,8 @@
 
 use axum::http::{HeaderMap, HeaderValue, Method};
 use rcgen::{
-    CertificateParams, DistinguishedName, DnType, ExtendedKeyUsagePurpose, IsCa, KeyUsagePurpose,
-    KeyPair, SanType,
+    CertificateParams, DistinguishedName, DnType, ExtendedKeyUsagePurpose, IsCa, KeyPair,
+    KeyUsagePurpose, SanType,
 };
 use rustls::pki_types::pem::PemObject;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
@@ -117,12 +117,7 @@ fn generate_pki() -> TestPki {
     let client_cert_pem = client_cert.pem();
     let client_key_pem = client_key.serialize_pem();
     let ca_pem = ca_cert.pem();
-    let pkcs12 = build_pkcs12(
-        &client_cert_pem,
-        &client_key_pem,
-        &ca_pem,
-        &pkcs12_password,
-    );
+    let pkcs12 = build_pkcs12(&client_cert_pem, &client_key_pem, &ca_pem, &pkcs12_password);
 
     TestPki {
         ca_pem,
@@ -159,11 +154,7 @@ fn build_pkcs12(cert_pem: &str, key_pem: &str, ca_pem: &str, password: &str) -> 
     chain.push(ca).expect("push CA");
 
     let mut builder = Pkcs12::builder();
-    builder
-        .name("xtr-client")
-        .pkey(&key)
-        .cert(&cert)
-        .ca(chain);
+    builder.name("xtr-client").pkey(&key).cert(&cert).ca(chain);
     builder
         .build2(password)
         .expect("PKCS12 build")
@@ -429,11 +420,7 @@ async fn full_mtls_path_from_pkcs12_load_to_server_delivery() {
     // 7c) X-Road headers observed on the wire (all lowercased by
     //     the capturing server).
     let hdrs = obs.headers.lock().unwrap().clone();
-    let hget = |k: &str| {
-        hdrs.iter()
-            .find(|(hk, _)| hk == k)
-            .map(|(_, v)| v.clone())
-    };
+    let hget = |k: &str| hdrs.iter().find(|(hk, _)| hk == k).map(|(_, v)| v.clone());
     assert_eq!(
         hget("x-road-client").as_deref(),
         Some("ee-test/GOV/70008440/xtr-test"),

@@ -211,8 +211,7 @@ mod tests {
                     service_code: "dde".into(),
                     path: "/v1/isikud".into(),
                 },
-                allowed_query_params: allowed
-                    .map(|a| a.iter().map(|s| s.to_string()).collect()),
+                allowed_query_params: allowed.map(|a| a.iter().map(|s| s.to_string()).collect()),
                 forward_body: true,
             }),
         })
@@ -310,7 +309,9 @@ mod tests {
         // Allow-listed query param is enumerated.
         let params = op["parameters"].as_array().expect("parameters array");
         assert!(
-            params.iter().any(|p| p["name"] == "personalCode" && p["in"] == "query"),
+            params
+                .iter()
+                .any(|p| p["name"] == "personalCode" && p["in"] == "query"),
             "expected personalCode as query parameter, got: {params:?}"
         );
         // No SOAP-style JSON requestBody schema (body is opaque).

@@ -229,7 +229,8 @@ mod tests {
 
     #[test]
     fn rest_dsl_requires_target_block() {
-        let err = serde_yaml_ng::from_str::<XRoadTemplate>("kind: rest\nmethod: POST\n").unwrap_err();
+        let err =
+            serde_yaml_ng::from_str::<XRoadTemplate>("kind: rest\nmethod: POST\n").unwrap_err();
         assert!(
             err.to_string().contains("target"),
             "expected error about missing target, got: {err}"
@@ -238,7 +239,8 @@ mod tests {
 
     #[test]
     fn unknown_kind_rejected_at_parse_time() {
-        let err = serde_yaml_ng::from_str::<XRoadTemplate>("kind: graphql\nmethod: POST\n").unwrap_err();
+        let err =
+            serde_yaml_ng::from_str::<XRoadTemplate>("kind: graphql\nmethod: POST\n").unwrap_err();
         assert!(
             err.to_string().contains("graphql"),
             "expected error naming bad kind, got: {err}"
@@ -286,8 +288,8 @@ mod tests {
         assert!(!identifier_chars_ok("has space"));
         assert!(!identifier_chars_ok("has/slash"));
         assert!(!identifier_chars_ok("has_underscore")); // '_' is NOT in the spec set
-        assert!(!identifier_chars_ok("äöü"));            // non-ASCII
-        assert!(!identifier_chars_ok(""));               // empty
+        assert!(!identifier_chars_ok("äöü")); // non-ASCII
+        assert!(!identifier_chars_ok("")); // empty
     }
 
     #[test]

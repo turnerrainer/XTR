@@ -362,10 +362,7 @@ fn pct(s: &str) -> String {
 /// * `None` → forward everything (spec §4.5 default).
 /// * `Some(vec![])` → drop everything (paranoid opt-in).
 /// * `Some(vec!["k"])` → allow-list.
-fn filter_query(
-    allowed: Option<&[String]>,
-    pairs: Vec<(String, String)>,
-) -> Vec<(String, String)> {
+fn filter_query(allowed: Option<&[String]>, pairs: Vec<(String, String)>) -> Vec<(String, String)> {
     match allowed {
         None => pairs,
         Some([]) => Vec::new(),
@@ -508,7 +505,10 @@ mod tests {
     #[test]
     fn filter_query_none_forwards_everything() {
         // Spec §4.5 default — pass through unmodified.
-        let out = filter_query(None, vec![("a".into(), "1".into()), ("b".into(), "2".into())]);
+        let out = filter_query(
+            None,
+            vec![("a".into(), "1".into()), ("b".into(), "2".into())],
+        );
         assert_eq!(out.len(), 2);
     }
 

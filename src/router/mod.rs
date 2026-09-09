@@ -149,10 +149,7 @@ async fn invoke_soap(
     };
 
     let envelope = expand(&soap.envelope, &soap.params, user_params, &state.cfg)?;
-    let xml_response = state
-        .executor
-        .dispatch_soap(soap, method, envelope)
-        .await?;
+    let xml_response = state.executor.dispatch_soap(soap, method, envelope).await?;
     xml_to_json::translate_soap(&xml_response)
 }
 
