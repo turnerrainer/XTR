@@ -15,7 +15,7 @@
 //! Directory name → group; filename stem (before `.yml`/`.yaml`) →
 //! service. URL becomes `POST /<group>/<service>`.
 
-use crate::dsl::XRoadTemplate;
+use crate::dsl::{TemplateKind, XRoadTemplate};
 use crate::error::XtrError;
 use std::collections::HashMap;
 use std::path::Path;
@@ -82,15 +82,18 @@ fn walk(dir: &Path, out: &mut ServiceMap) -> Result<(), XtrError> {
 }
 
 /// Try to compile the DSL's Handlebars envelope so a bad template
-/// blows up at startup, not on the first live request.
+/// blows up at startup, not on the first live request. REST-kind
+/// templates carry no envelope, so validation is a no-op for them.
 fn validate_template(path: &Path, tpl: &XRoadTemplate) -> Result<(), XtrError> {
-    ::handlebars::Template::compile(&tpl.envelope).map_err(|e| {
-        XtrError::Internal(format!(
-            "DSL {}: envelope failed Handlebars validation: {}",
-            path.display(),
-            e
-        ))
-    })?;
+    if let TemplateKind::Soap(soap) = &tpl.kind {
+        ::handlebars::Template::compile(&soap.envelope).map_err(|e| {
+            XtrError::Internal(format!(
+                "DSL {}: envelope failed Handlebars validation: {}",
+                path.display(),
+                e
+            ))
+        })?;
+    }
     Ok(())
 }
 

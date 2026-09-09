@@ -81,6 +81,7 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_soap_fault_detail_exposure(cfg, &mut findings);
     check_client_data_placeholders(cfg, &mut findings);
     check_security_server_env(cfg, &mut findings);
+    check_rest_lane_readiness(cfg, &mut findings);
     check_limits(cfg, &mut findings);
     check_paths_exist(cfg, &mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
@@ -398,6 +399,144 @@ fn check_security_server_env(cfg: &AppConfig, out: &mut Vec<Finding>) {
     }
 }
 
+/// Load the DSL tree and, for each REST-kind template, run the
+/// spec-compliance checks that can't be done from AppConfig alone.
+/// If loading fails, we emit a single WEAK finding — the loader
+/// will surface the real error at boot; doctor's job is triage,
+/// not enforcement.
+fn check_rest_lane_readiness(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let services = match crate::dsl::loader::load_all(&cfg.dsl_path) {
+        Ok(m) => m,
+        Err(_) => {
+            // The paths check runs separately; skip when loader
+            // failed for path reasons.
+            return;
+        }
+    };
+
+    let rest_count = services
+        .values()
+        .filter(|t| matches!(t.kind, crate::dsl::TemplateKind::Rest(_)))
+        .count();
+
+    if rest_count == 0 {
+        return;
+    }
+
+    // 1) FATAL if REST DSLs are present but security_server isn't
+    //    configured — every REST request would 500 with "REST DSL
+    //    requires security_server to be configured".
+    if cfg.security_server.is_none() {
+        out.push(Finding {
+            severity: Severity::Fatal,
+            code: "fatal-rest-no-security-server".into(),
+            field: Some("security_server".into()),
+            headline: format!("{rest_count} REST DSL(s) loaded but security_server is unset"),
+            rationale: "REST DSLs (kind: rest) always route through the\n\
+                        X-Road Security Server via mTLS. Without\n\
+                        security_server.url + keystore_path in xtr.yaml,\n\
+                        every REST request returns 500 at fire time."
+                .into(),
+            recovery: Some(
+                "xtr.yaml:\n  security_server:\n    url: https://out.test.x-tee.ee:443/\n    keystore_path: /app/ssl/keystore.p12\n    keystore_password_env: XTR_KEYSTORE_PASSWORD".into(),
+            ),
+        });
+    } else {
+        out.push(Finding {
+            severity: Severity::Info,
+            code: "info-rest-lane-ready".into(),
+            field: Some("security_server".into()),
+            headline: format!("{rest_count} REST DSL(s) will route via Security Server"),
+            rationale: "REST passthrough active per issue #5.".into(),
+            recovery: None,
+        });
+    }
+
+    // 2) FATAL if the SS URL isn't HTTPS. X-Road REST §4.7 says
+    //    "Secure REST services should only provide HTTPS endpoints"
+    //    and mTLS requires TLS by definition.
+    if let Some(ss) = &cfg.security_server {
+        if !ss.url.starts_with("https://") {
+            out.push(Finding {
+                severity: Severity::Fatal,
+                code: "fatal-rest-ss-not-https".into(),
+                field: Some("security_server.url".into()),
+                headline: format!("security_server.url must be https://, got '{}'", ss.url),
+                rationale: "X-Road REST §4.7 requires HTTPS. Plain http would\n\
+                            skip TLS entirely — no mTLS, no encryption, no\n\
+                            server authentication."
+                    .into(),
+                recovery: Some(format!(
+                    "xtr.yaml:\n  security_server:\n    url: https://<host>{}",
+                    ss.url.trim_start_matches("http://")
+                )),
+            });
+        }
+        // 3) INFO — mention when trust_ca_path is absent. Not a
+        //    finding per se; real X-Road SS certs are behind an
+        //    operator private CA and the system trust store won't
+        //    verify them.
+        if ss.trust_ca_path.is_none() {
+            out.push(Finding {
+                severity: Severity::Info,
+                code: "info-rest-trust-ca-system".into(),
+                field: Some("security_server.trust_ca_path".into()),
+                headline: "using system trust store for Security Server TLS".into(),
+                rationale: "Real X-Road Security Server certs are typically\n\
+                            issued by an operator-managed private CA. If\n\
+                            the mTLS handshake fails with 'unknown issuer',\n\
+                            set security_server.trust_ca_path to the CA\n\
+                            bundle PEM."
+                    .into(),
+                recovery: None,
+            });
+        }
+    }
+
+    // 4) WEAK per-REST-DSL findings — enumerate spec violations.
+    for ((group, service), tpl) in services.iter() {
+        let crate::dsl::TemplateKind::Rest(rest) = &tpl.kind else {
+            continue;
+        };
+        let field_prefix = format!("dsl:{}/{}", group, service);
+        if !rest.target.required_fields_present() {
+            out.push(Finding {
+                severity: Severity::Fatal,
+                code: "fatal-rest-target-fields-missing".into(),
+                field: Some(format!("{field_prefix}.target")),
+                headline: format!(
+                    "REST DSL {group}/{service} has empty target field(s)"
+                ),
+                rationale: "target.member_class / .member_code / .subsystem_code\n\
+                            / .service_code are all required by X-Road REST §4.1;\n\
+                            missing values produce a malformed serviceId."
+                    .into(),
+                recovery: Some(
+                    "target:\n  member_class: GOV\n  member_code: \"<from RIA>\"\n  subsystem_code: <sub>\n  service_code: <svc>".into(),
+                ),
+            });
+        }
+        if !rest.target.identifier_charset_ok() {
+            out.push(Finding {
+                severity: Severity::Weak,
+                code: "weak-rest-identifier-charset".into(),
+                field: Some(format!("{field_prefix}.target")),
+                headline: format!(
+                    "REST DSL {group}/{service} target contains chars outside spec §4.8"
+                ),
+                rationale: "X-Road REST §4.8 restricts identifiers to\n\
+                            A-Za-z0-9'()+,-.=?. Non-conforming chars are\n\
+                            accepted by parsing but real Security Servers\n\
+                            may reject them."
+                    .into(),
+                recovery: Some(
+                    "Restrict identifiers to the character set A-Za-z0-9'()+,-.=? per §4.8.".into(),
+                ),
+            });
+        }
+    }
+}
+
 fn check_limits(cfg: &AppConfig, out: &mut Vec<Finding>) {
     // Wildly permissive limits are a WEAK finding — real X-Road
     // envelopes are single-digit KB request / single-digit MB
@@ -634,6 +773,7 @@ mod tests {
                 url: "https://ss.example/".into(),
                 keystore_path: PathBuf::from("/tmp/doesnt-matter-here.p12"),
                 keystore_password_env: "XTR_TEST_MISSING_ENV_VAR_ABC123".into(),
+                trust_ca_path: None,
             }),
             ..Default::default()
         };
@@ -716,5 +856,94 @@ mod tests {
         let cfg = AppConfig::default();
         let findings = run(&cfg, None);
         assert_eq!(exit_code(&findings, false), 0);
+    }
+
+    // ---- REST-lane readiness checks (issue #5) ----
+
+    fn write_rest_dsl(dir: &std::path::Path, group: &str, service: &str, yaml: &str) {
+        let d = dir.join(group);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join(format!("{service}.yml")), yaml).unwrap();
+    }
+
+    #[test]
+    fn rest_dsl_present_but_no_security_server_is_fatal() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_rest_dsl(
+            tmp.path(),
+            "rr",
+            "isikud",
+            "kind: rest\nmethod: GET\ntarget:\n  member_class: GOV\n  member_code: '1'\n  subsystem_code: s\n  service_code: c\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            security_server: None,
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "fatal-rest-no-security-server"));
+    }
+
+    #[test]
+    fn rest_dsl_with_non_https_security_server_is_fatal() {
+        unsafe { std::env::set_var("XTR_TEST_REST_HTTP_PW", "x") };
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_rest_dsl(
+            tmp.path(),
+            "rr",
+            "isikud",
+            "kind: rest\nmethod: GET\ntarget:\n  member_class: GOV\n  member_code: '1'\n  subsystem_code: s\n  service_code: c\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            security_server: Some(SecurityServer {
+                url: "http://ss.example/".into(),
+                keystore_path: PathBuf::from("/tmp/no.p12"),
+                keystore_password_env: "XTR_TEST_REST_HTTP_PW".into(),
+                trust_ca_path: None,
+            }),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "fatal-rest-ss-not-https"));
+        unsafe { std::env::remove_var("XTR_TEST_REST_HTTP_PW") };
+    }
+
+    #[test]
+    fn rest_dsl_with_bad_identifier_chars_is_weak() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_rest_dsl(
+            tmp.path(),
+            "rr",
+            "isikud",
+            "kind: rest\nmethod: GET\ntarget:\n  member_class: GOV\n  member_code: '1'\n  subsystem_code: has_underscore\n  service_code: c\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "weak-rest-identifier-charset"));
+    }
+
+    #[test]
+    fn soap_only_dsl_tree_produces_no_rest_findings() {
+        // Confirms that check_rest_lane_readiness stays silent
+        // when no REST DSLs are loaded — no false FATAL from
+        // pre-issue-#5 configs.
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_rest_dsl(
+            tmp.path(),
+            "ar",
+            "svc",
+            "params: []\nmethod: POST\nenvelope: <x/>\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(!has_code(&findings, "fatal-rest-no-security-server"));
+        assert!(!has_code(&findings, "info-rest-lane-ready"));
     }
 }

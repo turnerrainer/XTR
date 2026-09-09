@@ -5,6 +5,7 @@
 //! `"String"` (Java class name) instead of `"string"` (JSON type).
 
 use crate::dsl::loader::ServiceMap;
+use crate::dsl::TemplateKind;
 use serde_json::{json, Map, Value};
 
 pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
@@ -16,70 +17,135 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
     keys.sort();
 
     let error_ref = json!({ "$ref": "#/components/schemas/XtrError" });
+    let err_response = |desc: &str| {
+        json!({
+            "description": desc,
+            "content": {
+                "application/json": { "schema": error_ref }
+            }
+        })
+    };
 
     for (group, service) in keys {
         let template = &services[&(group.clone(), service.clone())];
         let path = format!("/{group}/{service}");
 
-        let mut request_body_props = Map::new();
-        for p in &template.params {
-            request_body_props.insert(
-                p.clone(),
-                json!({
-                    // Fixes JVM bug #14: correct JSON schema type.
-                    "type": "string",
-                }),
-            );
-        }
-
-        let err_response = |desc: &str| {
-            json!({
-                "description": desc,
-                "content": {
-                    "application/json": { "schema": error_ref }
+        match &template.kind {
+            TemplateKind::Soap(soap) => {
+                let mut request_body_props = Map::new();
+                for p in &soap.params {
+                    request_body_props.insert(
+                        p.clone(),
+                        json!({
+                            // Fixes JVM bug #14: correct JSON schema type.
+                            "type": "string",
+                        }),
+                    );
                 }
-            })
-        };
-
-        let operation = json!({
-            "operationId": format!("post_{group}_{service}"),
-            "tags": [group],
-            "summary": format!("{group}/{service}"),
-            "requestBody": {
-                "required": !template.params.is_empty(),
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": request_body_props,
-                        }
-                    }
-                }
-            },
-            "responses": {
-                "200": {
-                    "description": "Success",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "body":    { "type": "object" },
-                                    "headers": { "type": "object" },
+                let operation = json!({
+                    "operationId": format!("post_{group}_{service}"),
+                    "tags": [group],
+                    "summary": format!("{group}/{service}"),
+                    "requestBody": {
+                        "required": !soap.params.is_empty(),
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": request_body_props,
                                 }
                             }
                         }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Success",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "body":    { "type": "object" },
+                                            "headers": { "type": "object" },
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "404": err_response("Template not found (unmapped group/service)"),
+                        "413": err_response("Request body exceeds configured max_request_bytes"),
+                        "502": err_response("Upstream error: upstream_http_error / upstream_soap_fault / upstream_xml_parse_error / upstream_body_too_large"),
+                        "504": err_response("Upstream request timed out"),
+                        "500": err_response("Internal error: template expansion failed, keystore load failed, etc."),
                     }
-                },
-                "404": err_response("Template not found (unmapped group/service)"),
-                "413": err_response("Request body exceeds configured max_request_bytes"),
-                "502": err_response("Upstream error: upstream_http_error / upstream_soap_fault / upstream_xml_parse_error / upstream_body_too_large"),
-                "504": err_response("Upstream request timed out"),
-                "500": err_response("Internal error: template expansion failed, keystore load failed, etc."),
+                });
+                paths.insert(path, json!({ "post": operation }));
             }
-        });
-
-        paths.insert(path, json!({ "post": operation }));
+            TemplateKind::Rest(rest) => {
+                // REST-lane operations advertise the DSL's declared
+                // method + upstream service identity but leave
+                // request/response schema opaque — the body is
+                // forwarded verbatim.
+                let method = template.method.to_lowercase();
+                let mut query_params: Vec<Value> = Vec::new();
+                // Enumerate query params only when the DSL narrows
+                // the set. None (spec default: forward all) means
+                // "any query key permitted" — impossible to
+                // enumerate. Empty Some(vec![]) means "no query
+                // keys permitted" — also nothing to enumerate.
+                if let Some(list) = &rest.allowed_query_params {
+                    for q in list {
+                        query_params.push(json!({
+                            "name": q,
+                            "in": "query",
+                            "required": false,
+                            "schema": {"type": "string"},
+                        }));
+                    }
+                }
+                let path_seg = if rest.target.path.is_empty() {
+                    String::new()
+                } else if rest.target.path.starts_with('/') {
+                    rest.target.path.clone()
+                } else {
+                    format!("/{}", rest.target.path)
+                };
+                let target_summary = format!(
+                    "{}/{}/{}/{}{}",
+                    rest.target.member_class,
+                    rest.target.member_code,
+                    rest.target.subsystem_code,
+                    rest.target.service_code,
+                    path_seg,
+                );
+                let mut operation = json!({
+                    "operationId": format!("{}_{group}_{service}", method),
+                    "tags": [group],
+                    "summary": format!("{group}/{service} (REST → {target_summary})"),
+                    "parameters": query_params,
+                    "responses": {
+                        "200": {"description": "Upstream response (passthrough)"},
+                        "404": err_response("Template not found (unmapped group/service)"),
+                        "405": err_response("Method not allowed for this template"),
+                        "413": err_response("Request body exceeds configured max_request_bytes"),
+                        "502": err_response("Upstream error"),
+                        "504": err_response("Upstream request timed out"),
+                        "500": err_response("Internal error"),
+                    }
+                });
+                if rest.forward_body {
+                    operation["requestBody"] = json!({
+                        "required": false,
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {"type": "string", "format": "binary"},
+                            }
+                        }
+                    });
+                }
+                paths.insert(path, json!({ method: operation }));
+            }
+        }
     }
 
     json!({
@@ -120,15 +186,34 @@ pub fn build_spec(services: &ServiceMap, version: &str) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dsl::XRoadTemplate;
+    use crate::dsl::{RestTarget, RestTemplate, SoapTemplate, TemplateKind, XRoadTemplate};
     use std::sync::Arc;
 
     fn tpl(params: &[&str]) -> Arc<XRoadTemplate> {
         Arc::new(XRoadTemplate {
-            params: params.iter().map(|s| s.to_string()).collect(),
-            service: Some("https://x".into()),
             method: "POST".into(),
-            envelope: "<x/>".into(),
+            kind: TemplateKind::Soap(SoapTemplate {
+                params: params.iter().map(|s| s.to_string()).collect(),
+                service: Some("https://x".into()),
+                envelope: "<x/>".into(),
+            }),
+        })
+    }
+
+    fn rest_tpl(method: &str, allowed: Option<&[&str]>) -> Arc<XRoadTemplate> {
+        Arc::new(XRoadTemplate {
+            method: method.into(),
+            kind: TemplateKind::Rest(RestTemplate {
+                target: RestTarget {
+                    member_class: "GOV".into(),
+                    member_code: "70008440".into(),
+                    subsystem_code: "rr".into(),
+                    service_code: "dde".into(),
+                    path: "/v1/isikud".into(),
+                },
+                allowed_query_params: allowed.map(|a| a.iter().map(|s| s.to_string()).collect()),
+                forward_body: true,
+            }),
         })
     }
 
@@ -207,6 +292,46 @@ mod tests {
                 "XtrError.properties.{field} missing"
             );
         }
+    }
+
+    #[test]
+    fn rest_kind_dsl_advertised_under_configured_method() {
+        // Issue #5: a `kind: rest` DSL declaring `method: GET` must
+        // appear under `paths."/g/s".get`, not `.post`.
+        let mut m = ServiceMap::new();
+        m.insert(
+            ("rr".into(), "isikud".into()),
+            rest_tpl("GET", Some(&["personalCode"])),
+        );
+        let spec = build_spec(&m, "0.3.0-rc-test");
+        let op = &spec["paths"]["/rr/isikud"]["get"];
+        assert_eq!(op["operationId"], "get_rr_isikud");
+        // Allow-listed query param is enumerated.
+        let params = op["parameters"].as_array().expect("parameters array");
+        assert!(
+            params
+                .iter()
+                .any(|p| p["name"] == "personalCode" && p["in"] == "query"),
+            "expected personalCode as query parameter, got: {params:?}"
+        );
+        // No SOAP-style JSON requestBody schema (body is opaque).
+        let content = &op["requestBody"]["content"];
+        assert!(content.get("application/json").is_none());
+        assert!(content.get("application/octet-stream").is_some());
+    }
+
+    #[test]
+    fn rest_kind_dsl_with_no_query_filter_advertises_no_parameters() {
+        // When allowed_query_params is None (spec §4.5 default:
+        // forward all), the OpenAPI spec advertises no query
+        // params — impossible to enumerate the universe.
+        let mut m = ServiceMap::new();
+        m.insert(("rr".into(), "isikud".into()), rest_tpl("GET", None));
+        let spec = build_spec(&m, "0.3.0-rc-test");
+        let params = spec["paths"]["/rr/isikud"]["get"]["parameters"]
+            .as_array()
+            .expect("parameters array");
+        assert!(params.is_empty());
     }
 
     #[test]

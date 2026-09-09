@@ -164,6 +164,14 @@ pub struct SecurityServer {
     /// bug #16 — no default password baked into config.
     #[serde(default = "default_password_env")]
     pub keystore_password_env: String,
+    /// Optional PEM-encoded CA bundle used to verify the Security
+    /// Server's TLS certificate. Absent → use the system trust
+    /// store. Real X-Road Security Server TLS certs are typically
+    /// issued by an operator-managed private CA which is not in
+    /// the system trust store; without this the mTLS handshake
+    /// fails with an `unknown issuer` error.
+    #[serde(default)]
+    pub trust_ca_path: Option<PathBuf>,
 }
 
 fn default_dsl_path() -> PathBuf {

@@ -15,4 +15,4 @@ pub mod handlebars;
 pub mod loader;
 pub mod template;
 
-pub use template::XRoadTemplate;
+pub use template::{RestTarget, RestTemplate, SoapTemplate, TemplateKind, XRoadTemplate};

@@ -6,6 +6,7 @@
 - [Configuration](./configuration.md)
 - [Doctor & migration](./doctor.md)
 - [WSDL folder-drop](./wsdl-ingestion.md)
+- [REST passthrough](./rest-passthrough.md)
 - [X-Road Security Server setup](./security-server.md)
 - [Failure modes](./failure-modes.md)
 

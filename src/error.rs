@@ -48,6 +48,16 @@ pub enum XtrError {
     #[error("keystore load failed: {0}")]
     KeystoreLoadFailed(String),
 
+    /// Method not allowed for this template. Emitted when a SOAP
+    /// DSL (POST-only by contract) receives a GET/PUT/etc. — REST
+    /// DSLs accept any method and never trigger this.
+    #[error("method {method} not allowed for {group}/{service}")]
+    MethodNotAllowed {
+        method: String,
+        group: String,
+        service: String,
+    },
+
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -64,6 +74,7 @@ impl XtrError {
             Self::RequestTooLarge { .. } => StatusCode::PAYLOAD_TOO_LARGE,
             Self::UpstreamBodyTooLarge { .. } => StatusCode::BAD_GATEWAY,
             Self::KeystoreLoadFailed(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::MethodNotAllowed { .. } => StatusCode::METHOD_NOT_ALLOWED,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -79,6 +90,7 @@ impl XtrError {
             Self::RequestTooLarge { .. } => "request_too_large",
             Self::UpstreamBodyTooLarge { .. } => "upstream_body_too_large",
             Self::KeystoreLoadFailed(_) => "keystore_load_failed",
+            Self::MethodNotAllowed { .. } => "method_not_allowed",
             Self::Internal(_) => "internal_error",
         }
     }

@@ -3,6 +3,10 @@
 Point XTR at a folder of WSDL files. Every `wsdl:operation` becomes
 a live `POST /group/operation` endpoint on next boot.
 
+**SOAP lane only.** WSDL-driven generation produces SOAP DSLs
+(envelope + Handlebars). REST DSLs (`kind: rest`) are hand-written
+— see [REST passthrough](./rest-passthrough.md).
+
 ## Enable
 
 ```yaml
