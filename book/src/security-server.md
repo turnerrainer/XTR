@@ -3,9 +3,17 @@
 Skip this chapter if you only need the shipped Ariregister demo —
 that hits `ariregxmlv6.rik.ee` directly, no Security Server needed.
 
-Read on when you need any of the other 160+ shipped endpoints
-(Maa-amet, Keskkonnaamet, RMK, Kliimaministeerium), or any real
-X-Road service in general.
+Read on when you need any of:
+
+- Any of the 160+ shipped SOAP endpoints (Maa-amet, Keskkonnaamet,
+  RMK, Kliimaministeerium).
+- **Any REST DSL** (`kind: rest`) — the REST lane always routes
+  through the Security Server; there is no plain-REST bypass.
+- Any real X-Road service in general.
+
+The same PKCS12 identity, same SS URL, and same
+`security_server:` config block serve both lanes. Setting up the
+Security Server once unlocks both.
 
 ## What a Security Server is
 
@@ -75,6 +83,22 @@ signing key):
 **Never commit `.p12` files or passwords.** Password comes to XTR
 via `XTR_KEYSTORE_PASSWORD` env var.
 
+## Export the Security Server's TLS CA (usually required)
+
+Real Security Servers terminate TLS with a cert issued by an
+operator-managed private CA, not by a public root that ships in
+the system trust store. Without pointing XTR at that CA bundle,
+the mTLS handshake fails with `unknown issuer`.
+
+1. Admin UI → System Parameters → TLS Certificate (or copy from
+   `/etc/xroad/ssl/`).
+2. Export as PEM.
+3. Move onto the XTR host at a path you'll reference below.
+
+Skip only if your Security Server's TLS cert is issued by a
+public CA already in the system trust store (uncommon in real
+deployments).
+
 ## Wire XTR
 
 ```yaml
@@ -88,7 +112,14 @@ security_server:
   url: "https://<your-ss-fqdn>:5500/"     # YOUR SS, not the central authority's
   keystore_path: /app/ssl/xtr-client.p12
   keystore_password_env: XTR_KEYSTORE_PASSWORD
+  # Point at the CA bundle exported above. Optional but almost
+  # always needed for real deployments.
+  trust_ca_path: /app/ssl/xroad-ca.pem
 ```
+
+Both SOAP (envelope-wrapped) and REST (`kind: rest` DSLs) route
+through this same `security_server:` block. Once configured, both
+lanes work.
 
 Run:
 
@@ -115,7 +146,8 @@ curl -sX POST http://localhost:8080/xroad/listMethods \
 | Symptom | Cause |
 |---|---|
 | `keystore_load_failed: parsing PKCS12` at startup | Wrong password, wrong file, or the `.p12` was generated with a modern (AES) cipher OpenSSL rejects. Regenerate with `-legacy` or RC2/3DES on export. |
-| Every call `502 upstream_http_error` HTTP 401/403 | Your subsystem isn't authorized for that service. Ask the target's owner to add you to their allow-list. |
+| `Internal("upstream request: error sending request …")` or handshake errors mentioning `unknown issuer` | The SS's TLS cert isn't in the system trust store. Set `security_server.trust_ca_path` to your CA bundle PEM. |
+| SOAP: every call `502 upstream_http_error` HTTP 401/403. REST: every call passes through as upstream 401/403. | Your subsystem isn't authorized for that service. Ask the target's owner to add you to their allow-list. |
 | Every call `504 upstream_timeout` | Firewall — outbound 5500 to your SS's peers is blocked. |
 | `SSL routines::wrong version number` in XTR logs | `security_server.url` port is wrong — should be 5500 (message port), not 4000 (admin UI). |
 | Subsystem stuck in `GLOBALERROR` in admin UI | Registration hasn't propagated. `ee-test`: wait 15 min. Prod: contact RIA. |
