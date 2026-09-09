@@ -1,3 +1,102 @@
+# Migrating XTR
+
+Two migration guides on this page. The `0.2 → 0.3` section is
+short (issue #5 is additive, `0.2.x` SOAP DSLs continue to work
+unchanged); the `0.1 → 0.2` section is the original audit-v1
+migration and remains here as a canonical reference.
+
+---
+
+## `0.2.0-rc.1` → `0.3.0-rc`
+
+**TL;DR** — additive release. Existing SOAP DSLs work unchanged.
+Two externally-visible changes worth reviewing before deploy.
+
+### Externally-visible changes
+
+1. **DSL `method:` is now enforced on both kinds.**
+   Previously, non-POST requests to a SOAP DSL were routed to
+   axum's built-in 405 (because the route was `POST /:group/:svc`).
+   The router is now `any /:group/:svc` (needed for REST DSLs
+   that declare `method: GET|PUT|DELETE`), so method mismatches
+   surface as XTR's own structured `405 method_not_allowed`
+   response.
+   - **Symptom of the change**: `GET /some-soap-endpoint` now
+     returns `{"error":"method_not_allowed","message":"..."}`
+     with `405` status. Previously the same request got axum's
+     bare `405 Method Not Allowed` with no body.
+   - **No recovery flag needed** — no SOAP DSL should be receiving
+     GETs in practice. If yours does, add a REST DSL for the GET
+     path or fix the caller.
+
+2. **New optional `security_server.trust_ca_path` config field.**
+   Real X-Road Security Server TLS certs are typically issued by
+   an operator-managed private CA. When the CA isn't in the
+   system trust store, the mTLS handshake fails with `unknown
+   issuer`. Point `trust_ca_path` at the CA bundle PEM.
+   - **No recovery flag needed** — the field is optional; absent
+     means "use system trust store" (unchanged 0.2 behaviour).
+   - Applies to both SOAP and REST lanes.
+
+### Added (opt-in, no impact if unused)
+
+- **REST passthrough lane** (issue #5). DSL files may declare
+  `kind: rest` and act as X-Road REST endpoints. See the "REST
+  passthrough" chapter of the book for the operator-facing
+  setup guide, or `book/src/rest-passthrough.md` in-repo.
+- **Doctor rules for REST DSLs**: `fatal-rest-no-security-server`,
+  `fatal-rest-ss-not-https`, `fatal-rest-target-fields-missing`,
+  `weak-rest-identifier-charset`, plus two informational codes.
+  Only fire when a REST DSL is loaded.
+- **`XtrError::MethodNotAllowed`** — new error variant. Wire
+  shape `{"error":"method_not_allowed","message":"..."}` with
+  status `405`.
+
+### Doctor recipe
+
+```bash
+docker run --rm \
+  -v "$(pwd)/xtr.yaml:/app/xtr.yaml:ro" \
+  -v "$(pwd)/DSL:/app/DSL:ro" \
+  turnerrainer/xtr:0.3.0-rc doctor --strict
+```
+
+- **exit 0** — safe to deploy as-is.
+- **exit 1 with FATAL** — the service will not boot or a
+  critical property is off; fix before deploying.
+- **exit 1 under `--strict`** — everything works, but a
+  stronger security posture is available.
+
+Mount the DSL tree too — several REST-lane rules only fire when
+the doctor can see the loaded DSL files.
+
+### Prompt template for LLM-assisted upgrade
+
+```
+I'm upgrading XTR from 0.2.0-rc.1 to 0.3.0-rc. My current
+xtr.yaml is:
+
+<paste xtr.yaml>
+
+My DSL/ tree contains:
+
+<paste `ls -R DSL/` output>
+
+Please:
+1. Tell me if the upgrade is safe (any SOAP DSL that receives
+   non-POST requests? Any DSL kind change needed?).
+2. Suggest whether I should set security_server.trust_ca_path.
+3. Show the exact xtr.yaml diff I need.
+
+Facts I want you to use:
+- 0.3.0-rc adds a REST passthrough lane (kind: rest DSLs).
+- SOAP DSLs work unchanged.
+- Method mismatch on SOAP DSLs now returns structured 405.
+- security_server.trust_ca_path is new + optional.
+```
+
+---
+
 # Migrating XTR from `0.1.0-rc.2` → `0.2.0-rc`
 
 **Audience**: operators upgrading a live deployment, and LLMs

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0-rc] - 2026-09-10
+
+Third minor release. Ships the X-Road REST passthrough lane
+(issue [#5](https://github.com/turnerrainer/XTR/issues/5)) — XTR
+now fronts both X-Road SOAP and X-Road REST services from the
+same DSL directory, over the same mTLS identity. Spec-compliant
+per [X-Road Message Protocol for REST v1.0.4](https://github.com/nordic-institute/X-Road/blob/develop/doc/Protocols/pr-rest_x-road_message_protocol_for_rest.md).
+
+Fully backwards-compatible with existing `0.2.x` SOAP DSLs. See
+the migration reference in this book for the (small) surface of
+externally-visible changes and their recovery flags.
+
 ### Added
 
 - **REST passthrough lane** (issue
@@ -580,7 +592,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...HEAD
+[0.3.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.3.0-rc
 [0.2.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...v0.2.0-rc.1
 [0.2.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...v0.2.0-rc
 [0.1.0-rc.2]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.1...v0.1.0-rc.2
