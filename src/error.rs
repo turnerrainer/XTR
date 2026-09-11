@@ -132,7 +132,14 @@ impl XtrError {
                     "upstream SOAP fault (full detail)"
                 );
             }
-            _ => tracing::warn!("request failed: {}", self),
+            // Audit LOG-v1 FN-LOG-1 (HIGH): TemplateNotFound { group, service }
+            // etc. embed user-controlled path segments. Using `{}` here
+            // Display-formats those strings verbatim into the log line,
+            // enabling CRLF log injection via `POST /x/y%0d%0aFAKE`.
+            // Fix: use structured `?self` (Debug) — Rust's Debug on String
+            // quotes and escapes control chars, so raw \r\n renders as
+            // the literal escape sequence and cannot split the log line.
+            _ => tracing::warn!(error.kind = %self.code(), error = ?self, "request failed"),
         }
 
         let status = self.status();
