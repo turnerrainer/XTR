@@ -74,9 +74,10 @@ the real load path.
 
 ### "What's the breaking change surface?"
 
-Four items, all documented in `CHANGELOG.md` `[0.2.0-rc]` →
-"Breaking changes vs 0.1.0-rc.2" and expanded in
-`MIGRATION.md` §"Breaking changes reference":
+**Audit-v1 (shipped in `0.2.0-rc`)** — four items in
+`CHANGELOG.md` `[0.2.0-rc]` → "Breaking changes vs
+`0.1.0-rc.2`" and expanded in `MIGRATION.md` §"Breaking changes
+reference":
 
 1. **SOAP fault response shape** — `detail` dropped,
    `faultstring` capped at 200 chars. Recover with
@@ -88,15 +89,46 @@ Four items, all documented in `CHANGELOG.md` `[0.2.0-rc]` →
 4. **URL guard drops private-IP WSDL upstreams** — SSRF
    defence; no recovery for literal private IPs.
 
+**Audit-v2 (on `dev`, not yet released)** — two behaviour
+changes to warn callers about before the next version bump:
+
+1. **Malformed JSON body → HTTP 400** (was: silently downgraded
+   to empty params). Callers that were sending `null` / `[]` /
+   `42` / truncated JSON to zero-param SOAP DSLs and getting
+   200 will now see `{"error":"invalid_json_body",...}`. The
+   fix is to send `{}` (still 200) or empty body (still 200) —
+   both are legitimate zero-param invocations.
+2. **SOAP fault fields sanitised** (was: verbatim upstream
+   bytes). Control chars in `code` / `string` fields render as
+   U+FFFD in the JSON body — even when
+   `expose_soap_fault_detail: true`. A caller that was parsing
+   a stack-trace-in-`string` will still get the message text,
+   just with escape encoding for any embedded CR/LF/ANSI.
+
+Both audit-v2 changes surface as new response codes /
+sanitised strings, not as new error kinds — CI pipelines
+pinning to `error` codes are unaffected. New codes:
+`invalid_json_body` (400), `xtr_offline` (599).
+
 ### "What are the new config fields?"
 
 ```yaml
 # xtr.yaml
 wsdl:
-  allow_http_upstream: false          # default; opt-in
-  upstream_host_allowlist: []         # optional pinning
-expose_soap_fault_detail: false       # default; opt-in
+  allow_http_upstream: false          # default; opt-in (audit-v1)
+  upstream_host_allowlist: []         # optional pinning (audit-v1)
+expose_soap_fault_detail: false       # default; opt-in (audit-v1)
+observability:
+  expose_openapi: true                # audit-v2 F-XTR-1; flip false to hide /api
 ```
+
+Environment variables that shape runtime behaviour:
+
+| Var | Truthy → | Notes |
+|---|---|---|
+| `XTR_OFFLINE` | Every outbound short-circuits with HTTP 599 `xtr_offline` | Test/pentest safety. Doctor emits WEAK `weak-offline-mode-active` when set. Never leave enabled in prod. Truthy values: `1`/`true`/`yes`/`on` (case-insensitive). |
+| `XTR_CONFIG` | Path to `xtr.yaml` to load | Overrides the on-disk search order. |
+| `XTR_KEYSTORE_PASSWORD` | Reads the mTLS keystore password | Actual var name is set by `security_server.keystore_password_env`. |
 
 Full annotated config in `book/src/configuration.md`; full
 rationale in `MIGRATION.md` §"Doctor rule catalogue".
@@ -104,8 +136,9 @@ rationale in `MIGRATION.md` §"Doctor rule catalogue".
 ### "How do I run the tests?"
 
 ```bash
-cargo test                                # 156 tests as of 0.2.0-rc.1
+cargo test                                # 225 tests on dev (post audit-v2)
 cargo clippy --all-targets -- -D warnings  # style/lint gate
+cargo fmt --check                          # style gate (CI enforces)
 cargo audit --deny warnings                # supply-chain gate
 ( cd book && mdbook build )                # docs + linkcheck
 ```
@@ -142,22 +175,33 @@ policy" posture, see [`SECURITY.md`](./SECURITY.md)
 src/
   main.rs           CLI dispatcher (server / doctor subcommands)
   lib.rs            module tree
-  config/           AppConfig + serde loader + validate()
-  doctor/           doctor.rs — config validator (new in 0.2.0-rc)
+  config/           AppConfig + serde loader + validate() (Observability added audit-v2)
+  doctor.rs         config validator (new in 0.2.0-rc; audit-v2 added 3 rules)
   wsdl/
     parser.rs       WSDL SOAP-1.1 parser
     generator.rs    WSDL → DSL YAML
     pipeline.rs     boot-time ingestion + url_guard integration
     url_guard.rs    SSRF guard (new in 0.2.0-rc)
   dsl/              DSL loader + handlebars expansion
-  executor/         plain HTTPS + Security Server mTLS clients
+  executor/         plain HTTPS + Security Server mTLS + REST-lane clients
+                    (audit-v2: XTR_OFFLINE short-circuit at dispatch)
   translate/        SOAP XML → JSON
-  router/           axum routes
-  error.rs          XtrError enum + IntoResponse (H3 shape lives here)
+  router/
+    mod.rs          axum routes + layered middleware
+    security_headers.rs  audit-v2: five default response headers
+    access_log.rs        audit-v2: INFO line + W3C traceparent per request
+  error.rs          XtrError enum + IntoResponse
+                    (H3 shape; audit-v2: sanitize + clip + InvalidJsonBody + OfflineMode)
 tests/
-  it_end_to_end.rs           e2e router + executor
-  doctor_integration.rs      subprocess against real binary
-  tls_defaults_enforced.rs   H4 self-signed cert integration
+  it_end_to_end.rs                       e2e router + executor
+  it_rest_mtls.rs                        REST-lane full mTLS
+  it_rest_passthrough.rs                 REST spec §4.x
+  doctor_integration.rs                  subprocess against real binary
+  tls_defaults_enforced.rs               H4 self-signed cert integration
+  security_log_url_path_no_crlf_leak.rs  audit-v2 FN-LOG-1/2 regression
+  security_default_headers.rs            audit-v2 §5.1 regression
+  access_log_traceparent.rs              audit-v2 §1.2 + §1.6 regression
+  xtr_offline_mode.rs                    audit-v2 FN-LOG-3 regression
 ```
 
 ## Don't
@@ -175,9 +219,54 @@ tests/
 - **Don't write CLAUDE.md-style planning docs** as a side
   effect of a task. Only add docs the user explicitly asks
   for.
+- **Don't `{}` (Display) user-controlled data into `tracing::`
+  calls.** Audit-v2 FN-LOG-1: `POST /x/y%0d%0aFAKE` splits log
+  lines. Use `{:?}` (Debug) or structured `field = ?value`
+  fields — Rust's Debug escapes control chars. Regression pins
+  live in `tests/security_log_url_path_no_crlf_leak.rs`.
+- **Don't drop the security_headers / access_log / TimeoutLayer
+  middleware** from `router::build`. All three have regression
+  tests. Adding a new router that skips them = pentest gap.
+- **Don't return raw upstream `faultstring` / `faultcode` in
+  the JSON body.** Route through `sanitize_fault_field` in
+  `error.rs` — control chars flip to U+FFFD. Same for the
+  echoed `group` / `service` path segments in `TemplateNotFound`
+  / `MethodNotAllowed` (see `ECHOED_PATH_MAX`).
+- **Don't fall back to empty params on a malformed JSON body.**
+  Audit-v2 FN3: return `XtrError::InvalidJsonBody` (400) before
+  any outbound is issued. Only empty body and explicit `{}`
+  are the zero-param path.
+- **Don't bypass the Executor.offline short-circuit.** If you
+  add a new outbound path in `executor/*`, gate it on
+  `self.offline` too so `XTR_OFFLINE=true` stays comprehensive.
+- **Don't invent `mdbook` pages that duplicate CHANGELOG.**
+  The book is user-facing (operator recipes, config reference,
+  doctor rule catalogue). Audit paper trails live in
+  h2ck.me sister-repo docs, not here.
 
 ## Recent history worth knowing
 
+- **2026-09-12**: Audit-v2 landed on `dev` — 10 PRs (#10 – #19)
+  close every residual from the h2ck.me RUNTIME + LOG +
+  PUBLIC-EXPOSURE break-tests and adopt six fleet strongholds.
+  No version bump / no image republish yet — user gates that
+  step. Key changes an LLM should be aware of:
+  - **Security fixes**: FN-LOG-1 CRLF log injection, FN-LOG-2
+    ANSI escapes off outside TTY, FN2 SOAP fault control-char
+    sanitiser (`sanitize_fault_field`), F-XTR-3 echoed-path
+    clip (`ECHOED_PATH_MAX = 256`), FN3 malformed-JSON 400
+    (`XtrError::InvalidJsonBody`).
+  - **New knobs**: `observability.expose_openapi` config field,
+    `XTR_OFFLINE=true` env var (short-circuit outbound with
+    HTTP 599 `xtr_offline`).
+  - **New middleware**: five default security headers (§5.1),
+    per-request access log with W3C `traceparent` propagation
+    (§1.2 + §1.6), handler-level `TimeoutLayer` (§6.2).
+  - **New doctor rules**: `weak-writable-rootfs-wsdl-folder-drop`
+    (FN4), `info-no-caller-auth` (F-XTR-2 posture reminder),
+    `weak-offline-mode-active` (FN-LOG-3).
+  - **Test count**: 225 (was 156 pre-audit-v2).
+  - **CHANGELOG entry**: pending — will land with the version bump.
 - **2026-09-07**: `dev` reflects the merged state — PRs #2
   (audit-v1 fixes), #3 (release gate to `0.2.0-rc`), and #4
   (hotfix `0.2.0-rc.1` for Dockerfile ENTRYPOINT). `:rc` on

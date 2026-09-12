@@ -4,6 +4,7 @@
 
 - [Getting started](./getting-started.md)
 - [Configuration](./configuration.md)
+- [HTTP response contract](./http-contract.md)
 - [Doctor & migration](./doctor.md)
 - [WSDL folder-drop](./wsdl-ingestion.md)
 - [REST passthrough](./rest-passthrough.md)
