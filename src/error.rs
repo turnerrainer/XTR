@@ -125,9 +125,16 @@ impl XtrError {
                 string,
                 detail,
             } => {
+                // Audit LOG-v1 FN-LOG-5 + RUNTIME FN2 residual: the
+                // upstream picks these strings, so an attacker who can
+                // force a specific fault picks what lands in our log.
+                // Use `?` (Debug) instead of `%` (Display) so control
+                // chars (CR/LF/ESC) render as escape sequences and
+                // can't split the log line or smuggle ANSI into a
+                // SIEM stream.
                 tracing::warn!(
-                    fault_code = %code,
-                    fault_string = %string,
+                    fault_code = ?code,
+                    fault_string = ?string,
                     fault_detail = ?detail,
                     "upstream SOAP fault (full detail)"
                 );
@@ -149,20 +156,29 @@ impl XtrError {
                 string,
                 detail,
             } => {
+                // Audit RUNTIME FN2 residual: even if the caller
+                // wants raw fault detail (expose_soap_fault_detail=true),
+                // control chars in the fault fields are never legitimate
+                // — strip them before they land in the JSON response
+                // body. Detail passes through unchanged since it's a
+                // structured JSON subtree already; the risk is on the
+                // free-form `code` / `string` strings.
+                let sanitised_code = sanitize_fault_field(code);
                 if expose_soap_fault_detail {
                     json!({
                         "error": "upstream_soap_fault",
                         "message": self.to_string(),
-                        "code": code,
-                        "string": string,
+                        "code": sanitised_code,
+                        "string": sanitize_fault_field(string),
                         "detail": detail,
                     })
                 } else {
-                    let truncated = truncate_chars(string, SOAP_FAULT_STRING_MAX);
+                    let cleaned = sanitize_fault_field(string);
+                    let truncated = truncate_chars(&cleaned, SOAP_FAULT_STRING_MAX);
                     json!({
                         "error": "upstream_soap_fault",
-                        "message": format!("upstream returned SOAP Fault ({code})"),
-                        "code": code,
+                        "message": format!("upstream returned SOAP Fault ({sanitised_code})"),
+                        "code": sanitised_code,
                         "string": truncated,
                         // `detail` deliberately omitted from the
                         // client response — full contents live in
@@ -193,6 +209,26 @@ fn truncate_chars(s: &str, max_chars: usize) -> String {
     }
     let cut: String = s.chars().take(max_chars).collect();
     format!("{cut}… (truncated)")
+}
+
+/// Audit RUNTIME FN2 residual / LOG FN-LOG-5 — a SOAP fault's
+/// `code` / `faultstring` come verbatim from the upstream and are
+/// echoed to the REST caller. A malicious upstream (or one whose
+/// error path was smuggled via SSRF) can pack CRLF or ANSI escape
+/// sequences into these fields to poison downstream log-shippers or
+/// terminal renderers that display JSON error bodies. Well-formed
+/// SOAP faults never carry raw control chars, so replacing them with
+/// U+FFFD (REPLACEMENT CHARACTER) is loss-less for the legitimate
+/// case and defensive for the malicious one. Tab is kept because
+/// some legitimate multi-word error text uses it.
+fn sanitize_fault_field(s: &str) -> String {
+    s.chars()
+        .map(|c| match c {
+            '\t' => c,
+            c if c.is_control() => '\u{FFFD}',
+            _ => c,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -249,5 +285,90 @@ mod tests {
         assert_eq!(body["detail"], json!({ "why": "diag" }));
         // Full string returned, no truncation marker.
         assert!(!body["string"].as_str().unwrap().contains("truncated"));
+    }
+
+    #[tokio::test]
+    async fn audit_fn2_faultstring_control_chars_replaced_with_u_fffd() {
+        // A malicious upstream returns a fault with CRLF + NUL + ANSI
+        // ESC packed into the faultstring. Without sanitisation, those
+        // bytes would land verbatim in the JSON response body — where
+        // a downstream terminal / log-shipper could misparse them.
+        let err = XtrError::UpstreamSoapFault {
+            code: "Server".into(),
+            string: "auth failed\r\nFORGED-LINE\x00\x1b[31mred".into(),
+            detail: None,
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        let out = body["string"].as_str().unwrap();
+        assert!(!out.contains('\r'), "raw CR must not survive: {out:?}");
+        assert!(!out.contains('\n'), "raw LF must not survive: {out:?}");
+        assert!(!out.contains('\x00'), "raw NUL must not survive: {out:?}");
+        assert!(
+            !out.contains('\x1b'),
+            "raw ANSI ESC must not survive: {out:?}"
+        );
+        // The visible message content survives; only control chars flip.
+        assert!(out.contains("auth failed"));
+        assert!(out.contains("FORGED-LINE"));
+        assert!(out.contains("red"));
+        assert!(out.contains('\u{FFFD}'), "expected replacement char");
+    }
+
+    #[tokio::test]
+    async fn audit_fn2_faultcode_control_chars_replaced() {
+        let err = XtrError::UpstreamSoapFault {
+            code: "Sender\r\nX-Forged: 1".into(),
+            string: "ok".into(),
+            detail: None,
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        let code = body["code"].as_str().unwrap();
+        assert!(!code.contains('\r'));
+        assert!(!code.contains('\n'));
+        assert!(code.contains("Sender"));
+    }
+
+    #[tokio::test]
+    async fn audit_fn2_expose_detail_still_sanitises_fields() {
+        // Even in expose_soap_fault_detail=true mode, control chars
+        // are stripped — the flag is about detail visibility, not
+        // giving the upstream a byte-transparent channel into the caller.
+        let err = XtrError::UpstreamSoapFault {
+            code: "Server\x1b[0m".into(),
+            string: "err\r\n".into(),
+            detail: Some(json!({ "trace": "at Foo:1" })),
+        };
+        let resp = err.into_response_with_options(true);
+        let body = body_json(resp).await;
+        assert!(!body["code"].as_str().unwrap().contains('\x1b'));
+        assert!(!body["string"].as_str().unwrap().contains('\r'));
+        assert_eq!(body["detail"], json!({ "trace": "at Foo:1" }));
+    }
+
+    #[test]
+    fn sanitize_fault_field_preserves_tab_and_unicode() {
+        // Tab is kept — legitimate multi-word error text uses it for
+        // alignment. Unicode punctuation and accents pass through.
+        let s = "field\tvalue — ümlaut ☑";
+        assert_eq!(sanitize_fault_field(s), s);
+    }
+
+    #[test]
+    fn sanitize_fault_field_replaces_all_c0_c1_control_chars() {
+        // C0 (0x00-0x1F except \t) and DEL (0x7F).
+        for c in (0u8..=0x1f).chain(std::iter::once(0x7fu8)) {
+            if c == b'\t' {
+                continue;
+            }
+            let s: String = std::iter::once(c as char).collect();
+            let out = sanitize_fault_field(&s);
+            assert_eq!(
+                out,
+                "\u{FFFD}",
+                "expected 0x{c:02x} to become U+FFFD, got {out:?}"
+            );
+        }
     }
 }
