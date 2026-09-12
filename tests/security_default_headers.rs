@@ -30,7 +30,10 @@ async fn build_xtr(dsl_root: &std::path::Path) -> Router {
     })
 }
 
-async fn axum_test(app: Router, req: axum::http::Request<axum::body::Body>) -> axum::response::Response {
+async fn axum_test(
+    app: Router,
+    req: axum::http::Request<axum::body::Body>,
+) -> axum::response::Response {
     use tower::ServiceExt;
     app.oneshot(req).await.unwrap()
 }
