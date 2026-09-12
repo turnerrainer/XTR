@@ -114,12 +114,18 @@ async fn audit_fn_log_3_offline_returns_599_and_makes_no_outbound_soap_call() {
     )
     .await;
 
-    assert_eq!(status, 599, "offline mode must respond with 599, got {status}");
+    assert_eq!(
+        status, 599,
+        "offline mode must respond with 599, got {status}"
+    );
     let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
     assert_eq!(parsed["error"], "xtr_offline", "body was {body}");
     // The critical regression: the mock upstream must NEVER have been
     // dialled. This is what makes XTR_OFFLINE safe to use during a
     // pentest engagement against a shared deployment.
     let called = *capture.called.lock().unwrap();
-    assert!(!called, "offline mode did NOT block outbound — mock upstream was called");
+    assert!(
+        !called,
+        "offline mode did NOT block outbound — mock upstream was called"
+    );
 }
