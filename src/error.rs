@@ -58,6 +58,16 @@ pub enum XtrError {
         service: String,
     },
 
+    /// Audit v1 FN3 — inbound JSON body could not be parsed OR was
+    /// not a top-level object. Emitted for SOAP DSL invocations so
+    /// XTR cannot be used as an amplifier: attackers previously
+    /// could send garbage on the XTR wire and force a real upstream
+    /// call (potentially with the operator's mTLS identity) that
+    /// returned 500. Post-fix: 400 is returned before any outbound
+    /// call.
+    #[error("invalid JSON body: {reason}")]
+    InvalidJsonBody { reason: String },
+
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -75,6 +85,7 @@ impl XtrError {
             Self::UpstreamBodyTooLarge { .. } => StatusCode::BAD_GATEWAY,
             Self::KeystoreLoadFailed(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::MethodNotAllowed { .. } => StatusCode::METHOD_NOT_ALLOWED,
+            Self::InvalidJsonBody { .. } => StatusCode::BAD_REQUEST,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -91,6 +102,7 @@ impl XtrError {
             Self::UpstreamBodyTooLarge { .. } => "upstream_body_too_large",
             Self::KeystoreLoadFailed(_) => "keystore_load_failed",
             Self::MethodNotAllowed { .. } => "method_not_allowed",
+            Self::InvalidJsonBody { .. } => "invalid_json_body",
             Self::Internal(_) => "internal_error",
         }
     }
