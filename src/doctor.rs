@@ -84,8 +84,43 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_rest_lane_readiness(cfg, &mut findings);
     check_limits(cfg, &mut findings);
     check_paths_exist(cfg, &mut findings);
+    check_offline_mode(&mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
+}
+
+/// Audit LOG-v1 FN-LOG-3 — surface the XTR_OFFLINE env var state so
+/// operators can't accidentally leave it enabled on a real deployment
+/// (or leave it disabled during a pentest engagement without noticing).
+/// Emits INFO in either direction; the env-lane is the same rule
+/// `Executor::new` uses at boot.
+fn check_offline_mode(out: &mut Vec<Finding>) {
+    let active = match std::env::var("XTR_OFFLINE") {
+        Ok(v) => matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Err(_) => false,
+    };
+    if active {
+        out.push(Finding {
+            severity: Severity::Weak,
+            code: "weak-offline-mode-active".into(),
+            field: Some("env:XTR_OFFLINE".into()),
+            headline: "XTR_OFFLINE is active — every outbound is stubbed with HTTP 599".into(),
+            rationale: "Offline / test-safety mode is intended for pentests and\n\
+                        break-tests to prevent unauthorized outbound calls. Every\n\
+                        SOAP + REST dispatch short-circuits with HTTP 599\n\
+                        `xtr_offline`; NO real X-Road upstream is contacted."
+                .into(),
+            recovery: Some(
+                "Unset the env var (or set it to 'false'/'0') to restore\n\
+                 normal outbound behaviour. Only leave XTR_OFFLINE set for\n\
+                 pentest / test-harness deployments."
+                    .into(),
+            ),
+        });
+    }
 }
 
 /// Format a `Vec<Finding>` for human consumption. Groups by

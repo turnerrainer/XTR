@@ -31,11 +31,43 @@ pub struct Executor {
     plain: plain::PlainExecutor,
     security_server: Option<security_server::SecurityServerExecutor>,
     rest_lane: Option<rest_lane::RestLaneExecutor>,
+    /// Audit LOG-v1 FN-LOG-3 — test-safety / pentest-safety mode.
+    /// When true, every dispatch short-circuits with `OfflineMode`
+    /// before any outbound is issued. Sourced from `XTR_OFFLINE`
+    /// env var at boot; also settable via test helper.
+    offline: bool,
+}
+
+/// Audit LOG-v1 FN-LOG-3 — resolve XTR_OFFLINE from the env at boot.
+/// Truthy values: "1", "true", "yes", "on" (case-insensitive). Any
+/// other value (including empty) leaves the mode disabled — the
+/// default posture is "make real outbound calls", so misspellings
+/// don't accidentally activate offline mode in production.
+fn resolve_offline_from_env() -> bool {
+    match std::env::var("XTR_OFFLINE") {
+        Ok(v) => matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Err(_) => false,
+    }
 }
 
 impl Executor {
     pub fn new(cfg: &AppConfig) -> Result<Self, XtrError> {
         let plain = plain::PlainExecutor::new(&cfg.limits)?;
+        let offline = resolve_offline_from_env();
+        // Loud boot-time WARN so an operator who accidentally left
+        // XTR_OFFLINE=true on a real deployment sees it immediately.
+        // Multiple lines because SIEM alerts key off individual lines.
+        if offline {
+            tracing::warn!(
+                "XTR_OFFLINE is set — every outbound SOAP/REST call \
+                 will be short-circuited with HTTP 599 xtr_offline. \
+                 Test-safety mode; NEVER leave enabled on a \
+                 production deployment"
+            );
+        }
         let (security_server, rest_lane) = match &cfg.security_server {
             Some(server_cfg) => {
                 let password = cfg
@@ -55,7 +87,25 @@ impl Executor {
             plain,
             security_server,
             rest_lane,
+            offline,
         })
+    }
+
+    /// Test helper: build an Executor whose SOAP/REST dispatch always
+    /// short-circuits with `OfflineMode`, without needing to poke the
+    /// XTR_OFFLINE env var (which would leak into other tests running
+    /// in the same process).
+    #[doc(hidden)]
+    pub fn with_offline_for_tests(mut self, offline: bool) -> Self {
+        self.offline = offline;
+        self
+    }
+
+    /// Public accessor so the doctor tool can emit the INFO finding
+    /// when the mode is active. Distinct from `resolve_offline_from_env`
+    /// because a test-configured executor may set it programmatically.
+    pub fn is_offline(&self) -> bool {
+        self.offline
     }
 
     /// Test-only: replace the REST-lane executor with one that
@@ -77,6 +127,17 @@ impl Executor {
         method: &str,
         envelope: String,
     ) -> Result<String, XtrError> {
+        // Audit LOG-v1 FN-LOG-3: refuse before ANY outbound touches
+        // reqwest. Uses structured Debug (`?`) so any control chars
+        // in an operator-supplied URI are escape-encoded before
+        // landing in the log line.
+        if self.offline {
+            tracing::info!(
+                target = ?template.service.as_deref(),
+                "outbound SOAP blocked by XTR_OFFLINE"
+            );
+            return Err(XtrError::OfflineMode);
+        }
         match &template.service {
             Some(uri) => self.plain.execute(uri, method, envelope).await,
             None => {
@@ -105,6 +166,15 @@ impl Executor {
         inbound_headers: &HeaderMap,
         body: Vec<u8>,
     ) -> Result<rest_lane::RestUpstreamResponse, XtrError> {
+        // Audit LOG-v1 FN-LOG-3: same short-circuit as dispatch_soap.
+        if self.offline {
+            tracing::info!(
+                target = ?template.target,
+                method = %method,
+                "outbound REST blocked by XTR_OFFLINE"
+            );
+            return Err(XtrError::OfflineMode);
+        }
         let executor = self.rest_lane.as_ref().ok_or_else(|| {
             XtrError::Internal(
                 "REST DSL requires security_server to be configured. \

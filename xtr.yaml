@@ -86,3 +86,16 @@ observability:
   # service-discovery map for anyone planning an unauth probe of
   # `/:group/:service`. When disabled, /api returns 404 (JSON).
   expose_openapi: true
+
+# Test-safety / pentest-safety switch.
+#
+# Set `XTR_OFFLINE=true` in the environment before starting the
+# container to short-circuit EVERY outbound SOAP + REST dispatch
+# with HTTP 599 `xtr_offline` — the real upstream is never
+# contacted. Intended for pentest / break-test runs, or any
+# environment where the operator has bind-mounted real X-Road
+# upstream WSDLs but does NOT want a probe to hit them.
+#
+# Truthy values: "1", "true", "yes", "on" (case-insensitive).
+# `xtr-on-rust doctor` emits a WEAK finding when the mode is active
+# so an operator who accidentally leaves it enabled sees it.
