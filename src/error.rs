@@ -68,6 +68,14 @@ pub enum XtrError {
     #[error("invalid JSON body: {reason}")]
     InvalidJsonBody { reason: String },
 
+    /// Audit LOG-v1 FN-LOG-3 — every outbound call was refused
+    /// because XTR_OFFLINE is set. Test-safety / pentest-safety
+    /// mode: no real upstream was contacted for this request.
+    /// Response uses a non-standard 599 to make it unambiguous
+    /// that the gate fired here (not on the upstream).
+    #[error("outbound blocked: XTR_OFFLINE is set (test-safety mode)")]
+    OfflineMode,
+
     #[error("internal error: {0}")]
     Internal(String),
 }
@@ -86,6 +94,9 @@ impl XtrError {
             Self::KeystoreLoadFailed(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::MethodNotAllowed { .. } => StatusCode::METHOD_NOT_ALLOWED,
             Self::InvalidJsonBody { .. } => StatusCode::BAD_REQUEST,
+            // 599 is non-standard but distinctive — signals "the XTR
+            // offline gate fired", not any upstream state.
+            Self::OfflineMode => StatusCode::from_u16(599).unwrap(),
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -103,6 +114,7 @@ impl XtrError {
             Self::KeystoreLoadFailed(_) => "keystore_load_failed",
             Self::MethodNotAllowed { .. } => "method_not_allowed",
             Self::InvalidJsonBody { .. } => "invalid_json_body",
+            Self::OfflineMode => "xtr_offline",
             Self::Internal(_) => "internal_error",
         }
     }
