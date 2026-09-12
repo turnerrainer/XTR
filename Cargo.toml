@@ -13,6 +13,9 @@ repository = "https://github.com/turnerrainer/XTR"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
+# Fleet stronghold §6.2: `TimeoutLayer` — cap the entire handler
+# pipeline, not just the outbound reqwest call.
+tower-http = { version = "0.6", features = ["timeout"] }
 
 # Serialisation
 serde = { version = "1", features = ["derive"] }
