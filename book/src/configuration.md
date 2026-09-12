@@ -48,6 +48,18 @@ wsdl:                                    # WSDL ingestion trust boundary (SOAP l
 expose_soap_fault_detail: false          # echo raw upstream fault to REST callers
                                          # (SOAP lane only — REST lane doesn't
                                          # translate faults; upstream passes through)
+                                         # NOTE: control chars in code/string are
+                                         # ALWAYS replaced with U+FFFD (audit-v2 FN2).
+
+observability:
+  expose_openapi: true                   # audit-v2 F-XTR-1 / FN5. Default true for
+                                         # backwards compat. Flip false in
+                                         # untrusted-network deployments — the
+                                         # OpenAPI spec enumerates every DSL group
+                                         # + operation + upstream URL, a
+                                         # service-discovery map for anyone planning
+                                         # an unauth probe. When disabled, /api
+                                         # returns 404 (JSON).
 
 security_server:                         # X-Road Security Server routing (mTLS)
   # Required by REST DSLs and any SOAP DSL without `service:`.
@@ -103,7 +115,13 @@ consulted by SOAP and REST DSLs alike.
 
 | Field | Default | Lane | Purpose |
 |---|---|---|---|
-| `expose_soap_fault_detail` | `false` | SOAP | When false, upstream SOAP `Fault.detail` is stripped from REST responses and `faultstring` is capped at 200 chars; server logs still carry the full detail at `warn!` level. Set true only inside trusted environments. Audit-v1 H3. Does not apply to REST DSLs — REST faults come from the provider service, not from XTR. |
+| `expose_soap_fault_detail` | `false` | SOAP | When false, upstream SOAP `Fault.detail` is stripped from REST responses and `faultstring` is capped at 200 chars; server logs still carry the full detail at `warn!` level. Set true only inside trusted environments. Audit-v1 H3 + audit-v2 FN2 (control chars in `code` / `string` are always replaced with U+FFFD, regardless of this flag). Does not apply to REST DSLs — REST faults come from the provider service, not from XTR. |
+
+### Observability
+
+| Field | Default | Lane | Purpose |
+|---|---|---|---|
+| `observability.expose_openapi` | `true` | Both | Audit-v2 F-XTR-1. When true, `GET /api` returns the auto-generated OpenAPI 3.1 spec. When false, `GET /api` returns 404 with a structured JSON body that does NOT enumerate any DSL group. Recommended `false` when XTR is reachable from untrusted networks (the spec is a service-discovery map for anyone planning an unauth probe of `/:group/:service`). |
 
 ### Security Server (mTLS)
 
@@ -121,6 +139,7 @@ consulted by SOAP and REST DSLs alike.
 |---|---|
 | `XTR_CONFIG` | Alternative path to `xtr.yaml` (bypasses cwd search). |
 | `XTR_KEYSTORE_PASSWORD` | Password for the PKCS12 identity. Required whenever `security_server:` is set. |
+| `XTR_OFFLINE` | Audit-v2 FN-LOG-3 test-safety switch. Truthy values (`1`, `true`, `yes`, `on`, case-insensitive) intercept EVERY outbound SOAP + REST dispatch and return HTTP **599** `xtr_offline` before any reqwest call. Doctor emits WEAK `weak-offline-mode-active` when set. Intended for pentest / break-test runs — **never leave enabled in production**. |
 | `RUST_LOG` | `tracing_subscriber` filter (`info`, `debug`, `xtr_on_rust=trace`, …). |
 
 ## Validating your config before deploying
