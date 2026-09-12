@@ -114,6 +114,27 @@ Every code the doctor can emit, grouped by area.
 | WEAK | `weak-offline-mode-active` | `XTR_OFFLINE` env var is truthy. Every outbound SOAP + REST dispatch will be short-circuited with HTTP 599. Intended for pentest / break-test runs; refuse to leave in production. |
 | INFO | `info-no-caller-auth` | Always emitted. Reminder that XTR ships zero built-in caller authentication on `/:group/:service` — a reverse proxy or service mesh MUST gate the route in every deployment. Design property, not a fixable-in-config finding. |
 
+> **Upgrade note — `doctor --strict` exit code change in audit-v2.**
+>
+> The shipped `xtr.yaml` sets `wsdl_watch_dir: ./wsdl` to make
+> `docker compose up` work out of the box. That configuration
+> now trips the new `weak-writable-rootfs-wsdl-folder-drop`
+> WEAK — so any CI gate running `doctor --strict` against the
+> shipping posture will start exiting `1`.
+>
+> Two legitimate paths forward:
+>
+> 1. **Hardened posture** — pre-generate DSLs on the host (bake
+>    them into the container image or mount them read-only), set
+>    `wsdl_watch_dir: null`, and enable `read_only: true` in the
+>    container. WEAK count drops back to 0; `--strict` exit 0.
+> 2. **Convenience posture** — keep folder-drop and drop the
+>    `--strict` flag. Non-strict runs still exit 0 with WEAKs
+>    reported for triage.
+>
+> Neither is wrong. The WEAK exists so the trade-off is
+> visible, not to say folder-drop is broken.
+
 ## Machine-readable output
 
 ```bash

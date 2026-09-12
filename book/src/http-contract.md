@@ -4,6 +4,29 @@ Every response XTR emits has a predictable shape. If you're
 building a client, a monitor, or a pentest harness, this page
 is the contract.
 
+> **Upgrade note — additive-but-observable changes in audit-v2.**
+>
+> All three middleware layers described below are new relative
+> to `0.3.0-rc`. A strict caller upgrading from `0.3.0-rc` may
+> see:
+>
+> - **New response headers on every response.** Five
+>   `content-security-policy` / `strict-transport-security` /
+>   `x-frame-options` / `x-content-type-options` /
+>   `referrer-policy` headers plus `traceparent` + `x-trace-id`.
+>   Clients that key on the absence of these headers (rare)
+>   would need an allow-list.
+> - **Handler-level 504 after `limits.request_timeout_secs + 5s`.**
+>   Previously a slow handler-side step (handlebars expansion,
+>   XML translate) could hang until the client gave up. Health
+>   checks that tolerated hangs may now see 504.
+> - **One INFO access-log line per request** with method /
+>   route / status / duration / trace_id. Log volume rises
+>   accordingly; log-shippers may need a rate cap.
+>
+> None of these change the JSON error-body shape or the stable
+> `error` codes CI pipelines pin to.
+
 ## Middleware pipeline
 
 Requests flow through three router-level layers (audit-v2)

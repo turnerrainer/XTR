@@ -89,8 +89,10 @@ reference":
 4. **URL guard drops private-IP WSDL upstreams** — SSRF
    defence; no recovery for literal private IPs.
 
-**Audit-v2 (on `dev`, not yet released)** — two behaviour
-changes to warn callers about before the next version bump:
+**Audit-v2 (on `dev`, not yet released)** — the breaking-change
+surface to warn callers and operators about before the next
+version bump. Three items land as "you may see a change without
+touching your config":
 
 1. **Malformed JSON body → HTTP 400** (was: silently downgraded
    to empty params). Callers that were sending `null` / `[]` /
@@ -104,11 +106,37 @@ changes to warn callers about before the next version bump:
    `expose_soap_fault_detail: true`. A caller that was parsing
    a stack-trace-in-`string` will still get the message text,
    just with escape encoding for any embedded CR/LF/ANSI.
+3. **`doctor --strict` exit code flips 0 → 1 on the shipping
+   posture.** The new `weak-writable-rootfs-wsdl-folder-drop`
+   rule fires whenever `wsdl_watch_dir` is set — which is the
+   default in the shipped `xtr.yaml`. Any operator whose CI
+   gate runs `doctor --strict` will start failing. Two
+   recovery paths: (a) pre-generate DSLs on the host and set
+   `wsdl_watch_dir: null` (fleet §7 hardened posture — flips
+   the WEAK back to 0); or (b) accept the WEAK by dropping
+   `--strict` from CI. The rule fires on posture, not on
+   operator error — both paths are legitimate.
 
-Both audit-v2 changes surface as new response codes /
-sanitised strings, not as new error kinds — CI pipelines
-pinning to `error` codes are unaffected. New codes:
+Both response-shape changes above surface as new response
+codes / sanitised strings, not as new error kinds — CI
+pipelines pinning to `error` codes are unaffected. New codes:
 `invalid_json_body` (400), `xtr_offline` (599).
+
+**Additive-but-observable** (no config change needed, but a
+strict caller could notice):
+
+- Every response now carries five default security headers +
+  W3C `traceparent` + `x-trace-id` (see
+  `book/src/http-contract.md` for values). A client keying on
+  header absence would need to allow-list these.
+- Handler-level `TimeoutLayer` caps every request at
+  `limits.request_timeout_secs + 5s` and returns HTTP 504.
+  Previously, a slow handler-side step (e.g. handlebars
+  expansion) could hang indefinitely. Health checks that
+  tolerated hangs may see 504 instead.
+- One INFO access-log line per request (`http_request_completed`
+  with method / route / status / duration / trace_id). Log
+  volume increases; log-shippers may need a rate cap.
 
 ### "What are the new config fields?"
 
@@ -164,7 +192,19 @@ client_data:                               # fill from RIA before deploy
 ```
 
 Then verify: `docker run --rm -v $(pwd)/xtr.yaml:/app/xtr.yaml:ro
-turnerrainer/xtr:rc doctor --strict` → expect 0 FATAL, 0 WEAK.
+turnerrainer/xtr:rc doctor --strict`.
+
+**Expected**: `0 FATAL`. WEAK count depends on the deployment
+posture:
+
+- Fleet §7 hardened (DSLs pre-generated on host,
+  `wsdl_watch_dir: null`, `read_only: true` container) → `0 WEAK`.
+- Shipping posture (`wsdl_watch_dir: ./wsdl` for
+  folder-drop convenience) → 1 WEAK
+  (`weak-writable-rootfs-wsdl-folder-drop`). Under `--strict` this
+  is exit 1 — accept by dropping `--strict`, or hardened by
+  moving DSL generation to the host.
+
 For the alternative "close the DNS lane via container network
 policy" posture, see [`SECURITY.md`](./SECURITY.md)
 §"Operator recipe — SSRF hardening on shared WSDL mounts".
