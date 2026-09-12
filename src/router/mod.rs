@@ -27,6 +27,7 @@ use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
+mod access_log;
 mod security_headers;
 
 #[derive(Clone)]
@@ -52,10 +53,16 @@ pub fn build(state: AppState) -> Router {
             any(invoke).layer(DefaultBodyLimit::max(limit.saturating_add(4096))),
         )
         // Fleet stronghold §5.1 — attach the five default security
-        // headers to every response. Applied at the outer layer so
-        // it runs after the handler produces the response but
-        // before axum sends bytes.
+        // headers to every response. Runs INSIDE the access-log
+        // layer so any response that skips security_headers (there
+        // shouldn't be any) is still counted.
         .layer(middleware::from_fn(security_headers::apply))
+        // Fleet strongholds §1.2 + §1.6 — one INFO line per request
+        // with method / route / status / duration / trace_id, plus
+        // W3C `traceparent` + `x-trace-id` response headers. Sits
+        // OUTSIDE security_headers so trace-id lands on the wire
+        // even when the handler short-circuits.
+        .layer(middleware::from_fn(access_log::apply))
         .with_state(state)
 }
 
