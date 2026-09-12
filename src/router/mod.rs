@@ -55,8 +55,23 @@ async fn health() -> impl IntoResponse {
     Json(json!({"status": "ok"}))
 }
 
-async fn openapi(State(state): State<AppState>) -> impl IntoResponse {
-    Json((*state.openapi_spec).clone())
+/// Audit v1 F-XTR-1 / FN5 — when `observability.expose_openapi=false`,
+/// return a structured 404 instead of the full auto-generated OpenAPI
+/// spec. The spec is a service-discovery map for anyone planning an
+/// F-XTR-2 probe (unauth `/:group/:service`); hiding it in production
+/// is the recommended posture per h2ck.me PUBLIC-EXPOSURE-FINDINGS §F-XTR-1.
+async fn openapi(State(state): State<AppState>) -> Response {
+    if !state.cfg.observability.expose_openapi {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({
+                "error": "not_found",
+                "message": "OpenAPI endpoint disabled by observability.expose_openapi=false",
+            })),
+        )
+            .into_response();
+    }
+    Json((*state.openapi_spec).clone()).into_response()
 }
 
 async fn invoke(

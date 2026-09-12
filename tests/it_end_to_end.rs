@@ -17,7 +17,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 use xtr_on_rust::{
-    config::{AppConfig, Limits},
+    config::{AppConfig, Limits, Observability},
     dsl::loader,
     executor::Executor,
     openapi,
@@ -81,12 +81,16 @@ async fn build_xtr(dsl_root: &std::path::Path) -> Router {
 }
 
 async fn build_xtr_with_limits(dsl_root: &std::path::Path, limits: Limits) -> Router {
-    let cfg = AppConfig {
+    build_xtr_with_config(AppConfig {
         dsl_path: dsl_root.to_path_buf(),
         xroad_instance: "ee-test".into(),
         limits,
         ..Default::default()
-    };
+    })
+    .await
+}
+
+async fn build_xtr_with_config(cfg: AppConfig) -> Router {
     let services = loader::load_all(&cfg.dsl_path).unwrap();
     let spec = openapi::build_spec(&services, "0.1.0-test");
     let executor = Executor::new(&cfg).unwrap();
@@ -137,6 +141,68 @@ async fn openapi_lists_loaded_services() {
     assert_eq!(resp.status, 200);
     let spec = resp.json.unwrap();
     assert!(spec["paths"]["/ar/svc"]["post"].is_object());
+}
+
+/// Audit v1 F-XTR-1 — /api must return a structured 404 (not the
+/// full OpenAPI spec) when the operator opts out via
+/// observability.expose_openapi=false. Regression pin.
+#[tokio::test]
+async fn openapi_gated_returns_404_when_expose_openapi_false() {
+    let tmp = TempDir::new().unwrap();
+    write_dsl(
+        tmp.path(),
+        "ar",
+        "svc",
+        "params: [reg_code]\nservice: https://x\nmethod: POST\nenvelope: <x/>\n",
+    );
+    let cfg = AppConfig {
+        dsl_path: tmp.path().to_path_buf(),
+        xroad_instance: "ee-test".into(),
+        observability: Observability {
+            expose_openapi: false,
+        },
+        ..Default::default()
+    };
+    let app = build_xtr_with_config(cfg).await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("GET")
+            .uri("/api")
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(resp.status, 404);
+    let body = resp.json.unwrap();
+    assert_eq!(body["error"], "not_found");
+    // The disabled 404 must NOT enumerate DSL groups / operations.
+    let msg = body["message"].as_str().unwrap();
+    assert!(!msg.contains("/ar/svc"), "gated 404 leaks DSL enumeration");
+}
+
+#[tokio::test]
+async fn openapi_default_still_public_for_backwards_compat() {
+    // Ensure the default (expose_openapi: true) preserves 0.3.x
+    // behaviour — /api returns 200 + spec.
+    let tmp = TempDir::new().unwrap();
+    write_dsl(
+        tmp.path(),
+        "ar",
+        "svc",
+        "params: [reg_code]\nservice: https://x\nmethod: POST\nenvelope: <x/>\n",
+    );
+    let app = build_xtr(tmp.path()).await;
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("GET")
+            .uri("/api")
+            .body(axum::body::Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(resp.status, 200);
 }
 
 #[tokio::test]

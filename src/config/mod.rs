@@ -81,6 +81,40 @@ pub struct AppConfig {
     /// operator debugging.
     #[serde(default)]
     pub expose_soap_fault_detail: bool,
+
+    /// Observability posture — currently just the `/api` gate.
+    #[serde(default)]
+    pub observability: Observability,
+}
+
+/// Observability / operator-visibility knobs. Kept as a nested
+/// struct so future additions (per-request access log opt-in,
+/// traceparent propagation, metrics port) don't multiply the
+/// top-level surface.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Observability {
+    /// Audit v1 F-XTR-1 / FN5 — when true, `GET /api` returns the
+    /// full auto-generated OpenAPI 3.1 spec (every DSL group +
+    /// operation + declared parameter + upstream URL). Default
+    /// `true` for backwards compatibility with 0.2.x / 0.3.x
+    /// deployments. Set to `false` in production if XTR is
+    /// reachable from untrusted networks — the spec is a
+    /// service-discovery map for an attacker planning an F-XTR-2
+    /// (unauth `/:group/:service`) probe.
+    #[serde(default = "default_expose_openapi")]
+    pub expose_openapi: bool,
+}
+
+impl Default for Observability {
+    fn default() -> Self {
+        Self {
+            expose_openapi: default_expose_openapi(),
+        }
+    }
+}
+
+fn default_expose_openapi() -> bool {
+    true
 }
 
 /// WSDL ingestion trust-boundary controls. WSDL and metadata
@@ -203,6 +237,7 @@ impl Default for AppConfig {
             wsdl_watch_dir: None,
             wsdl: WsdlIngest::default(),
             expose_soap_fault_detail: false,
+            observability: Observability::default(),
         }
     }
 }
