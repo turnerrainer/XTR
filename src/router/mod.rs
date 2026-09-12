@@ -154,10 +154,7 @@ async fn invoke_soap(
             Ok(Value::Object(map)) => map.into_iter().collect(),
             Ok(other) => {
                 return Err(XtrError::InvalidJsonBody {
-                    reason: format!(
-                        "expected a JSON object, got {}",
-                        json_kind_name(&other)
-                    ),
+                    reason: format!("expected a JSON object, got {}", json_kind_name(&other)),
                 });
             }
             Err(e) => {
