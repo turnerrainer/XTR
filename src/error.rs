@@ -107,6 +107,13 @@ impl IntoResponse for XtrError {
 /// Full text is always logged via `tracing::warn!` for operators.
 pub const SOAP_FAULT_STRING_MAX: usize = 200;
 
+/// Audit v1 F-XTR-3 — cap on attacker-controlled path segments
+/// (`group` / `service` / `method`) that get echoed back in
+/// `TemplateNotFound` and `MethodNotAllowed` error bodies. Bounds the
+/// response size an unauth caller can force from a single request so
+/// XTR isn't usable as a response-amplification primitive.
+pub const ECHOED_PATH_MAX: usize = 256;
+
 impl XtrError {
     /// Render as an HTTP response. When `expose_soap_fault_detail`
     /// is false (the default), upstream SOAP fault `detail` blocks
@@ -191,6 +198,37 @@ impl XtrError {
                 "message": self.to_string(),
                 "limit": limit,
             }),
+            // Audit v1 F-XTR-3: clip attacker-controlled path segments
+            // so a caller cannot force an arbitrarily-large response
+            // body by POST /aaaa…10MB/aaaa…10MB. Also emit the clipped
+            // values as top-level fields so structured consumers can
+            // pattern-match without parsing the free-form `message`.
+            Self::TemplateNotFound { group, service } => {
+                let group = truncate_chars(group, ECHOED_PATH_MAX);
+                let service = truncate_chars(service, ECHOED_PATH_MAX);
+                json!({
+                    "error": self.code(),
+                    "message": format!("template not found: {group}/{service}"),
+                    "group": group,
+                    "service": service,
+                })
+            }
+            Self::MethodNotAllowed {
+                method,
+                group,
+                service,
+            } => {
+                let method = truncate_chars(method, ECHOED_PATH_MAX);
+                let group = truncate_chars(group, ECHOED_PATH_MAX);
+                let service = truncate_chars(service, ECHOED_PATH_MAX);
+                json!({
+                    "error": self.code(),
+                    "message": format!("method {method} not allowed for {group}/{service}"),
+                    "method": method,
+                    "group": group,
+                    "service": service,
+                })
+            }
             _ => json!({
                 "error": self.code(),
                 "message": self.to_string(),
@@ -271,6 +309,72 @@ mod tests {
             "should end with truncation marker: {out}"
         );
         assert!(out.chars().count() < big.chars().count());
+    }
+
+    #[tokio::test]
+    async fn audit_f_xtr_3_template_not_found_body_clips_long_group_and_service() {
+        // An unauth caller sends POST /<10 KB>/<10 KB>. Without a
+        // per-segment cap the response would be ~20 KB per request —
+        // a small amplifier. Post-fix: each segment is capped and the
+        // body stays bounded.
+        let long_group = "g".repeat(10_000);
+        let long_service = "s".repeat(10_000);
+        let err = XtrError::TemplateNotFound {
+            group: long_group.clone(),
+            service: long_service.clone(),
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        let g = body["group"].as_str().unwrap();
+        let s = body["service"].as_str().unwrap();
+        assert!(
+            g.chars().count() <= ECHOED_PATH_MAX + 16,
+            "group not clipped: {} chars",
+            g.chars().count()
+        );
+        assert!(
+            s.chars().count() <= ECHOED_PATH_MAX + 16,
+            "service not clipped: {} chars",
+            s.chars().count()
+        );
+        assert!(g.ends_with("… (truncated)"));
+        assert!(s.ends_with("… (truncated)"));
+    }
+
+    #[tokio::test]
+    async fn audit_f_xtr_3_method_not_allowed_body_clips_all_three_fields() {
+        let err = XtrError::MethodNotAllowed {
+            method: "M".repeat(10_000),
+            group: "G".repeat(10_000),
+            service: "S".repeat(10_000),
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        for k in ["method", "group", "service"] {
+            let v = body[k].as_str().unwrap();
+            assert!(
+                v.chars().count() <= ECHOED_PATH_MAX + 16,
+                "{} not clipped: {} chars",
+                k,
+                v.chars().count()
+            );
+            assert!(v.ends_with("… (truncated)"), "{k} missing marker");
+        }
+    }
+
+    #[tokio::test]
+    async fn audit_f_xtr_3_short_paths_pass_through_unchanged() {
+        // Regression: the clip must not add "… (truncated)" markers
+        // to normal short values, only to actually-oversized ones.
+        let err = XtrError::TemplateNotFound {
+            group: "ariregister".into(),
+            service: "lihtandmed_v3".into(),
+        };
+        let resp = err.into_response_with_options(false);
+        let body = body_json(resp).await;
+        assert_eq!(body["group"], "ariregister");
+        assert_eq!(body["service"], "lihtandmed_v3");
+        assert!(!body["message"].as_str().unwrap().contains("truncated"));
     }
 
     #[tokio::test]
