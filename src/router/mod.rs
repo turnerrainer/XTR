@@ -20,11 +20,14 @@ use crate::translate::xml_to_json;
 use axum::body::Bytes;
 use axum::extract::{DefaultBodyLimit, Path, Query, State};
 use axum::http::{HeaderMap, HeaderName, Method, StatusCode};
+use axum::middleware;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, get};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::sync::Arc;
+
+mod security_headers;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -48,6 +51,11 @@ pub fn build(state: AppState) -> Router {
             "/:group/:service",
             any(invoke).layer(DefaultBodyLimit::max(limit.saturating_add(4096))),
         )
+        // Fleet stronghold §5.1 — attach the five default security
+        // headers to every response. Applied at the outer layer so
+        // it runs after the handler produces the response but
+        // before axum sends bytes.
+        .layer(middleware::from_fn(security_headers::apply))
         .with_state(state)
 }
 
