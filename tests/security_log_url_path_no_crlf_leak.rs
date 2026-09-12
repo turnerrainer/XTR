@@ -90,7 +90,8 @@ fn template_not_found_log_line_escapes_crlf_in_group_and_service() {
     let lf_count = raw_log.iter().filter(|b| **b == b'\n').count();
 
     assert_eq!(
-        cr_count, 0,
+        cr_count,
+        0,
         "found {} raw CR bytes in log — CRLF injection possible!\nRAW LOG:\n{}",
         cr_count,
         String::from_utf8_lossy(&raw_log)
@@ -98,7 +99,8 @@ fn template_not_found_log_line_escapes_crlf_in_group_and_service() {
     // Exactly one newline is expected (the trailing one from tracing).
     // Any more indicates an injected line break.
     assert_eq!(
-        lf_count, 1,
+        lf_count,
+        1,
         "found {} raw LF bytes in log — expected exactly 1 (trailing newline)\nRAW LOG:\n{}",
         lf_count,
         String::from_utf8_lossy(&raw_log)
@@ -131,7 +133,8 @@ fn template_not_found_log_line_escapes_ansi_esc_in_group() {
 
     let esc_count = raw_log.iter().filter(|b| **b == 0x1b).count();
     assert_eq!(
-        esc_count, 0,
+        esc_count,
+        0,
         "found {} raw ESC bytes in log — ANSI injection possible!\nRAW LOG:\n{}",
         esc_count,
         String::from_utf8_lossy(&raw_log)
@@ -150,7 +153,8 @@ fn method_not_allowed_log_line_escapes_control_chars() {
 
     let cr_count = raw_log.iter().filter(|b| **b == b'\r').count();
     assert_eq!(
-        cr_count, 0,
+        cr_count,
+        0,
         "method_not_allowed WARN line contains raw \\r — CRLF injection possible!\nRAW LOG:\n{}",
         String::from_utf8_lossy(&raw_log)
     );
