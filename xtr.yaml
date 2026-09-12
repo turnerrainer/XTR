@@ -75,3 +75,14 @@ wsdl:
 # trusted environments where callers should see raw upstream
 # diagnostics.
 expose_soap_fault_detail: false
+
+# Observability posture.
+observability:
+  # Audit v1 F-XTR-1 / FN5: expose the auto-generated OpenAPI 3.1
+  # spec at `GET /api`. Default true for backwards compat with
+  # 0.2.x / 0.3.x. Set false in production when XTR is reachable
+  # from untrusted networks — the spec enumerates every DSL group
+  # + operation + declared parameter + upstream URL and is a
+  # service-discovery map for anyone planning an unauth probe of
+  # `/:group/:service`. When disabled, /api returns 404 (JSON).
+  expose_openapi: true
