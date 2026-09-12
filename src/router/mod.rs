@@ -26,6 +26,8 @@ use axum::routing::{any, get};
 use axum::{Json, Router};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::time::Duration;
+use tower_http::timeout::TimeoutLayer;
 
 mod access_log;
 mod security_headers;
@@ -40,6 +42,15 @@ pub struct AppState {
 
 pub fn build(state: AppState) -> Router {
     let limit = state.cfg.limits.max_request_bytes;
+    // Fleet stronghold §6.2 — cap the entire handler pipeline.
+    // The reqwest client already caps the OUTBOUND call at
+    // `limits.request_timeout_secs`; this layer caps the whole
+    // handler (parse + expand + upstream + translate) so a slow
+    // step other than the outbound can't hold a connection open
+    // forever. Add a small grace on top of the outbound budget
+    // so a legitimate slow-but-in-progress upstream isn't cut off
+    // by this layer before the reqwest timeout fires.
+    let handler_timeout = Duration::from_secs(state.cfg.limits.request_timeout_secs + 5);
     Router::new()
         .route("/health", get(health))
         .route("/api", get(openapi))
@@ -52,6 +63,13 @@ pub fn build(state: AppState) -> Router {
             "/:group/:service",
             any(invoke).layer(DefaultBodyLimit::max(limit.saturating_add(4096))),
         )
+        // Fleet stronghold §6.2 — cap the entire handler pipeline.
+        // Innermost middleware layer so the timeout fires even if a
+        // downstream layer holds the future.
+        .layer(TimeoutLayer::with_status_code(
+            StatusCode::GATEWAY_TIMEOUT,
+            handler_timeout,
+        ))
         // Fleet stronghold §5.1 — attach the five default security
         // headers to every response. Runs INSIDE the access-log
         // layer so any response that skips security_headers (there
