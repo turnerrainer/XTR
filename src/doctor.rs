@@ -1060,10 +1060,7 @@ mod tests {
             ..Default::default()
         };
         let findings = run(&cfg, None);
-        assert!(has_code(
-            &findings,
-            "weak-writable-rootfs-wsdl-folder-drop"
-        ));
+        assert!(has_code(&findings, "weak-writable-rootfs-wsdl-folder-drop"));
     }
 
     #[test]
