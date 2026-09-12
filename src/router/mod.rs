@@ -137,20 +137,51 @@ async fn invoke_soap(
 ) -> Result<Value, XtrError> {
     // Empty body → empty params (matches JVM XTR: an empty POST is
     // a valid request against a zero-param service). Non-empty
-    // body: must parse as a JSON object; anything else is treated
-    // as no params.
+    // body: must parse as a JSON object.
+    //
+    // Audit v1 FN3: previously, malformed JSON and non-object shapes
+    // silently degraded to empty params, so an attacker could send
+    // garbage on the XTR wire and still force a real upstream call
+    // — with XTR's mTLS identity — against a real X-Road service.
+    // The upstream 500 then attributed to XTR. Post-fix, malformed
+    // JSON returns 400 before any outbound call is issued; an
+    // explicit empty object `{}` still means "zero params" and
+    // proceeds normally.
     let user_params = if body.is_empty() {
         std::collections::HashMap::new()
     } else {
         match serde_json::from_slice::<Value>(&body) {
             Ok(Value::Object(map)) => map.into_iter().collect(),
-            _ => std::collections::HashMap::new(),
+            Ok(other) => {
+                return Err(XtrError::InvalidJsonBody {
+                    reason: format!(
+                        "expected a JSON object, got {}",
+                        json_kind_name(&other)
+                    ),
+                });
+            }
+            Err(e) => {
+                return Err(XtrError::InvalidJsonBody {
+                    reason: format!("parse error: {e}"),
+                });
+            }
         }
     };
 
     let envelope = expand(&soap.envelope, &soap.params, user_params, &state.cfg)?;
     let xml_response = state.executor.dispatch_soap(soap, method, envelope).await?;
     xml_to_json::translate_soap(&xml_response)
+}
+
+fn json_kind_name(v: &Value) -> &'static str {
+    match v {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
 }
 
 /// Turn the upstream response into an axum `Response`, forwarding

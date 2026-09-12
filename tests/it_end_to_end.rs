@@ -222,27 +222,23 @@ async fn params_outside_allowlist_are_silently_dropped() {
 }
 
 /// Regression: various malformed request bodies must NOT panic
-/// the handler. Missing/empty/null/non-object bodies are treated
-/// as "no params" (empty allow-list means the template renders
-/// with zero substitutions).
+/// Empty body and explicit `{}` still mean "zero params" and hit
+/// the upstream normally — this matches the JVM XTR contract where
+/// a parameterless POST is a valid request.
+///
+/// Audit v1 FN3: malformed / non-object JSON bodies used to silently
+/// degrade to empty params, letting an attacker use XTR as an
+/// upstream-amplifier (garbage in → real mTLS-authenticated outbound
+/// out). Post-fix, those return a structured 400 BEFORE any outbound
+/// call is issued.
 #[tokio::test]
-async fn malformed_request_bodies_do_not_panic() {
+async fn valid_and_empty_bodies_still_hit_upstream() {
     let (mock_url, _capture) = spawn_mock().await;
     let tmp = TempDir::new().unwrap();
     let dsl = format!("params: []\nservice: {mock_url}\nmethod: POST\nenvelope: <x/>\n");
     write_dsl(tmp.path(), "svc", "noparams", &dsl);
 
-    let cases = [
-        (r#""#, "empty body"),
-        (r#"{}"#, "empty object"),
-        (r#"null"#, "JSON null"),
-        (r#"[]"#, "JSON array"),
-        (r#"42"#, "JSON number"),
-        (r#""just a string""#, "JSON string"),
-        (r#"{"broken: json}"#, "malformed JSON"),
-    ];
-
-    for (payload, label) in cases {
+    for (payload, label) in [(r#""#, "empty body"), (r#"{}"#, "empty object")] {
         let app = build_xtr(tmp.path()).await;
         let resp = axum_test(
             app,
@@ -260,6 +256,58 @@ async fn malformed_request_bodies_do_not_panic() {
             resp.status
         );
     }
+}
+
+#[tokio::test]
+async fn audit_fn3_malformed_json_body_returns_400_and_makes_no_outbound_call() {
+    let (mock_url, capture) = spawn_mock().await;
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!("params: []\nservice: {mock_url}\nmethod: POST\nenvelope: <x/>\n");
+    write_dsl(tmp.path(), "svc", "noparams", &dsl);
+
+    let cases = [
+        (r#"null"#, "JSON null"),
+        (r#"[]"#, "JSON array"),
+        (r#"42"#, "JSON number"),
+        (r#""just a string""#, "JSON string"),
+        (r#"{"broken: json}"#, "malformed JSON"),
+        (r#"{"#, "truncated JSON"),
+        (r#"not json"#, "not JSON at all"),
+    ];
+
+    for (payload, label) in cases {
+        // Fresh app each iteration so we can assert per-case that the
+        // capture never fired.
+        let app = build_xtr(tmp.path()).await;
+        let resp = axum_test(
+            app,
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/svc/noparams")
+                .header("content-type", "application/json")
+                .body(axum::body::Body::from(payload))
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(
+            resp.status, 400,
+            "expected 400 for {label} ({payload:?}), got {}",
+            resp.status
+        );
+        let body = resp.json.unwrap();
+        assert_eq!(body["error"], "invalid_json_body", "case {label}");
+        assert!(
+            body["message"].as_str().unwrap().contains("JSON"),
+            "case {label}"
+        );
+    }
+
+    // Regression: no upstream call fired for any of the malformed cases.
+    let outbound = capture.body.lock().unwrap();
+    assert!(
+        outbound.is_none(),
+        "malformed input MUST NOT trigger upstream call; got body {outbound:?}"
+    );
 }
 
 /// Regression: path traversal via percent-encoded slashes must not
