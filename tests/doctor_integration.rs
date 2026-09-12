@@ -47,6 +47,13 @@ fn run_doctor(cwd: &Path, extra_args: &[&str]) -> (i32, String, String) {
 #[test]
 fn hardened_config_exits_zero_and_reports_no_fatal_or_weak() {
     // Every knob dialed to the recommended posture.
+    //
+    // Note: wsdl_watch_dir is deliberately OMITTED here. The RUNTIME
+    // v1 FN4 finding surfaces `weak-writable-rootfs-wsdl-folder-drop`
+    // whenever folder-drop is enabled, because folder-drop needs a
+    // writable DSL dir which conflicts with the fleet-baseline
+    // `read_only: true` container posture. Recommended prod flow is
+    // to pre-generate DSLs on the host and mount them read-only.
     let cfg = r#"
 xroad_instance: ee-test
 xroad_protocol_version: "4.0"
@@ -55,7 +62,6 @@ client_data:
   member_code: "70000000"
   subsystem_code: "myservice"
 dsl_path: ./DSL
-wsdl_watch_dir: ./wsdl
 wsdl:
   allow_http_upstream: false
   upstream_host_allowlist:
@@ -72,7 +78,6 @@ limits:
     // paths-exist check doesn't emit a WEAK finding just
     // because a fresh tempdir has neither.
     std::fs::create_dir_all(tmp.path().join("DSL")).unwrap();
-    std::fs::create_dir_all(tmp.path().join("wsdl")).unwrap();
     let (code, stdout, _stderr) = run_doctor(tmp.path(), &[]);
     assert_eq!(code, 0, "hardened config should exit 0; stdout:\n{stdout}");
     assert!(

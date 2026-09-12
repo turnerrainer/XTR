@@ -84,15 +84,87 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_rest_lane_readiness(cfg, &mut findings);
     check_limits(cfg, &mut findings);
     check_paths_exist(cfg, &mut findings);
+    check_wsdl_watch_dir_writable_rootfs(cfg, &mut findings);
+    check_no_caller_auth(&mut findings);
     check_offline_mode(&mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
 }
 
+/// Audit RUNTIME v1 FN4 — WSDL folder-drop needs a writable DSL
+/// directory, which precludes the container's rootfs being mounted
+/// read-only. Emit a WEAK when `wsdl_watch_dir` is set so the
+/// operator sees the trade-off explicitly (the FLEET-STRONGHOLDS §7
+/// baseline is `read_only: true`; XTR opts out to support boot-time
+/// DSL generation).
+fn check_wsdl_watch_dir_writable_rootfs(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    if cfg.wsdl_watch_dir.is_some() {
+        out.push(Finding {
+            severity: Severity::Weak,
+            code: "weak-writable-rootfs-wsdl-folder-drop".into(),
+            field: Some("wsdl_watch_dir".into()),
+            headline: "wsdl_watch_dir is set — container rootfs cannot be read-only".into(),
+            rationale: "WSDL folder-drop regenerates DSL/*.yml under `dsl_path` on\n\
+                 every boot. This precludes the fleet-baseline\n\
+                 `read_only: true` container posture (FLEET-STRONGHOLDS §7)\n\
+                 — an attacker with code execution inside the container\n\
+                 can persist to /app because the rootfs is writable.\n\
+                 The RUNTIME break-test at h2ck.me flagged this as FN4 (MED)."
+                .into(),
+            recovery: Some(
+                "Recommended prod posture:\n\
+                 1. Generate DSLs on the host: `xtr-on-rust ...` in a build\n\
+                    stage that runs before the container boots.\n\
+                 2. Bake the generated DSLs into a read-only volume.\n\
+                 3. In xtr.yaml: `wsdl_watch_dir: null` (or omit).\n\
+                 4. In compose: `read_only: true`, plus a `tmpfs: /tmp:64M`\n\
+                    for scratch.\n\
+                 See FLEET-STRONGHOLDS §7 for the full container hardening\n\
+                 block."
+                    .into(),
+            ),
+        });
+    }
+}
+
+/// Audit PUBLIC-EXPOSURE v1 F-XTR-2 — XTR ships zero caller auth on
+/// `/:group/:service`. When XTR is behind a reverse proxy (typical),
+/// the proxy MUST gate the route; when XTR is exposed directly, every
+/// hit becomes a real upstream call carrying the operator's mTLS
+/// identity. Emit an INFO reminder so operators plan for it — this is
+/// a design property, not a fixable-in-config finding.
+fn check_no_caller_auth(out: &mut Vec<Finding>) {
+    out.push(Finding {
+        severity: Severity::Info,
+        code: "info-no-caller-auth".into(),
+        field: None,
+        headline: "XTR has no built-in caller authentication on /:group/:service".into(),
+        rationale: "Every unauth request to /:group/:service triggers an outbound\n\
+             SOAP or REST call to the DSL's configured upstream, with the\n\
+             operator's mTLS identity attached. Attribution attaches to the\n\
+             operator for anything an attacker sends through XTR. When XTR\n\
+             is deployed in Buerostack, Ruuter is the intended gate; when\n\
+             XTR is deployed standalone, a reverse proxy or service mesh\n\
+             MUST authenticate every hit before it reaches XTR."
+            .into(),
+        recovery: Some(
+            "If XTR is behind Ruuter: ensure Ruuter's DSL guards cover every\n\
+             route that forwards to XTR (Ruuter F-RTR-3 posture).\n\
+             If XTR is standalone: place an auth-enforcing reverse proxy\n\
+             (nginx auth_request, Kong, Traefik ForwardAuth, ...) in front\n\
+             and never bind XTR on a public interface.\n\
+             During pentest / break-test engagements: set XTR_OFFLINE=true\n\
+             (see LOG-FINDINGS FN-LOG-3) so probes cannot reach real\n\
+             upstreams."
+                .into(),
+        ),
+    });
+}
+
 /// Audit LOG-v1 FN-LOG-3 — surface the XTR_OFFLINE env var state so
 /// operators can't accidentally leave it enabled on a real deployment
 /// (or leave it disabled during a pentest engagement without noticing).
-/// Emits INFO in either direction; the env-lane is the same rule
+/// Emits WEAK when active; the env-lane is the same rule
 /// `Executor::new` uses at boot.
 fn check_offline_mode(out: &mut Vec<Finding>) {
     let active = match std::env::var("XTR_OFFLINE") {
@@ -122,7 +194,6 @@ fn check_offline_mode(out: &mut Vec<Finding>) {
         });
     }
 }
-
 /// Format a `Vec<Finding>` for human consumption. Groups by
 /// severity, orders FATAL → BREAK → WEAK → INFO, and prints a
 /// trailing summary line with counts.
@@ -980,5 +1051,36 @@ mod tests {
         let findings = run(&cfg, None);
         assert!(!has_code(&findings, "fatal-rest-no-security-server"));
         assert!(!has_code(&findings, "info-rest-lane-ready"));
+    }
+
+    #[test]
+    fn audit_fn4_wsdl_watch_dir_triggers_weak_writable_rootfs() {
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(PathBuf::from("./wsdl")),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "weak-writable-rootfs-wsdl-folder-drop"));
+    }
+
+    #[test]
+    fn no_wsdl_watch_dir_suppresses_writable_rootfs_finding() {
+        let cfg = AppConfig {
+            wsdl_watch_dir: None,
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(!has_code(
+            &findings,
+            "weak-writable-rootfs-wsdl-folder-drop"
+        ));
+    }
+
+    #[test]
+    fn audit_f_xtr_2_no_caller_auth_info_always_present() {
+        // The reverse-proxy-gate reminder is unconditional.
+        let cfg = AppConfig::default();
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "info-no-caller-auth"));
     }
 }
