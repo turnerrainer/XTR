@@ -128,7 +128,10 @@ mod tests {
 
     #[test]
     fn extract_trace_id_wrong_segment_count() {
-        assert_eq!(extract_trace_id("00-4bf92f3577b34da6a3ce929d0e0e4736"), None);
+        assert_eq!(
+            extract_trace_id("00-4bf92f3577b34da6a3ce929d0e0e4736"),
+            None
+        );
     }
 
     #[test]
