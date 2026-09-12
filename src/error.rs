@@ -365,8 +365,7 @@ mod tests {
             let s: String = std::iter::once(c as char).collect();
             let out = sanitize_fault_field(&s);
             assert_eq!(
-                out,
-                "\u{FFFD}",
+                out, "\u{FFFD}",
                 "expected 0x{c:02x} to become U+FFFD, got {out:?}"
             );
         }
