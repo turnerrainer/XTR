@@ -1,9 +1,267 @@
 # Migrating XTR
 
-Two migration guides on this page. The `0.2 → 0.3` section is
-short (issue #5 is additive, `0.2.x` SOAP DSLs continue to work
-unchanged); the `0.1 → 0.2` section is the original audit-v1
-migration and remains here as a canonical reference.
+Three migration guides on this page:
+
+- **`0.3.0-rc → 0.4.0-rc`** (audit-v2) — three small breaking
+  changes on the response wire + a `doctor --strict` exit-code
+  flip on the shipping posture. Read this first if you're
+  upgrading from `0.3.x`.
+- **`0.2.0-rc.1 → 0.3.0-rc`** (REST passthrough) — issue #5 is
+  additive, `0.2.x` SOAP DSLs continue to work unchanged.
+- **`0.1.0-rc.2 → 0.2.0-rc`** (audit-v1) — original audit-v1
+  migration, retained as a canonical reference.
+
+---
+
+## `0.3.0-rc` → `0.4.0-rc`
+
+**TL;DR** — audit-v2 hardening release. Three small
+externally-visible behaviour changes on the response wire plus
+one `doctor --strict` exit-code change on the shipping posture.
+Everything else is either additive (opt-in config, new response
+headers) or log-format-only.
+
+### Breaking changes
+
+#### 1. Malformed JSON body → HTTP 400
+
+**What changed**: SOAP DSL invocations with a non-empty,
+non-object JSON body used to silently degrade to empty-params
+(200 + upstream call with zero substitutions). They now return
+HTTP `400 invalid_json_body` **before** any outbound call is
+issued.
+
+**Before (`0.3.0-rc`)**:
+
+```bash
+$ curl -X POST http://xtr:8080/svc/op -H content-type:application/json -d 'null'
+# → 200 (or 502 if upstream rejected the empty envelope)
+```
+
+**After (`0.4.0-rc`)**:
+
+```bash
+$ curl -X POST http://xtr:8080/svc/op -H content-type:application/json -d 'null'
+# → 400
+# { "error": "invalid_json_body",
+#   "message": "invalid JSON body: expected a JSON object, got null" }
+```
+
+**Recovery**: the legitimate zero-param invocations are unchanged.
+Send `{}` (still 200) or an empty body (still 200). If a caller
+was relying on the old tolerant behaviour, fix the caller —
+h2ck.me flagged the amplification lane (FN3) as MEDIUM.
+
+**Why this fired**: an attacker could send garbage on the XTR
+wire and get XTR to make a real mTLS-authenticated outbound
+call against a real X-Road service. The upstream's 500 then
+attributed to XTR (the mTLS-authenticated caller), not the
+anonymous attacker.
+
+#### 2. SOAP fault fields sanitised
+
+**What changed**: The `code` and `string` fields inside an
+`upstream_soap_fault` JSON response body now have every C0
+control character (except tab) and DEL replaced with `U+FFFD`
+(Unicode REPLACEMENT CHARACTER). This applies on both paths —
+the default-strip path and the opt-in
+`expose_soap_fault_detail: true` path. The `expose_soap_fault_detail`
+flag governs whether the `detail` block is included; it does
+NOT give the upstream a byte-transparent channel into the
+caller.
+
+**Before (`0.3.0-rc`)**:
+
+```json
+{ "error": "upstream_soap_fault",
+  "code": "Server",
+  "string": "auth failed\r\nFORGED-LINE" }
+```
+
+**After (`0.4.0-rc`)**:
+
+```json
+{ "error": "upstream_soap_fault",
+  "code": "Server",
+  "string": "auth failed��FORGED-LINE" }
+```
+
+**Recovery**: a client parsing the visible message content is
+unaffected — legitimate fault text doesn't carry control chars.
+If a client was byte-transparent (extracting a stack trace with
+literal `\r\n` from the string), switch to `detail` field
+parsing (JSON already escapes control chars in transit).
+
+**Why this fired**: h2ck.me FN2 residual — a malicious or
+compromised upstream could pack CRLF / NUL / ANSI ESC into the
+fault fields, poisoning downstream terminal renderers or log
+shippers that display the JSON error body.
+
+#### 3. `doctor --strict` exit code flips on the shipping posture
+
+**What changed**: The new `weak-writable-rootfs-wsdl-folder-drop`
+rule fires whenever `wsdl_watch_dir` is set — which is the
+default in the shipped `xtr.yaml` and in the "one-command demo"
+recipe. `doctor` still exits 0 by default; `doctor --strict`
+now exits 1 on this posture.
+
+**Before (`0.3.0-rc`)**:
+
+```bash
+$ docker run --rm -v ./xtr.yaml:/app/xtr.yaml:ro turnerrainer/xtr:0.3.0-rc doctor --strict
+# → exit 0
+# Summary: 0 FATAL, 0 BREAK, 0 WEAK, 3 INFO
+```
+
+**After (`0.4.0-rc`)**:
+
+```bash
+$ docker run --rm -v ./xtr.yaml:/app/xtr.yaml:ro turnerrainer/xtr:0.4.0-rc doctor --strict
+# → exit 1
+# WEAK (1)
+#   • [weak-writable-rootfs-wsdl-folder-drop] wsdl_watch_dir is set —
+#     container rootfs cannot be read-only
+# Summary: 0 FATAL, 0 BREAK, 1 WEAK, 4 INFO
+```
+
+**Recovery**: two legitimate paths, both documented in the
+doctor's `recover:` block on the finding. Pick the one that
+matches your deployment reality.
+
+**Path A — Hardened posture** (fleet-baseline; recommended for
+prod):
+
+1. Pre-generate DSLs on the host (`xtr-on-rust` in a build
+   stage that runs before the container boots), and bake them
+   into the image OR mount them read-only.
+2. In `xtr.yaml`: `wsdl_watch_dir: null` (or omit).
+3. In `docker-compose.yml`: `read_only: true` with a
+   `tmpfs: /tmp:64M` for scratch.
+4. `doctor --strict` returns to exit 0.
+
+**Path B — Convenience posture** (folder-drop stays enabled):
+
+1. Keep `wsdl_watch_dir: ./wsdl` as-is.
+2. In CI, run `doctor` (no `--strict`) — the WEAK is reported
+   for triage but doesn't fail the gate.
+3. Compose: NOT `read_only: true`. Add `cap_drop: [ALL]`,
+   `no-new-privileges: true`, non-root UID as
+   compensating controls per `FLEET-STRONGHOLDS.md` §7.
+
+**Why this fired**: h2ck.me RUNTIME FN4 (MED). Folder-drop
+needs a writable DSL dir, which conflicts with the
+fleet-baseline `read_only: true` posture — an attacker with
+code execution inside the container can persist to `/app`.
+
+### Additive-but-observable
+
+None of these require a config change. A strict caller could
+still notice.
+
+#### New response headers
+
+Every response now carries seven additional headers:
+
+```
+content-security-policy: default-src 'none'; frame-ancestors 'none'
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-frame-options: DENY
+x-content-type-options: nosniff
+referrer-policy: no-referrer
+traceparent: 00-<32-hex-trace>-<16-hex-span>-01
+x-trace-id: <32-hex-trace>
+```
+
+The middleware never overwrites a header set upstream (matters
+for REST passthrough).
+
+#### Handler-level 504 pathway
+
+Previously, a slow handler-side step (handlebars expansion,
+XML translate, etc.) could hang until the client gave up. A
+new `tower_http::timeout::TimeoutLayer` caps the entire
+handler pipeline at `limits.request_timeout_secs + 5s` — a
+small grace on top of the outbound reqwest cap. Overflow
+surfaces as HTTP 504 (matches the existing `UpstreamTimeout`
+variant's status). Health checks that tolerated hangs may now
+see 504.
+
+#### One INFO access-log line per request
+
+Structured line every request:
+
+```
+INFO http_request_completed method=POST route="/:group/:service"
+     status=200 duration_us=1234 trace_id=abc12345…
+```
+
+Log volume rises accordingly; log-shippers may need a rate cap.
+The `route` field is the matched pattern, not the raw URI — log
+cardinality stays bounded regardless of caller-chosen path.
+
+### New config fields (opt-in)
+
+```yaml
+# xtr.yaml
+observability:
+  expose_openapi: true       # default; flip false to hide /api
+                             # from unauth callers
+```
+
+New env var:
+
+| Var | Truthy → | Notes |
+|---|---|---|
+| `XTR_OFFLINE` | Every outbound short-circuits with HTTP 599 `xtr_offline` | Test-safety mode. Doctor emits WEAK `weak-offline-mode-active` when set. Never leave enabled in prod. Truthy values: `1`, `true`, `yes`, `on` (case-insensitive). |
+
+### New doctor rules
+
+| Sev | Code | Fires when |
+|---|---|---|
+| WEAK | `weak-writable-rootfs-wsdl-folder-drop` | `wsdl_watch_dir` is set (see Breaking Changes §3 above). |
+| WEAK | `weak-offline-mode-active` | `XTR_OFFLINE` env var is truthy. |
+| INFO | `info-no-caller-auth` | Always emitted — reminder that XTR ships no built-in caller auth on `/:group/:service`. |
+
+### Doctor recipe
+
+```bash
+docker run --rm \
+  -v "$(pwd)/xtr.yaml:/app/xtr.yaml:ro" \
+  -v "$(pwd)/DSL:/app/DSL:ro" \
+  turnerrainer/xtr:0.4.0-rc doctor --strict
+```
+
+- **exit 0** — safe to deploy as-is.
+- **exit 1 with FATAL** — the service will not boot or a
+  critical property is off; fix before deploying.
+- **exit 1 under `--strict` with WEAK only** — everything
+  works, but a stronger posture is available. If the WEAK is
+  `weak-writable-rootfs-wsdl-folder-drop`, see Breaking Changes
+  §3 above for the two legitimate recovery paths.
+
+### For LLM assistants helping an operator upgrade
+
+Ready-to-paste prompt:
+
+```
+I'm upgrading XTR from 0.3.0-rc to 0.4.0-rc. My current
+xtr.yaml is:
+
+<paste xtr.yaml>
+
+My CI gate is:
+
+<paste CI snippet, if any>
+
+Given the audit-v2 breaking changes (malformed-JSON 400,
+SOAP fault sanitiser, doctor --strict exit-code flip), what
+changes do I need to make? Answer with:
+
+1. Exact xtr.yaml diff.
+2. Whether my CI gate stays --strict or drops it (justify).
+3. Any caller-side changes if I depend on the pre-audit-v2
+   tolerant behaviour.
+```
 
 ---
 
