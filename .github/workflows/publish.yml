@@ -252,15 +252,28 @@ jobs:
 
       # Idempotent: if the release for this tag already exists,
       # softprops/action-gh-release@v2 updates it instead of
-      # failing. Pre-releases (any `-suffix` version) are marked
-      # as such so consumers pinning to `:latest` on GitHub's UI
-      # aren't misled.
+      # failing.
+      #
+      # `prerelease: false` + `make_latest: true` on every version
+      # (including RC / beta / alpha) — deliberate. XTR is pre-1.0
+      # and every published version so far has been an RC; marking
+      # them as GitHub pre-releases meant `github.com/turnerrainer/XTR`
+      # showed nothing in the "Releases" sidebar. The `-rc` suffix
+      # in the tag/version string is what signals RC-ness to
+      # consumers; the GitHub `prerelease` flag is a UI concept,
+      # not a semver concept.
+      #
+      # When a first stable ships (no suffix), the promotion path
+      # stays correct — the stable's tag is newer and takes the
+      # "Latest" slot automatically. Revisit this policy at that
+      # point if we want to differentiate between "stable Latest"
+      # and "current RC" in the UI.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.meta.outputs.version }}
           tag_name: v${{ steps.meta.outputs.version }}
           body_path: release_notes.md
-          prerelease: ${{ steps.meta.outputs.prerelease }}
-          make_latest: ${{ steps.meta.outputs.prerelease == 'false' && 'true' || 'false' }}
+          prerelease: false
+          make_latest: 'true'
           fail_on_unmatched_files: false
