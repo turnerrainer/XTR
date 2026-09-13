@@ -7,6 +7,192 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-rc] - 2026-09-13
+
+Fourth minor release. Closes the h2ck.me audit-v2 residuals
+(RUNTIME / LOG / PUBLIC-EXPOSURE break-tests) and adopts six
+`FLEET-STRONGHOLDS.md` patterns. Test count: **225** (was 156
+at 0.2.0-rc, 197 at 0.3.0-rc). Ten security / hardening PRs
+(#10–#19) plus two documentation PRs (#20, #21) land on this
+version.
+
+### Breaking changes vs `0.3.0-rc`
+
+Small surface, all in the audit-v2 fix branch. Full recovery
+recipes in `MIGRATION.md` §"0.3.0-rc → 0.4.0-rc".
+
+1. **Malformed JSON body → HTTP 400** (was: silently downgraded
+   to empty params). Callers sending `null` / `[]` / `42` /
+   truncated JSON to zero-param SOAP DSLs and getting 200 now
+   receive `{"error":"invalid_json_body","message":"..."}`.
+   Legitimate zero-param calls (empty body, explicit `{}`) are
+   unaffected.
+2. **SOAP fault fields sanitised**. Control chars (C0 range
+   except tab, plus DEL) in the JSON body's `code` / `string`
+   fields render as `U+FFFD` — even when
+   `expose_soap_fault_detail: true`. A caller parsing a
+   stack-trace-in-`string` still gets the text, escaped.
+3. **`doctor --strict` exit code flips 0 → 1 on the shipping
+   posture.** The new `weak-writable-rootfs-wsdl-folder-drop`
+   rule fires whenever `wsdl_watch_dir` is set — which is the
+   default in the shipped `xtr.yaml`. CI gates running
+   `doctor --strict` will need to either (a) drop `--strict` or
+   (b) adopt the hardened posture (pre-generate DSLs on host,
+   set `wsdl_watch_dir: null`, enable `read_only: true`).
+   Neither path is wrong; the WEAK exists so the trade-off is
+   visible.
+
+Additive-but-observable (no config change needed; a strict
+caller could notice):
+
+- Every response now carries five default security headers
+  (`content-security-policy`, `strict-transport-security`,
+  `x-frame-options`, `x-content-type-options`, `referrer-policy`)
+  plus `traceparent` + `x-trace-id`.
+- Handler-level timeout at `limits.request_timeout_secs + 5s` —
+  previously slow handler-side steps (handlebars, XML translate)
+  could hang; now cap at HTTP 504.
+- One INFO access-log line per request (`http_request_completed`
+  with method / route / status / duration / trace_id).
+
+### Added
+
+- **`observability.expose_openapi`** config field (default `true`).
+  When `false`, `GET /api` returns a structured 404 whose body
+  does NOT enumerate any DSL group. Recommended `false` in
+  untrusted-network deployments. Addresses h2ck.me audit-v2
+  F-XTR-1 (MED) and FN5 (LOW). (PR
+  [#13](https://github.com/turnerrainer/XTR/pull/13))
+- **`XTR_OFFLINE` env var** (truthy: `1` / `true` / `yes` / `on`,
+  case-insensitive). When set, every outbound SOAP + REST
+  dispatch short-circuits before any `reqwest` call and returns
+  HTTP `599` with `{"error":"xtr_offline"}`. Intended for
+  pentest / break-test runs. Doctor emits `weak-offline-mode-active`
+  when the flag is on so an operator who accidentally leaves it
+  enabled sees it. Addresses h2ck.me audit-v2 FN-LOG-3 (CRIT
+  operational, test-safety). (PR
+  [#15](https://github.com/turnerrainer/XTR/pull/15))
+- **Security headers middleware** — five default headers on every
+  response (CSP `default-src 'none'; frame-ancestors 'none'`,
+  2-year HSTS with preload, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`).
+  Middleware never overwrites a header set by an upstream REST
+  passthrough. Adopts FLEET-STRONGHOLDS §5.1. (PR
+  [#16](https://github.com/turnerrainer/XTR/pull/16))
+- **Access log + W3C `traceparent` propagation** — one INFO line
+  per request with method / matched-route / status / duration
+  in microseconds / trace_id. Trace-id is honoured from an
+  inbound valid `traceparent` header (cross-service correlation)
+  or minted as a fresh v4 UUID. Response carries both
+  `traceparent` and `x-trace-id`. Route pattern (not raw URI)
+  is what's logged — log cardinality stays bounded. Adopts
+  FLEET-STRONGHOLDS §1.2 + §1.6. (PR
+  [#17](https://github.com/turnerrainer/XTR/pull/17))
+- **Handler-level `TimeoutLayer`** — caps the entire handler
+  pipeline (body parse + handlebars expand + upstream + XML
+  translate) at `limits.request_timeout_secs + 5s`, surfacing
+  as HTTP 504. Adopts FLEET-STRONGHOLDS §6.2. (PR
+  [#19](https://github.com/turnerrainer/XTR/pull/19))
+- **`XtrError::InvalidJsonBody`** (400) — new variant for
+  malformed-JSON rejection. (PR
+  [#14](https://github.com/turnerrainer/XTR/pull/14))
+- **`XtrError::OfflineMode`** (599) — new variant for
+  `XTR_OFFLINE` short-circuit. (PR
+  [#15](https://github.com/turnerrainer/XTR/pull/15))
+- **`Executor::is_offline()`** + **`with_offline_for_tests(bool)`**
+  — public accessor for the doctor tool, and a test helper that
+  avoids poking a process-global env var. (PR
+  [#15](https://github.com/turnerrainer/XTR/pull/15))
+- **Three new doctor rules**:
+  - `weak-writable-rootfs-wsdl-folder-drop` (RUNTIME v1 FN4) —
+    fires when `wsdl_watch_dir` is set; the writable-DSL-dir
+    requirement conflicts with `read_only: true` container rootfs.
+  - `info-no-caller-auth` (PUBLIC-EXPOSURE v1 F-XTR-2) — always
+    emitted; reminder that XTR ships zero built-in caller
+    authentication on `/:group/:service`.
+  - `weak-offline-mode-active` (LOG v1 FN-LOG-3) — surfaces the
+    `XTR_OFFLINE` env-var state.
+  (PRs [#15](https://github.com/turnerrainer/XTR/pull/15),
+  [#18](https://github.com/turnerrainer/XTR/pull/18))
+- **New book page** `book/src/http-contract.md` — the full
+  response-shape contract: middleware stack diagram, default
+  headers, status-code table, JSON error-body shape, SOAP fault
+  sanitiser semantics, handler timeout, XTR_OFFLINE mode.
+  (PRs [#20](https://github.com/turnerrainer/XTR/pull/20),
+  [#21](https://github.com/turnerrainer/XTR/pull/21))
+
+### Security
+
+- **FN-LOG-1 (HIGH) — CRLF log injection via URL path.**
+  `TemplateNotFound { group, service }` and adjacent error
+  variants used to `Display`-format user-controlled path
+  segments into `tracing::warn!` lines. `POST /x/y%0d%0aFAKE`
+  decoded the CRLF and split one log entry into two, enabling
+  attacker-forged audit records. Now uses Debug-formatted
+  structured fields so control chars render as escape
+  sequences. Three regression tests in
+  `tests/security_log_url_path_no_crlf_leak.rs`. (PR
+  [#10](https://github.com/turnerrainer/XTR/pull/10))
+- **FN-LOG-2 (MED) — ANSI escapes shipped under Docker /
+  systemd.** `tracing_subscriber` now enables colour only when
+  stderr is a TTY (`std::io::stderr().is_terminal()`); plain
+  text is shipped to log-shippers, SIEM systems, and
+  `docker logs` files. (PR
+  [#10](https://github.com/turnerrainer/XTR/pull/10))
+- **FN2 (MED/LOW) — SOAP fault control-char sanitiser.** A
+  malicious upstream could pack CRLF / NUL / ANSI ESC into the
+  JSON `code` / `string` fields of a fault response, poisoning
+  downstream terminal renderers or log-shippers that display it.
+  New `sanitize_fault_field()` in `src/error.rs` replaces every
+  C0/DEL control char (except tab) with `U+FFFD` before it
+  lands in the response body — on both the default-strip path
+  and the opt-in `expose_soap_fault_detail: true` path. (PR
+  [#11](https://github.com/turnerrainer/XTR/pull/11))
+- **F-XTR-3 (LOW) — echoed-path clip.** `TemplateNotFound` and
+  `MethodNotAllowed` variants now clip attacker-controlled
+  `group` / `service` / `method` fields at 256 chars each in
+  the JSON body. Bounds the response amplification factor a
+  single unauth request can force. (PR
+  [#12](https://github.com/turnerrainer/XTR/pull/12))
+- **FN3 (MED) — malformed JSON rejected before upstream call.**
+  Previously, malformed or non-object JSON bodies silently
+  degraded to empty-params upstream calls. An attacker could
+  use XTR as an amplifier — garbage on the XTR wire triggered
+  real mTLS-authenticated outbound calls against real X-Road
+  services. Now returns HTTP 400 `invalid_json_body` before
+  any outbound is issued. (PR
+  [#14](https://github.com/turnerrainer/XTR/pull/14))
+- **FN-LOG-5 (LOW) — SOAP fault fields log-side hardening.**
+  `fault_code` / `fault_string` fields switched from Display
+  (`%`) to Debug (`?`) format in the `tracing::warn!` line, so
+  control chars in an upstream fault can't split the log line.
+  (PR [#11](https://github.com/turnerrainer/XTR/pull/11))
+
+### Changed
+
+- **Test count**: 225 (was 197 at 0.3.0-rc).
+- **`hardened_config_exits_zero_and_reports_no_fatal_or_weak`
+  integration fixture** now omits `wsdl_watch_dir` — the new
+  writable-rootfs WEAK fires on folder-drop by design, so the
+  "hardened baseline" test asserts the fleet §7 posture (DSLs
+  pre-generated on host).
+- **Middleware layering**: `TimeoutLayer` (innermost) →
+  `security_headers` → `access_log` (outermost). Attaches
+  `traceparent` before the response reaches the wire; the
+  trace-id lands even on short-circuited handlers.
+
+### Fleet-strongholds adoption checklist
+
+Applied at `0.4.0-rc`:
+
+- ✅ §1.1 ANSI off outside TTY
+- ✅ §1.2 structured access log with trace-id
+- ✅ §1.5 `{:?}` on user-controlled input (never `{}`)
+- ✅ §1.6 W3C `traceparent` + `x-trace-id`
+- ✅ §5.1 five default security headers
+- ✅ §6.2 handler-level `TimeoutLayer`
+- ✅ §9.1 `XTR_OFFLINE=true` test-safety mode
+
 ## [0.3.0-rc] - 2026-09-10
 
 Third minor release. Ships the X-Road REST passthrough lane
@@ -592,7 +778,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.0-rc...HEAD
+[0.4.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...v0.4.0-rc
 [0.3.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.3.0-rc
 [0.2.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...v0.2.0-rc.1
 [0.2.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.1.0-rc.2...v0.2.0-rc
