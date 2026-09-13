@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1-rc] - 2026-09-13
+
+Same-day hotfix on `0.4.0-rc`. Only change is the Dockerfile
+runtime base — the `v0.4.0-rc` publish pipeline failed at the
+Trivy HIGH/CRITICAL gate because the Snyk-pinned
+`debian:13.6-slim` (from PR #1) is an immutable tag and did
+not carry the Debian security patches that landed since it
+was published:
+
+- `perl-base` 5.40.1-6 → 5.40.1-6+deb13u1 (CVE-2026-13221
+  CRITICAL, plus CVE-2026-42496 / 42497 / 8376 / 48962 /
+  57432 / 57433 HIGH)
+- `libpcre2-8-0` 10.46-1~deb13u1 → 10.46-1~deb13u2
+  (CVE-2026-86145 / 89161 HIGH)
+- `libsqlite3-0` 3.46.1-7+deb13u1 → 3.46.1-7+deb13u2
+  (CVE-2026-11822 / 11824 HIGH)
+- `gzip` 1.13-1 → 1.13-1+deb13u1 (CVE-2026-41992 HIGH)
+
+Trivy blocked signing, smoke-test, and GitHub Release
+creation — but the multi-arch build+push had already
+completed, so `:0.4.0-rc` and `:rc` on both registries are
+pointing at the unsigned pre-Trivy image. This `0.4.0-rc.1`
+hotfix moves both tags forward to a re-scanned, signed image.
+
+### Changed
+
+- **`Dockerfile` runtime base**: `debian:13.6-slim` →
+  `debian:trixie-slim`. Rolling on the codename tag means
+  point-release patches (13.6 → 13.7 → …) land automatically
+  on rebuild — CI's Trivy step still gates every publish, so
+  we don't lose visibility.
+- **Runtime `apt-get upgrade`**: added `apt-get upgrade -y`
+  between `update` and `install` so per-package patches that
+  landed after the base image's last Docker Hub rebuild are
+  applied at our build time. Adds a few seconds and 0–30MB
+  per build.
+
+### Fixed
+
+- Publish pipeline should now succeed end-to-end
+  (build → Trivy → smoke test → cosign sign → GitHub Release).
+
 ## [0.4.0-rc] - 2026-09-13
 
 Fourth minor release. Closes the h2ck.me audit-v2 residuals
@@ -778,7 +820,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.0-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...HEAD
+[0.4.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.0-rc...v0.4.1-rc
 [0.4.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...v0.4.0-rc
 [0.3.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.3.0-rc
 [0.2.0-rc.1]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc...v0.2.0-rc.1

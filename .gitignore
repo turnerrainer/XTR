@@ -46,3 +46,6 @@ constants.local.ini
 # committed. Public entry points are README.md + CLAUDE.md +
 # MIGRATION.md + the book.
 /HANDOFF.md
+
+# Trivy / cosign SBOM artefacts land at repo root; don't check them in.
+*.cdx.json
