@@ -10,10 +10,22 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 RUN cargo build --release
 
-FROM debian:13.6-slim
+# Use the codename tag so the base rolls forward on Debian point
+# releases (13.6 → 13.7 → …) and picks up security patches
+# automatically. A previous Snyk fix pinned to `debian:13.6-slim`
+# which then failed a Trivy HIGH/CRITICAL gate at v0.4.0-rc because
+# +deb13u1 / +deb13u2 patches for gzip/pcre2/sqlite/perl-base
+# weren't in the immutable `13.6-slim` tag. Rolling on `trixie-slim`
+# fixes it — CI's Trivy step still gates every publish, so we
+# don't lose visibility.
+FROM debian:trixie-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# `apt-get upgrade` is an extra belt on top of the rolling base
+# tag: catches per-package patches that landed after the base
+# image was last rebuilt on Docker Hub. Adds ~0-30MB per build
+# and a few seconds; well worth the reduced Trivy blast radius.
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libssl3 ca-certificates curl tini \
     && rm -rf /var/lib/apt/lists/*
 
