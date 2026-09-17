@@ -153,6 +153,7 @@ async fn build_xtr_with_rest_upstream(dsl_root: &std::path::Path, upstream: &str
         services: Arc::new(services),
         executor,
         openapi_spec: Arc::new(spec),
+        inter_service_token: None,
     })
 }
 

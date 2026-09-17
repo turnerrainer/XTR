@@ -140,6 +140,7 @@ consulted by SOAP and REST DSLs alike.
 | `XTR_CONFIG` | Alternative path to `xtr.yaml` (bypasses cwd search). |
 | `XTR_KEYSTORE_PASSWORD` | Password for the PKCS12 identity. Required whenever `security_server:` is set. |
 | `XTR_OFFLINE` | Audit-v2 FN-LOG-3 test-safety switch. Truthy values (`1`, `true`, `yes`, `on`, case-insensitive) intercept EVERY outbound SOAP + REST dispatch and return HTTP **599** `xtr_offline` before any reqwest call. Doctor emits WEAK `weak-offline-mode-active` when set. Intended for pentest / break-test runs — **never leave enabled in production**. |
+| `XTR_INTER_SERVICE_TOKEN` | h2ck.me T-8 bearer gate on `/:group/:service`. When set (whitespace-trimmed), every request to `/:group/:service` MUST carry `Authorization: Bearer <TOKEN>` — missing / wrong → HTTP **401** `unauthorized`. `/health` and `/api` are unconditionally exempt. Constant-time equality via `subtle::ConstantTimeEq`. Doctor: `info-inter-service-token-active` (≥ 32 bytes), `weak-inter-service-token-short` (< 32 bytes), `info-inter-service-token-off` (unset). Recommended for standalone / hostile-network deployments; fine to leave unset behind Ruuter. Generate with `openssl rand -hex 32`. |
 | `RUST_LOG` | `tracing_subscriber` filter (`info`, `debug`, `xtr_on_rust=trace`, …). |
 
 ## Validating your config before deploying

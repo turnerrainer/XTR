@@ -141,3 +141,53 @@ deployments):
 If neither is applied, treat the WSDL mount as a trust boundary
 equivalent to code review: only load WSDLs from sources you
 would accept commits from.
+
+## Operator recipe — bearer-gate `/:group/:service` on standalone deployments
+
+XTR ships zero built-in caller authentication on
+`/:group/:service` — the class-level property surfaced by the
+doctor as `info-no-caller-auth`. When XTR sits behind Ruuter,
+Ruuter is the intended gate; on Buerostack deployments this is
+the standard layout and no additional configuration is needed.
+
+When XTR is deployed **standalone** — bound directly to a
+public interface, or on any network segment that carries
+untrusted traffic — turn on the bearer-token gate from
+[h2ck.me T-8](https://github.com/h2ckme/XTR/blob/main/v1/NEXT-TASKS.md):
+
+```bash
+# Generate a 32-byte (256-bit) token from /dev/urandom
+export XTR_INTER_SERVICE_TOKEN=$(openssl rand -hex 32)
+# Ship the same value to every caller so they can present it.
+```
+
+With the env var set at XTR boot:
+
+- Every request to `/:group/:service` requires
+  `Authorization: Bearer <TOKEN>`. Missing / wrong / not
+  bearer-shaped → HTTP **401** with a structured
+  `{"error": "unauthorized", ...}` body.
+- `/health` (liveness) and `/api` (OpenAPI spec, separately
+  gated by `observability.expose_openapi`) are **never**
+  bearer-gated — orchestrators poll `/health` without an
+  auth configuration.
+- Token equality uses `subtle::ConstantTimeEq` so a timing
+  side-channel can't leak the correct prefix byte-by-byte.
+  Length mismatches bail early (length is not a security-
+  critical secret; an attacker can just guess-and-check each
+  length independently).
+- The doctor reports the posture: `info-inter-service-token-
+  active` (≥ 32 bytes), `weak-inter-service-token-short`
+  (< 32 bytes, still enforced but under-entropy), or
+  `info-inter-service-token-off` (unset — expected behind
+  Ruuter, an operator error on public deployments).
+
+**Rotate** the token by generating a new one, updating callers
+first, then updating XTR — a small window of dual-acceptance is
+not needed if callers can be updated atomically. For a longer
+rotation with dual-acceptance, roll a Ruuter (or reverse-proxy)
+in front and swap tokens at that layer instead of at XTR.
+
+Combine with `observability.expose_openapi: false` on public
+deployments so `/api` doesn't advertise the DSL surface to
+anyone who can reach the port.

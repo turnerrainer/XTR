@@ -65,6 +65,7 @@ async fn slow_body_returns_504_via_handler_timeout_layer() {
         services: Arc::new(services),
         executor,
         openapi_spec: Arc::new(spec),
+        inter_service_token: None,
     });
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();

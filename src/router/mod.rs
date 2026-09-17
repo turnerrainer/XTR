@@ -30,6 +30,7 @@ use std::time::Duration;
 use tower_http::timeout::TimeoutLayer;
 
 mod access_log;
+pub mod inter_service_token;
 mod security_headers;
 
 #[derive(Clone)]
@@ -38,6 +39,10 @@ pub struct AppState {
     pub services: Arc<ServiceMap>,
     pub executor: Executor,
     pub openapi_spec: Arc<Value>,
+    /// `XTR_INTER_SERVICE_TOKEN` value at boot. `None` = gate off
+    /// (default). `Some(_)` = enforced on `/:group/:service`.
+    /// `/health` and `/api` are never gated.
+    pub inter_service_token: Option<Arc<String>>,
 }
 
 pub fn build(state: AppState) -> Router {
@@ -58,10 +63,17 @@ pub fn build(state: AppState) -> Router {
         // REST (DSL-declared method). Method-appropriateness is
         // decided per-template inside `invoke`. DefaultBodyLimit
         // provides the coarse ceiling; the precise 413 lives in
-        // the handler.
+        // the handler. The inter-service token gate (h2ck.me T-8)
+        // sits INSIDE this route only — /health and /api are never
+        // gated.
         .route(
             "/:group/:service",
-            any(invoke).layer(DefaultBodyLimit::max(limit.saturating_add(4096))),
+            any(invoke)
+                .layer(DefaultBodyLimit::max(limit.saturating_add(4096)))
+                .layer(middleware::from_fn_with_state(
+                    state.inter_service_token.clone(),
+                    inter_service_token::apply,
+                )),
         )
         // Fleet stronghold §6.2 — cap the entire handler pipeline.
         // Innermost middleware layer so the timeout fires even if a

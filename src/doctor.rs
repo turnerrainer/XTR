@@ -88,6 +88,7 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_no_caller_auth(&mut findings);
     check_offline_mode(&mut findings);
     check_soap_action_missing(cfg, &mut findings);
+    check_inter_service_token(&mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
 }
@@ -195,6 +196,110 @@ fn check_offline_mode(out: &mut Vec<Finding>) {
         });
     }
 }
+/// h2ck.me T-8 — surface the `XTR_INTER_SERVICE_TOKEN` posture so
+/// operators know whether `/:group/:service` is bearer-gated. Three
+/// outcomes:
+///
+/// - Env unset → INFO `info-inter-service-token-off` reminder that
+///   XTR is running open on `/:group/:service`. Cross-references
+///   `info-no-caller-auth` (the class-level property).
+/// - Env set, ≥ 32 bytes → INFO `info-inter-service-token-active`.
+///   32 bytes = 256 bits of entropy if truly random, well past
+///   brute-force reach. Matches the fleet-recommended minimum.
+/// - Env set, < 32 bytes → WEAK `weak-inter-service-token-short`.
+///   Still enforced, but recovery text points at `openssl rand`.
+///
+/// Never reads the token value into a finding — just its length —
+/// so `doctor --format json` output can be shipped to CI logs
+/// without accidental secret exposure.
+fn check_inter_service_token(out: &mut Vec<Finding>) {
+    const MIN_LEN: usize = 32;
+    match std::env::var("XTR_INTER_SERVICE_TOKEN") {
+        Err(_) => out.push(Finding {
+            severity: Severity::Info,
+            code: "info-inter-service-token-off".into(),
+            field: Some("env:XTR_INTER_SERVICE_TOKEN".into()),
+            headline: "XTR_INTER_SERVICE_TOKEN is not set — /:group/:service is open".into(),
+            rationale: "The bearer-token gate on the request lane is off. This is\n\
+                        the correct posture when XTR sits behind Ruuter or another\n\
+                        auth-enforcing reverse proxy (Ruuter is the intended\n\
+                        gate in Buerostack deployments). When XTR is exposed\n\
+                        directly on a public or hostile network, set\n\
+                        XTR_INTER_SERVICE_TOKEN to a 32-byte random value so\n\
+                        callers must present Authorization: Bearer <TOKEN>.\n\
+                        See also: info-no-caller-auth (the class-level property)."
+                .into(),
+            recovery: Some(
+                "Generate a token and inject it into both XTR and any caller:\n\
+                 \n  \
+                 export XTR_INTER_SERVICE_TOKEN=$(openssl rand -hex 32)\n\
+                 \n\
+                 Ruuter (or your caller) sends Authorization: Bearer <TOKEN>\n\
+                 on every proxied request. /health and /api are never gated."
+                    .into(),
+            ),
+        }),
+        Ok(v) => {
+            let trimmed = v.trim();
+            if trimmed.is_empty() {
+                out.push(Finding {
+                    severity: Severity::Info,
+                    code: "info-inter-service-token-off".into(),
+                    field: Some("env:XTR_INTER_SERVICE_TOKEN".into()),
+                    headline: "XTR_INTER_SERVICE_TOKEN is set but empty — treated as unset".into(),
+                    rationale: "Whitespace-only or empty value is treated as \"gate off\" by the\n\
+                                loader — same effect as leaving the env var unset.\n\
+                                See info-no-caller-auth for the class-level property."
+                        .into(),
+                    recovery: Some(
+                        "Either set a real token (`openssl rand -hex 32`) or unset\n\
+                         the env var entirely to remove the misleading half-config."
+                            .into(),
+                    ),
+                });
+                return;
+            }
+            if trimmed.len() < MIN_LEN {
+                out.push(Finding {
+                    severity: Severity::Weak,
+                    code: "weak-inter-service-token-short".into(),
+                    field: Some("env:XTR_INTER_SERVICE_TOKEN".into()),
+                    headline: format!(
+                        "XTR_INTER_SERVICE_TOKEN is only {} bytes (recommend ≥ {MIN_LEN})",
+                        trimmed.len()
+                    ),
+                    rationale: "The gate is enforced, but a short token is brute-forceable\n\
+                                if the caller is on a fast network and XTR is exposed\n\
+                                directly. 32 bytes ≈ 256 bits of entropy from a\n\
+                                cryptographic RNG; anything shorter erodes the margin."
+                        .into(),
+                    recovery: Some(
+                        "Regenerate with a cryptographic RNG:\n\
+                         \n  \
+                         export XTR_INTER_SERVICE_TOKEN=$(openssl rand -hex 32)"
+                            .into(),
+                    ),
+                });
+            } else {
+                out.push(Finding {
+                    severity: Severity::Info,
+                    code: "info-inter-service-token-active".into(),
+                    field: Some("env:XTR_INTER_SERVICE_TOKEN".into()),
+                    headline: format!(
+                        "XTR_INTER_SERVICE_TOKEN is set ({} bytes) — /:group/:service is bearer-gated",
+                        trimmed.len()
+                    ),
+                    rationale: "Every request to /:group/:service must carry\n\
+                                Authorization: Bearer <TOKEN>. /health and /api\n\
+                                are never gated (liveness + separately-gated spec)."
+                        .into(),
+                    recovery: None,
+                });
+            }
+        }
+    }
+}
+
 /// Plain-HTTPS SOAP DSLs that don't declare `soap_action:` will
 /// silently omit the SOAPAction HTTP header. SOAP 1.1 §6.1.1
 /// requires it on every request, and strict servers (some .NET
