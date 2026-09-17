@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Regression test — slow-body attack must be cut off by the handler
+  `TimeoutLayer`.** New `tests/slow_body_timeout_regression.rs` boots
+  XTR with `request_timeout_secs = 1` (handler_timeout = 6s), sends
+  an HTTP request advertising `Content-Length: 1000` but delivering
+  only 5 body bytes over a raw TCP connection, and asserts the
+  response is HTTP 504 GATEWAY_TIMEOUT within the safety window. The
+  behavior itself was already correct — the fleet-stronghold §6.2
+  layer wired in `router::build` bounds every route's total handler
+  time. This test guards against a future refactor silently dropping
+  or reordering the layer. Closes #27 (h2ck.me T-19).
 - **SAFETY comments on 2 remaining `unsafe` env-mutation blocks in
   `src/doctor.rs`** (test-only; the third block already carried one).
   Rust 2024 made `std::env::{set_var, remove_var}` `unsafe` because
