@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3-rc] - 2026-09-18
+
+Closes the four "genuinely open" residuals from
+[h2ck.me NEXT-TASKS v1](https://github.com/h2ckme/XTR/blob/main/v1/NEXT-TASKS.md)
+that survived the audit-v2 landing: T-8 (public-launch bearer
+gate), T-13 (docs polish on `unsafe` blocks), T-19 (slow-body
+regression pin), T-20 (graceful shutdown). Every open item on
+the backlog is now closed; the remaining backlog items are all
+verified as previously closed by audit-v2 or by earlier
+releases.
+
 ### Added
 - **`XTR_INTER_SERVICE_TOKEN` — bearer-token gate on
   `/:group/:service`.** New env var; when set at boot, every
