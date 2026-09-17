@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2-rc] - 2026-09-17
+
 ### Added
 - **End-to-end `SOAPAction` support for `service:`-routed (plain HTTPS) SOAP DSLs.**
   SOAP 1.1 ([§6.1.1](https://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383528))
@@ -43,11 +45,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     server. Never contributes to `--strict` exit code.
   - **Docs** — `book/src/getting-started.md`, `book/src/doctor.md`,
     `MIGRATION.md` doctor rule catalogue.
-  - **Tests** — 12 new tests: parser (5), generator (5), DSL validator (4),
-    doctor (4), executor integration (3, incl. the empty-string case), full
-    WSDL→DSL pipeline (1). Backward-compatibility pinned by
-    `soap_action_header_absent_when_not_declared` — every existing DSL file
-    is unaffected. Total test count: 237 (was 225).
+  - **Tests** — 23 new tests over the 0.4.1-rc baseline: parser (5),
+    generator (5), DSL validator (4), doctor (4), pipeline (1), executor
+    integration (3, incl. empty-string), plus the 2 executor pins from the
+    contributor's base commit (`soap_action_header_sent_when_declared`,
+    `soap_action_header_absent_when_not_declared` — the latter guards
+    backward-compatibility: every existing DSL file is unaffected).
+    Total test count: 248 (was 225).
+- **Attribution.** The executor plumbing this release builds on was
+  contributed in PR #25 by @Aljoxa88 / @AlexeyFilippov88. The
+  maintainer-side widening (parser + generator + doctor + validator)
+  layered the ingest-side coverage on top so the fix works out-of-the-box
+  for every folder-drop endpoint, not only for hand-authored DSLs.
+
+### Security
+- **`rustls` 0.23.44 → 0.23.45** — closes
+  [RUSTSEC-2026-0285](https://rustsec.org/advisories/RUSTSEC-2026-0285) /
+  [CVE-2025-61730](https://pkg.go.dev/vuln/GO-2026-4340) (TLS 1.3 handshake
+  messages incorrectly accepted across encryption level boundaries; medium
+  5.3). Transitive via `reqwest → hyper-rustls → tokio-rustls`. Cargo.lock
+  bump only; no manifest change.
 
 ## [0.4.1-rc] - 2026-09-13
 
