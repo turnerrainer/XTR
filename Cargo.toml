@@ -66,6 +66,12 @@ tokio-native-tls = "0.3"
 openssl = "0.10"
 rustls = "0.23"
 tokio-rustls = "0.26"
+# T-20 SIGTERM regression test — raise a real SIGTERM to the current
+# process so the shutdown_signal handler is exercised end-to-end.
+# Already in the transitive tree; promoted to dev-deps so the test
+# can name it explicitly.
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2"
 
 [[bin]]
 name = "xtr-on-rust"

@@ -169,6 +169,82 @@ async fn serve_inner() -> anyhow::Result<()> {
     let addr = format!("0.0.0.0:{}", cfg.port);
     tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app).await?;
+    // Fleet stronghold — graceful shutdown on SIGTERM / SIGINT.
+    // axum stops accepting new connections and awaits every
+    // in-flight future before returning. The handler-level
+    // TimeoutLayer (request_timeout_secs + 5) bounds the drain
+    // window, and Kubernetes' default terminationGracePeriodSeconds
+    // (30s) comfortably covers it. Without this, SIGTERM kills the
+    // process mid-request → mTLS-attributed calls left in an
+    // indeterminate state upstream. Traced from h2ck.me T-20.
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    tracing::info!("shutdown complete");
     Ok(())
+}
+
+/// Await a shutdown signal — SIGINT (Ctrl-C) on all platforms and
+/// SIGTERM on Unix. Emits an INFO tracing line when either fires so
+/// the drain window is visible in logs / SIEM. Awaited by
+/// `axum::serve(...).with_graceful_shutdown(...)`.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        if let Err(e) = tokio::signal::ctrl_c().await {
+            tracing::error!("failed to install SIGINT handler: {e}");
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut stream) => {
+                stream.recv().await;
+            }
+            Err(e) => {
+                tracing::error!("failed to install SIGTERM handler: {e}");
+                // Never resolve — leaves ctrl_c as the only trigger.
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => tracing::info!("received SIGINT; initiating graceful shutdown (in-flight requests will complete within request_timeout_secs + 5s)"),
+        _ = terminate => tracing::info!("received SIGTERM; initiating graceful shutdown (in-flight requests will complete within request_timeout_secs + 5s)"),
+    }
+}
+
+#[cfg(all(test, unix))]
+mod shutdown_tests {
+    use super::shutdown_signal;
+    use std::time::Duration;
+
+    // Sends SIGTERM to the current process and asserts that
+    // `shutdown_signal()` resolves promptly. Guards against a
+    // future refactor that swaps the signal source or forgets to
+    // gate on cfg(unix). Serialised — the signal is process-wide,
+    // so a parallel test that also awaits SIGTERM would race.
+    #[tokio::test]
+    async fn shutdown_signal_resolves_on_sigterm() {
+        let signal_fut = shutdown_signal();
+        let sender = tokio::spawn(async {
+            // Small delay so shutdown_signal has time to install
+            // its SIGTERM handler before we raise the signal.
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            // SAFETY: raising a signal to the current process is
+            // a legal libc call; no threads read this signal state
+            // outside the tokio signal handler installed above.
+            unsafe {
+                libc::raise(libc::SIGTERM);
+            }
+        });
+        tokio::time::timeout(Duration::from_secs(2), signal_fut)
+            .await
+            .expect("shutdown_signal() did not resolve within 2s of SIGTERM");
+        sender.await.unwrap();
+    }
 }
