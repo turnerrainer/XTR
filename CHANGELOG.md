@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`XTR_INTER_SERVICE_TOKEN` — bearer-token gate on
+  `/:group/:service`.** New env var; when set at boot, every
+  request to the SOAP/REST route MUST carry
+  `Authorization: Bearer <TOKEN>` or receive HTTP **401**
+  `{"error": "unauthorized", ...}`. `/health` and `/api` are
+  unconditionally exempt. Constant-time equality via
+  `subtle::ConstantTimeEq`; length mismatch bails early
+  (leakable regardless). Default off — backward-compatible with
+  0.4.x behind Ruuter (the intended auth boundary in Buerostack
+  deployments). Recommended for standalone / hostile-network
+  posture. Three new doctor rules surface the posture:
+  `info-inter-service-token-active` (≥ 32 bytes),
+  `weak-inter-service-token-short` (< 32 bytes),
+  `info-inter-service-token-off` (env unset — cross-references
+  `info-no-caller-auth`). Doctor NEVER reads the token value into
+  a finding, only its length, so `--format json` output is safe
+  to ship to CI logs. Operator recipe added to `SECURITY.md`
+  under "Operator recipe — bearer-gate `/:group/:service` on
+  standalone deployments." Env var documented in
+  `book/src/configuration.md`. Covered by 12 tests: 5 unit
+  (constant-time equality edge cases, env loader empty/whitespace
+  handling) + 7 integration (gate off, missing bearer, wrong
+  bearer, correct bearer, `/health` exempt, `/api` exempt, bare
+  token without `Bearer ` prefix rejected). Closes #29 (h2ck.me
+  T-8) — public-launch prereq per h2ck.me.
 - **Graceful shutdown on SIGTERM / SIGINT.** `main::serve_inner` now
   wires `axum::serve(...).with_graceful_shutdown(shutdown_signal())`.
   On SIGTERM (Kubernetes rolling deploy, `docker stop`, systemd

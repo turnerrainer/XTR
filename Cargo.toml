@@ -43,6 +43,11 @@ url = "2"
 # Issue #5 REST lane: X-Road REST protocol §4.2 requires
 # percent-encoded UTF-8 for identifier segments in the /r1/… URL.
 percent-encoding = "2"
+# h2ck.me T-8 XTR_INTER_SERVICE_TOKEN bearer gate — constant-time
+# equality on the presented vs configured token so timing doesn't
+# leak the correct prefix byte-by-byte. `subtle::ConstantTimeEq`
+# is already in the transitive tree via rustls/aws-lc-rs.
+subtle = "2"
 
 [dev-dependencies]
 tempfile = "3"

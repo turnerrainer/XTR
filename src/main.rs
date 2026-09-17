@@ -158,11 +158,17 @@ async fn serve_inner() -> anyhow::Result<()> {
     let openapi_spec = openapi::build_spec(&services, version);
     let executor = Executor::new(&cfg)?;
 
+    let inter_service_token = router::inter_service_token::load_from_env();
+    match &inter_service_token {
+        Some(_) => tracing::info!("XTR_INTER_SERVICE_TOKEN is set — /:group/:service is bearer-gated"),
+        None => tracing::info!("XTR_INTER_SERVICE_TOKEN is not set — /:group/:service is open (fine behind Ruuter; harden with the env var for direct exposure)"),
+    }
     let state = router::AppState {
         cfg: Arc::new(cfg.clone()),
         services: Arc::new(services),
         executor,
         openapi_spec: Arc::new(openapi_spec),
+        inter_service_token,
     };
 
     let app = router::build(state);

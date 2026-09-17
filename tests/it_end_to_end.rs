@@ -104,6 +104,7 @@ async fn build_xtr_with_config(cfg: AppConfig) -> Router {
         services: Arc::new(services),
         executor,
         openapi_spec: Arc::new(spec),
+        inter_service_token: None,
     })
 }
 

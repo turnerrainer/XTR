@@ -80,6 +80,7 @@ async fn build_offline_xtr(dsl_root: &std::path::Path) -> Router {
         services: Arc::new(services),
         executor,
         openapi_spec: Arc::new(spec),
+        inter_service_token: None,
     })
 }
 
