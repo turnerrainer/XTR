@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Graceful shutdown on SIGTERM / SIGINT.** `main::serve_inner` now
+  wires `axum::serve(...).with_graceful_shutdown(shutdown_signal())`.
+  On SIGTERM (Kubernetes rolling deploy, `docker stop`, systemd
+  `ExecStop`) or SIGINT (Ctrl-C on interactive runs), axum stops
+  accepting new connections and awaits every in-flight future before
+  exiting. Emits an INFO tracing line when either signal fires so
+  the drain window is visible in SIEM / operator logs. The handler-
+  level `TimeoutLayer` (`request_timeout_secs + 5`) bounds the drain
+  ceiling; Kubernetes' default `terminationGracePeriodSeconds` (30s)
+  comfortably covers it. Regression pin
+  `shutdown_signal_resolves_on_sigterm` raises a real SIGTERM to
+  the current process and asserts `shutdown_signal()` resolves
+  within 2s. Closes #28 (h2ck.me T-20).
+
 ### Security
 - **Regression test — slow-body attack must be cut off by the handler
   `TimeoutLayer`.** New `tests/slow_body_timeout_regression.rs` boots
