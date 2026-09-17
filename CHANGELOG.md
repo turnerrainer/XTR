@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **SAFETY comments on 2 remaining `unsafe` env-mutation blocks in
+  `src/doctor.rs`** (test-only; the third block already carried one).
+  Rust 2024 made `std::env::{set_var, remove_var}` `unsafe` because
+  env mutation is not thread-safe with concurrent readers. All three
+  XTR blocks are `#[test]`-scoped and touch a test-only env-var name
+  unique to a single test — no cross-test contention. Documenting the
+  invariant inline so a pentest reviewer greps for `unsafe`, reads the
+  comment, and moves on. Closes #26 (h2ck.me T-13).
+
 ## [0.4.2-rc] - 2026-09-17
 
 ### Added

@@ -1067,6 +1067,10 @@ mod tests {
 
     #[test]
     fn rest_dsl_with_non_https_security_server_is_fatal() {
+        // SAFETY: single-threaded per #[test]; the env var name
+        // `XTR_TEST_REST_HTTP_PW` is unique to this test — no other
+        // test reads or writes it, so the Rust 2024 env-mutation
+        // safety rule (no concurrent readers) holds.
         unsafe { std::env::set_var("XTR_TEST_REST_HTTP_PW", "x") };
         let tmp = tempfile::TempDir::new().unwrap();
         write_rest_dsl(
@@ -1087,6 +1091,9 @@ mod tests {
         };
         let findings = run(&cfg, None);
         assert!(has_code(&findings, "fatal-rest-ss-not-https"));
+        // SAFETY: as above — the env var name is unique to this
+        // test and this cleanup runs after the run(&cfg) reader has
+        // finished, so there is no concurrent reader/writer race.
         unsafe { std::env::remove_var("XTR_TEST_REST_HTTP_PW") };
     }
 
