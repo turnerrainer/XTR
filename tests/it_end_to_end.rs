@@ -30,6 +30,7 @@ use xtr_on_rust::{
 struct Capture {
     body: Arc<Mutex<Option<String>>>,
     content_type: Arc<Mutex<Option<String>>>,
+    soap_action: Arc<Mutex<Option<String>>>,
 }
 
 async fn mock_handler(
@@ -40,6 +41,10 @@ async fn mock_handler(
     *capture.body.lock().unwrap() = Some(body);
     *capture.content_type.lock().unwrap() = headers
         .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    *capture.soap_action.lock().unwrap() = headers
+        .get("SOAPAction")
         .and_then(|v| v.to_str().ok())
         .map(str::to_string);
     (
@@ -238,6 +243,114 @@ async fn end_to_end_request_hits_upstream_and_translates_response() {
     assert!(outbound_body.contains("<reg_code>42</reg_code>"));
     let ct = capture.content_type.lock().unwrap().clone().unwrap();
     assert!(ct.starts_with("text/xml"), "content-type was {ct}");
+}
+
+/// DSLs that declare `soap_action:` must send it as the `SOAPAction` HTTP
+/// header on the outbound plain-HTTPS request, quoted as SOAP 1.1 §6.1.1
+/// requires.
+#[tokio::test]
+async fn soap_action_header_sent_when_declared() {
+    let (mock_url, capture) = spawn_mock().await;
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!(
+        "params: [reg_code]
+service: {mock_url}
+method: POST
+soap_action: DoStuff_Request
+envelope: >
+  <soap:Envelope><soap:Body><q><reg_code>{{{{reg_code}}}}</reg_code></q></soap:Body></soap:Envelope>
+"
+    );
+    write_dsl(tmp.path(), "ar", "lookup", &dsl);
+    let app = build_xtr(tmp.path()).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/ar/lookup")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 200);
+    let action = capture.soap_action.lock().unwrap().clone().unwrap();
+    assert_eq!(action, "\"DoStuff_Request\"");
+}
+
+/// DSLs without `soap_action:` must not send the header at all — every
+/// existing DSL relies on this, so the field stays backward-compatible.
+#[tokio::test]
+async fn soap_action_header_absent_when_not_declared() {
+    let (mock_url, capture) = spawn_mock().await;
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!(
+        "params: [reg_code]
+service: {mock_url}
+method: POST
+envelope: >
+  <soap:Envelope><soap:Body><q><reg_code>{{{{reg_code}}}}</reg_code></q></soap:Body></soap:Envelope>
+"
+    );
+    write_dsl(tmp.path(), "ar", "lookup", &dsl);
+    let app = build_xtr(tmp.path()).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/ar/lookup")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 200);
+    assert!(capture.soap_action.lock().unwrap().clone().is_none());
+}
+
+/// Empty-string `soap_action: ""` is spec-legal per SOAP 1.1 §6.1.1
+/// ("intent provided by other means"). The executor must still
+/// wrap-and-send it as `SOAPAction: ""` — that distinct-from-absent
+/// value tells a strict server "yes, I understand SOAPAction, but I
+/// have no specific intent to declare here", which some stacks
+/// treat differently from omitting the header entirely.
+#[tokio::test]
+async fn soap_action_header_empty_string_sends_quoted_empty() {
+    let (mock_url, capture) = spawn_mock().await;
+    let tmp = TempDir::new().unwrap();
+    let dsl = format!(
+        "params: [reg_code]
+service: {mock_url}
+method: POST
+soap_action: \"\"
+envelope: >
+  <soap:Envelope><soap:Body><q><reg_code>{{{{reg_code}}}}</reg_code></q></soap:Body></soap:Envelope>
+"
+    );
+    write_dsl(tmp.path(), "ar", "lookup", &dsl);
+    let app = build_xtr(tmp.path()).await;
+
+    let resp = axum_test(
+        app,
+        axum::http::Request::builder()
+            .method("POST")
+            .uri("/ar/lookup")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"reg_code": "42"}"#))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(resp.status, 200);
+    let action = capture.soap_action.lock().unwrap().clone().unwrap();
+    assert_eq!(
+        action, "\"\"",
+        "empty soap_action must send SOAPAction: \"\""
+    );
 }
 
 #[tokio::test]

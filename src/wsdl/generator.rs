@@ -103,6 +103,23 @@ fn generate_one(
         yaml.push_str(url);
         yaml.push('\n');
     }
+    // Only emit `soap_action:` when we're on the plain-HTTPS lane
+    // (`service:` is present) AND the WSDL binding declared a
+    // non-empty value. The Security Server executor ignores this
+    // field, so writing it under an X-Road-routed DSL would be
+    // dead weight. Empty-string soapAction ("intent provided by
+    // other means", SOAP 1.1 §6.1.1) is treated as "nothing to
+    // emit" here — writing `soap_action: ""` produces a header
+    // that is a no-op on the wire and adds noise to the DSL.
+    if effective_service_url.is_some() {
+        if let Some(action) = op.soap_action.as_deref() {
+            if !action.is_empty() {
+                yaml.push_str("soap_action: ");
+                yaml.push_str(action);
+                yaml.push('\n');
+            }
+        }
+    }
     // Method is always POST for SOAP-over-HTTP. Task 013 v5
     // memory: XTR is POST-only by design.
     yaml.push_str("method: POST\n");
@@ -392,6 +409,159 @@ mod tests {
                     panic!("generator must emit SOAP-kind DSLs, got REST for {op_name}");
                 }
             }
+        }
+    }
+
+    const WSDL_WITH_BINDING: &str = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="lookupIn">
+      <xsd:complexType><xsd:sequence>
+        <xsd:element name="reg_code" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType>
+    </xsd:element>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:lookupIn"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="lookup">
+      <soap:operation soapAction="LookupAction"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="s">
+    <wsdl:port name="p" binding="tns:b">
+      <soap:address location="https://example.org/svc"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>"#;
+
+    #[test]
+    fn generator_emits_soap_action_when_binding_declared_one() {
+        let wsdl = parse(WSDL_WITH_BINDING).unwrap();
+        let files = generate_all(&wsdl, None).unwrap();
+        let yaml = &files[0].1;
+        assert!(
+            yaml.contains("soap_action: LookupAction\n"),
+            "expected soap_action emitted, got:\n{yaml}"
+        );
+    }
+
+    #[test]
+    fn generator_omits_soap_action_when_binding_absent() {
+        // ARIREG_LIKE_WSDL has no <wsdl:binding> at all — nothing
+        // to emit into the DSL. Regression on operators who supply
+        // pre-generated portType-only WSDLs.
+        let wsdl = parse(ARIREG_LIKE_WSDL).unwrap();
+        let files = generate_all(&wsdl, None).unwrap();
+        let yaml = &files[0].1;
+        assert!(
+            !yaml.contains("soap_action:"),
+            "should not emit soap_action when binding absent:\n{yaml}"
+        );
+    }
+
+    #[test]
+    fn generator_omits_soap_action_when_binding_value_empty() {
+        // Empty-string soapAction is legal (SOAP 1.1 §6.1.1: "intent
+        // provided by other means"), but emitting `soap_action: ""`
+        // into a DSL only produces a no-op header on the wire. Skip
+        // it to keep generated DSLs uncluttered — the executor's
+        // absent-header path is equivalent.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction=""/>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="s"><wsdl:port name="p" binding="tns:b">
+    <soap:address location="https://ex.org/"/>
+  </wsdl:port></wsdl:service>
+</wsdl:definitions>"#;
+        let wsdl = parse(xml).unwrap();
+        let files = generate_all(&wsdl, None).unwrap();
+        let yaml = &files[0].1;
+        assert!(
+            !yaml.contains("soap_action:"),
+            "empty soap_action should be skipped:\n{yaml}"
+        );
+    }
+
+    #[test]
+    fn generator_omits_soap_action_for_security_server_routed_dsl() {
+        // WSDL's <soap:address> is a TURVASERVER placeholder → DSL
+        // is Security-Server-routed (no `service:`). Even if the
+        // binding declared a soapAction, the X-Road executor doesn't
+        // send it. Emitting it would be dead weight in the DSL and
+        // confuse operators about how requests are actually dispatched.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction="WouldBeIgnored"/>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="s"><wsdl:port name="p" binding="tns:b">
+    <soap:address location="https://TURVASERVER/"/>
+  </wsdl:port></wsdl:service>
+</wsdl:definitions>"#;
+        let wsdl = parse(xml).unwrap();
+        let files = generate_all(&wsdl, None).unwrap();
+        let yaml = &files[0].1;
+        assert!(
+            !yaml.contains("service:"),
+            "sanity: TURVASERVER should suppress service: too:\n{yaml}"
+        );
+        assert!(
+            !yaml.contains("soap_action:"),
+            "should not emit soap_action on Security-Server-routed DSL:\n{yaml}"
+        );
+    }
+
+    #[test]
+    fn generated_soap_action_round_trips_through_dsl_loader() {
+        // What the generator emits must load back through the DSL
+        // deserialiser with soap_action populated. Guards against
+        // formatting drift between generator emission and loader
+        // expectations.
+        let wsdl = parse(WSDL_WITH_BINDING).unwrap();
+        let files = generate_all(&wsdl, None).unwrap();
+        let yaml = &files[0].1;
+        let parsed: crate::dsl::XRoadTemplate = serde_yaml_ng::from_str(yaml).unwrap();
+        match parsed.kind {
+            crate::dsl::TemplateKind::Soap(s) => {
+                assert_eq!(s.soap_action.as_deref(), Some("LookupAction"));
+            }
+            _ => panic!("expected SOAP kind"),
         }
     }
 

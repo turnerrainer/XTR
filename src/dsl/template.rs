@@ -33,6 +33,12 @@ pub struct SoapTemplate {
     /// Optional direct upstream URL. `None` → route via Security Server.
     pub service: Option<String>,
     pub envelope: String,
+    /// Optional `SOAPAction` HTTP header value, taken from the operation's
+    /// `soapAction` in the WSDL binding. SOAP 1.1 (§6.1.1) requires the header
+    /// on every HTTP request, and strict servers reject calls that omit it.
+    /// Only applies to `service:`-routed (plain HTTPS) DSLs; the Security
+    /// Server executor ignores it, as X-Road dispatches on its own headers.
+    pub soap_action: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,11 +89,25 @@ impl<'de> Deserialize<'de> for XRoadTemplate {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let raw = RawTemplate::deserialize(deserializer)?;
         let kind = match raw.kind.as_str() {
-            "soap" => TemplateKind::Soap(SoapTemplate {
-                params: raw.params,
-                service: raw.service,
-                envelope: raw.envelope,
-            }),
+            "soap" => {
+                // Reject header-injection-shaped values at boot
+                // rather than at first request. `reqwest` refuses
+                // to construct a request with CR/LF/NUL in a
+                // header value; a bare `"` inside would collide
+                // with the SOAP 1.1 §6.1.1 quoting the executor
+                // wraps around the value. Fail loud so the
+                // operator finds it during DSL authoring, not
+                // when the first caller hits the route.
+                if let Some(action) = raw.soap_action.as_deref() {
+                    validate_soap_action(action).map_err(serde::de::Error::custom)?;
+                }
+                TemplateKind::Soap(SoapTemplate {
+                    params: raw.params,
+                    service: raw.service,
+                    envelope: raw.envelope,
+                    soap_action: raw.soap_action,
+                })
+            }
             "rest" => TemplateKind::Rest(RestTemplate {
                 target: raw.target.ok_or_else(|| {
                     serde::de::Error::custom("rest template requires `target:` block")
@@ -122,6 +142,8 @@ struct RawTemplate {
     service: Option<String>,
     #[serde(default)]
     envelope: String,
+    #[serde(default)]
+    soap_action: Option<String>,
 
     // REST-only fields
     #[serde(default)]
@@ -164,6 +186,43 @@ impl RestTarget {
             && !self.subsystem_code.is_empty()
             && !self.service_code.is_empty()
     }
+}
+
+/// Reject `soap_action` values whose bytes would either
+/// crash `reqwest::RequestBuilder::header` (CR/LF/NUL) or
+/// collide with the SOAP 1.1 §6.1.1 quoting the executor
+/// wraps around the value (bare `"` inside the value would
+/// break the enclosing double-quotes). All rejects surface
+/// at DSL load, so a misconfigured folder-drop breaks boot
+/// instead of the first live request.
+fn validate_soap_action(s: &str) -> Result<(), String> {
+    for (i, b) in s.bytes().enumerate() {
+        match b {
+            b'\r' => {
+                return Err(format!(
+                    "soap_action contains CR at byte {i}; would smuggle a header line"
+                ))
+            }
+            b'\n' => {
+                return Err(format!(
+                    "soap_action contains LF at byte {i}; would smuggle a header line"
+                ))
+            }
+            0 => {
+                return Err(format!(
+                    "soap_action contains NUL at byte {i}; rejected by HTTP header codec"
+                ))
+            }
+            b'"' => {
+                return Err(format!(
+                    "soap_action contains '\"' at byte {i}; \
+                     conflicts with SOAP 1.1 §6.1.1 quoting"
+                ))
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// X-Road REST §4.8 identifier character restriction:
@@ -290,6 +349,56 @@ mod tests {
         assert!(!identifier_chars_ok("has_underscore")); // '_' is NOT in the spec set
         assert!(!identifier_chars_ok("äöü")); // non-ASCII
         assert!(!identifier_chars_ok("")); // empty
+    }
+
+    #[test]
+    fn soap_action_with_crlf_rejected_at_load() {
+        let err = serde_yaml_ng::from_str::<XRoadTemplate>(
+            "params: []\nservice: https://ex/\nmethod: POST\nsoap_action: \"foo\\r\\nInjected: 1\"\nenvelope: <x/>\n"
+        ).unwrap_err();
+        assert!(
+            err.to_string().contains("CR"),
+            "expected CR-reject, got: {err}"
+        );
+    }
+
+    #[test]
+    fn soap_action_with_embedded_quote_rejected_at_load() {
+        let err = serde_yaml_ng::from_str::<XRoadTemplate>(
+            "params: []\nservice: https://ex/\nmethod: POST\nsoap_action: 'foo\"bar'\nenvelope: <x/>\n"
+        ).unwrap_err();
+        assert!(
+            err.to_string().contains("\""),
+            "expected quote-reject, got: {err}"
+        );
+    }
+
+    #[test]
+    fn soap_action_with_nul_rejected_at_load() {
+        let err = serde_yaml_ng::from_str::<XRoadTemplate>(
+            "params: []\nservice: https://ex/\nmethod: POST\nsoap_action: \"foo\\0bar\"\nenvelope: <x/>\n"
+        ).unwrap_err();
+        assert!(
+            err.to_string().contains("NUL"),
+            "expected NUL-reject, got: {err}"
+        );
+    }
+
+    #[test]
+    fn soap_action_with_safe_uri_accepted() {
+        // Sanity: a realistic URI-shaped value (colon, slashes, dot,
+        // dash) survives validation unchanged. These are the values
+        // real X-Road SOAP producers publish.
+        let t = serde_yaml_ng::from_str::<XRoadTemplate>(
+            "params: []\nservice: https://ex/\nmethod: POST\nsoap_action: http://schemas.example.com/action-1.2\nenvelope: <x/>\n"
+        ).unwrap();
+        match t.kind {
+            TemplateKind::Soap(s) => assert_eq!(
+                s.soap_action.as_deref(),
+                Some("http://schemas.example.com/action-1.2")
+            ),
+            _ => panic!("expected SOAP kind"),
+        }
     }
 
     #[test]

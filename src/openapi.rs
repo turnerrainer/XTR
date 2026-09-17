@@ -196,6 +196,7 @@ mod tests {
                 params: params.iter().map(|s| s.to_string()).collect(),
                 service: Some("https://x".into()),
                 envelope: "<x/>".into(),
+                soap_action: None,
             }),
         })
     }

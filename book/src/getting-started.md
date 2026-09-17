@@ -248,6 +248,27 @@ envelope: >
   </soapenv:Envelope>
 ```
 
+Add `soap_action:` when the upstream expects a `SOAPAction` header. SOAP 1.1
+([§6.1.1](https://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383528))
+requires it on every HTTP request, and strict servers reject calls that omit
+it; the value is the operation's `soapAction` from the WSDL binding. XTR sends
+it quoted, as the spec requires:
+
+```yaml
+service: https://example.org/SomeService.svc
+soap_action: DoStuff_Request        # → SOAPAction: "DoStuff_Request"
+```
+
+Omit the field and no header is sent. It applies to `service:`-routed DSLs
+only — the Security Server dispatches on X-Road headers and ignores it.
+
+If you're using the WSDL folder-drop workflow, XTR reads `soapAction` from
+each `<soap:operation soapAction="…"/>` under `<wsdl:binding>` and emits
+`soap_action:` into the generated DSL automatically. No hand-edit needed
+unless your WSDL has no SOAP binding. The `doctor` subcommand emits
+`info-soap-action-missing` per plain-HTTPS DSL where the field is absent so
+you can spot coverage gaps at a glance.
+
 **`DSL/rr/isikud.yml`** — REST passthrough via Security Server:
 
 ```yaml

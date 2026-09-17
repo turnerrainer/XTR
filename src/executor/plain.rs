@@ -45,17 +45,21 @@ impl PlainExecutor {
         uri: &str,
         method: &str,
         envelope: String,
+        soap_action: Option<&str>,
     ) -> Result<String, XtrError> {
         let method = parse_method(method)?;
         tracing::debug!("plain HTTPS {} {}", method, uri);
-        let resp = self
+        let mut req = self
             .client
             .request(method, uri)
-            .header("content-type", "text/xml; charset=utf-8")
-            .body(envelope)
-            .send()
-            .await
-            .map_err(map_send_error)?;
+            .header("content-type", "text/xml; charset=utf-8");
+        // SOAP 1.1 (§6.1.1) requires the SOAPAction header on every HTTP
+        // request; the value is a quoted URI-reference taken from the
+        // operation's `soapAction` in the WSDL binding.
+        if let Some(action) = soap_action {
+            req = req.header("SOAPAction", format!("\"{action}\""));
+        }
+        let resp = req.body(envelope).send().await.map_err(map_send_error)?;
 
         let status = resp.status();
         let body = read_bounded(resp, self.max_response_bytes).await?;

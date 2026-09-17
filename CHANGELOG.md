@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **End-to-end `SOAPAction` support for `service:`-routed (plain HTTPS) SOAP DSLs.**
+  SOAP 1.1 ([§6.1.1](https://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383528))
+  requires a `SOAPAction` HTTP header on every request, carrying the quoted
+  `soapAction` value that the WSDL binding declares for the operation; strict
+  servers reject calls that omit it, and some use it for operation dispatch.
+  XTR never sent the header, so `service:`-routed DSLs could not talk to such
+  a provider. Three coordinated changes land the fix without any operator
+  action on WSDL-generated DSLs:
+  - **Executor** — new optional `soap_action:` field on SOAP DSLs. When set,
+    `PlainExecutor` sends the value quoted (`SOAPAction: "DoStuff_Request"`);
+    when absent, no header is sent (byte-identical to prior behaviour). The
+    Security Server executor ignores the field — X-Road dispatches on its
+    own headers. (Contributed by @Aljoxa88 / @AlexeyFilippov88 in PR #25.)
+  - **WSDL parser** — walks the first `<wsdl:binding>` in the document and
+    records the `<soap:operation soapAction="…"/>` value per op. Multi-binding
+    WSDLs: first binding wins, matching the parser's existing "first port"
+    heuristic. Empty-string `soapAction` (spec-legal per §6.1.1: "intent
+    provided by other means") is preserved distinctly from absence.
+  - **DSL generator** — emits `soap_action:` into the generated DSL when the
+    binding declared a non-empty value and the DSL routes plain-HTTPS
+    (`service:` present). Skipped on Security-Server-routed DSLs and on
+    empty-string values (adds nothing on the wire). Result: WSDL folder-drop
+    users get correct SOAP 1.1 behaviour on every generated endpoint with no
+    hand-edit.
+  - **DSL-load validation** — `soap_action:` values containing CR/LF/NUL or a
+    bare `"` are rejected at DSL deserialise time (would either crash
+    `reqwest`'s header codec or collide with the §6.1.1 quoting). Boot fails
+    loud with a clear error, not the first live request.
+  - **Doctor rule `info-soap-action-missing`** — INFO-severity finding per
+    plain-HTTPS SOAP DSL where `soap_action:` is absent or empty. Not
+    WEAK/FATAL because tolerant upstreams exist; INFO surfaces the coverage
+    gap so operators can spot which endpoints will fail against a strict
+    server. Never contributes to `--strict` exit code.
+  - **Docs** — `book/src/getting-started.md`, `book/src/doctor.md`,
+    `MIGRATION.md` doctor rule catalogue.
+  - **Tests** — 12 new tests: parser (5), generator (5), DSL validator (4),
+    doctor (4), executor integration (3, incl. the empty-string case), full
+    WSDL→DSL pipeline (1). Backward-compatibility pinned by
+    `soap_action_header_absent_when_not_declared` — every existing DSL file
+    is unaffected. Total test count: 237 (was 225).
+
 ## [0.4.1-rc] - 2026-09-13
 
 Same-day hotfix on `0.4.0-rc`. Only change is the Dockerfile

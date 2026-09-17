@@ -833,6 +833,63 @@ mod tests {
     }
 
     #[test]
+    fn wsdl_binding_soap_action_flows_end_to_end_into_generated_dsl() {
+        // End-to-end seam test: WSDL declares <soap:operation
+        // soapAction="…"/> in its <wsdl:binding>, ingest_all
+        // parses → generates → writes DSL, and the DSL file on
+        // disk contains `soap_action:`. Guards the whole parser
+        // → generator → filesystem-write chain against silent
+        // drops introduced by refactors on any of the three seams.
+        let watch = TempDir::new().unwrap();
+        let dsl = TempDir::new().unwrap();
+        let group_dir = watch.path().join("ex");
+        std::fs::create_dir_all(&group_dir).unwrap();
+        let wsdl_with_binding = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/"
+                  targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="lookup">
+      <xsd:complexType><xsd:sequence>
+        <xsd:element name="q" type="xsd:string"/>
+      </xsd:sequence></xsd:complexType>
+    </xsd:element>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="in"><wsdl:part name="p" element="tns:lookup"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="lookup"><wsdl:input message="tns:in"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+    <wsdl:operation name="lookup">
+      <soap:operation soapAction="LookupAction"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="s"><wsdl:port name="p" binding="tns:b">
+    <soap:address location="https://example.com/soap"/>
+  </wsdl:port></wsdl:service>
+</wsdl:definitions>"#;
+        std::fs::write(group_dir.join("lookup.wsdl"), wsdl_with_binding).unwrap();
+
+        ingest_all(
+            watch.path(),
+            dsl.path(),
+            &permissive_wsdl_cfg(),
+            &empty_client_data(),
+        )
+        .unwrap();
+
+        let contents = std::fs::read_to_string(dsl.path().join("ex").join("lookup.yml")).unwrap();
+        assert!(
+            contents.contains("soap_action: LookupAction"),
+            "generated DSL should carry soap_action from the WSDL binding:\n{contents}"
+        );
+    }
+
+    #[test]
     fn audit_h2_sidecar_identity_match_still_loads() {
         let watch = TempDir::new().unwrap();
         let dsl = TempDir::new().unwrap();

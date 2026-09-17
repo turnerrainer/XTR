@@ -221,6 +221,7 @@ New env var:
 | WEAK | `weak-writable-rootfs-wsdl-folder-drop` | `wsdl_watch_dir` is set (see Breaking Changes §3 above). |
 | WEAK | `weak-offline-mode-active` | `XTR_OFFLINE` env var is truthy. |
 | INFO | `info-no-caller-auth` | Always emitted — reminder that XTR ships no built-in caller auth on `/:group/:service`. |
+| INFO | `info-soap-action-missing` | One or more plain-HTTPS SOAP DSLs (`service:` set) omit `soap_action:`. SOAP 1.1 §6.1.1 requires the `SOAPAction` header; strict servers reject calls that omit it. Regenerate DSLs from WSDLs whose bindings declare `<soap:operation soapAction="…"/>` (the generator emits `soap_action:` automatically) or hand-add the field. |
 
 ### Doctor recipe
 

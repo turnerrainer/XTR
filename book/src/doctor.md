@@ -113,6 +113,7 @@ Every code the doctor can emit, grouped by area.
 | WEAK | `weak-writable-rootfs-wsdl-folder-drop` | `wsdl_watch_dir` is set. Folder-drop needs a writable DSL dir, precluding `read_only: true` container rootfs (FLEET-STRONGHOLDS §7). Recovery text names the pre-generate-on-host workflow. |
 | WEAK | `weak-offline-mode-active` | `XTR_OFFLINE` env var is truthy. Every outbound SOAP + REST dispatch will be short-circuited with HTTP 599. Intended for pentest / break-test runs; refuse to leave in production. |
 | INFO | `info-no-caller-auth` | Always emitted. Reminder that XTR ships zero built-in caller authentication on `/:group/:service` — a reverse proxy or service mesh MUST gate the route in every deployment. Design property, not a fixable-in-config finding. |
+| INFO | `info-soap-action-missing` | One or more plain-HTTPS SOAP DSLs (`service:` set, no Security Server routing) omit `soap_action:`. SOAP 1.1 §6.1.1 requires the `SOAPAction` HTTP header on every request; strict servers reject calls that omit it. Not WEAK because tolerant upstreams exist. Fix by regenerating DSLs from a WSDL whose binding declares `<soap:operation soapAction="…"/>`, or add `soap_action:` by hand. |
 
 > **Upgrade note — `doctor --strict` exit code change in audit-v2.**
 >

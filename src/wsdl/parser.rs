@@ -34,6 +34,14 @@ pub struct ParsedWsdl {
 pub struct Operation {
     pub name: String,
     pub input_element: ElementDef,
+    /// `soapAction` attribute from `<soap:operation>` in the first
+    /// `<wsdl:binding>` that references this op. `None` when no
+    /// binding matches, `Some("")` when the attribute is present
+    /// but empty (SOAP 1.1 §6.1.1: empty = "intent provided by
+    /// other means"). Consumed by the generator to emit
+    /// `soap_action:` into the produced DSL; strict SOAP servers
+    /// require the header on every request.
+    pub soap_action: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +117,15 @@ struct ParseState {
     op_order: Vec<String>,
     /// From <soap:address location="…"/>.
     service_url: Option<String>,
+    /// wsdl:operation name → soapAction attr value, from the first
+    /// <wsdl:binding> in the document. Empty string when the WSDL
+    /// author wrote `soapAction=""` explicitly; absent from the map
+    /// when the binding didn't declare one for this op.
+    binding_actions: BTreeMap<String, String>,
+    /// True once we've walked one <wsdl:binding>. Subsequent
+    /// bindings are ignored — matches the "first port wins"
+    /// posture the rest of the parser uses for multi-service WSDLs.
+    binding_captured: bool,
 }
 
 impl ParseState {
@@ -137,6 +154,7 @@ impl ParseState {
             operations.push(Operation {
                 name: op_name.clone(),
                 input_element: resolved,
+                soap_action: self.binding_actions.get(op_name).cloned(),
             });
         }
         Ok(ParsedWsdl {
@@ -323,6 +341,7 @@ where
                     parse_message(reader, state, name)?;
                 }
                 "portType" => parse_port_type(reader, state)?,
+                "binding" => parse_binding(reader, state)?,
                 "service" => parse_service(reader, state)?,
                 _ => {}
             },
@@ -783,6 +802,79 @@ fn parse_port_type(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result
     }
 }
 
+/// Walk `<wsdl:binding>` for its `<wsdl:operation name="X">` children
+/// and record each op's `<soap:operation soapAction="Y" />` value.
+/// Multi-binding WSDLs: first binding wins (matches the parser's
+/// existing "first port" heuristic). The `<soap:operation>` element
+/// shares its local name with `<wsdl:operation>` — the two are only
+/// distinguishable by XML namespace, which this parser doesn't
+/// track. Scope-context disambiguates: `<soap:operation>` only
+/// appears inside a `<wsdl:operation>`, so `current_op` guards
+/// which one this Start belongs to.
+///
+/// A depth counter is used for the outer `</binding>` sentinel
+/// because a non-self-closing `<soap:binding>` inside would
+/// otherwise emit an `End(binding)` that looks identical.
+fn parse_binding(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<(), XtrError> {
+    if state.binding_captured {
+        skip_element(reader)?;
+        return Ok(());
+    }
+    state.binding_captured = true;
+    let mut current_op: Option<String> = None;
+    let mut depth: usize = 1; // outer <wsdl:binding> Start was already consumed.
+    loop {
+        match reader.read_event() {
+            Ok(Event::Start(e)) => {
+                depth += 1;
+                if local_name(&e).as_str() == "operation" {
+                    if current_op.is_none() {
+                        // Outer <wsdl:operation name="X"> — remember X.
+                        if let Some(op_name) = attr_local(&e, "name") {
+                            current_op = Some(op_name);
+                        }
+                    } else if let Some(op) = current_op.as_ref() {
+                        // Inner <soap:operation> — capture soapAction.
+                        if let Some(action) = attr_local(&e, "soapAction") {
+                            state.binding_actions.insert(op.clone(), action);
+                        }
+                    }
+                }
+            }
+            Ok(Event::Empty(e)) => {
+                // Self-closing — no depth change.
+                if local_name(&e) == "operation" && current_op.is_some() {
+                    if let (Some(op), Some(action)) =
+                        (current_op.as_ref(), attr_local(&e, "soapAction"))
+                    {
+                        state.binding_actions.insert(op.clone(), action);
+                    }
+                }
+            }
+            Ok(Event::End(e)) => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Ok(());
+                }
+                // The `</wsdl:operation>` that closes the outer op
+                // is at depth == 1 (siblings of the binding-level
+                // children). Clear current_op there so the next
+                // outer op starts fresh.
+                if depth == 1 && local_name_end(&e).as_str() == "operation" {
+                    current_op = None;
+                }
+            }
+            Ok(Event::Eof) => {
+                return Err(XtrError::Internal(
+                    "unexpected EOF inside <wsdl:binding>".into(),
+                ));
+            }
+            Ok(_) => {}
+            Err(e) => return Err(XtrError::Internal(format!("WSDL parse error: {e}"))),
+        }
+    }
+}
+
 fn parse_service(reader: &mut Reader<&[u8]>, state: &mut ParseState) -> Result<(), XtrError> {
     loop {
         match reader.read_event() {
@@ -1168,6 +1260,168 @@ mod tests {
             w.operations[0].input_element.kind,
             ElementKind::Scalar
         ));
+    }
+
+    #[test]
+    fn soap_action_captured_from_binding() {
+        // Standard SOAP 1.1 binding: `<soap:operation soapAction=".."/>`
+        // inside a `<wsdl:operation>` inside `<wsdl:binding>`. The
+        // parser should attach the value to the matching op.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction="DoStuff_Request"/>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations.len(), 1);
+        assert_eq!(
+            w.operations[0].soap_action.as_deref(),
+            Some("DoStuff_Request")
+        );
+    }
+
+    #[test]
+    fn soap_action_absent_when_no_binding() {
+        // portType-only WSDL — no <wsdl:binding> at all. Op should
+        // land with soap_action == None (nothing to emit).
+        let w = parse(MINIMAL_WSDL).unwrap();
+        assert_eq!(w.operations[0].soap_action, None);
+    }
+
+    #[test]
+    fn soap_action_empty_string_captured_as_some_empty() {
+        // SOAP 1.1 §6.1.1: empty soapAction means "intent provided
+        // by other means" — a real value, not equivalent to omitting
+        // the attribute. Preserve Some("") so the generator can
+        // emit `soap_action: ""` if the WSDL author wrote it.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction=""/>
+    </wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations[0].soap_action.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn soap_action_absent_when_binding_has_no_soap_operation() {
+        // <wsdl:binding> present but the inner <wsdl:operation>
+        // doesn't wrap a <soap:operation soapAction=...>. Legal
+        // (e.g. HTTP-binding WSDLs); op should stay soap_action=None.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <wsdl:operation name="doStuff">
+      <wsdl:input/>
+    </wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations[0].soap_action, None);
+    }
+
+    #[test]
+    fn first_binding_wins_when_multiple() {
+        // Multi-binding WSDLs are rare but legal. Match the parser's
+        // "first port" heuristic: first binding populates soap_action,
+        // second is skipped even if it declares a different value.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="first" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction="FromFirst"/>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="second" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction="FromSecond"/>
+    </wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(w.operations[0].soap_action.as_deref(), Some("FromFirst"));
+    }
+
+    #[test]
+    fn soap_action_captured_when_soap_operation_is_non_self_closing() {
+        // Some WSDL authors write `<soap:operation soapAction=".."></soap:operation>`
+        // instead of self-closing. Same result should land in the map.
+        let xml = r#"<?xml version="1.0"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:tns="http://ex/" targetNamespace="http://ex/">
+  <wsdl:types><xsd:schema targetNamespace="http://ex/">
+    <xsd:element name="e" type="xsd:string"/>
+  </xsd:schema></wsdl:types>
+  <wsdl:message name="m"><wsdl:part name="p" element="tns:e"/></wsdl:message>
+  <wsdl:portType name="pt">
+    <wsdl:operation name="doStuff"><wsdl:input message="tns:m"/></wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="b" type="tns:pt">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"></soap:binding>
+    <wsdl:operation name="doStuff">
+      <soap:operation soapAction="NonSelfClosing"></soap:operation>
+      <wsdl:input><soap:body use="literal"/></wsdl:input>
+    </wsdl:operation>
+  </wsdl:binding>
+</wsdl:definitions>"#;
+        let w = parse(xml).unwrap();
+        assert_eq!(
+            w.operations[0].soap_action.as_deref(),
+            Some("NonSelfClosing")
+        );
     }
 
     #[test]

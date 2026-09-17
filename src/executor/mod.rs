@@ -139,7 +139,11 @@ impl Executor {
             return Err(XtrError::OfflineMode);
         }
         match &template.service {
-            Some(uri) => self.plain.execute(uri, method, envelope).await,
+            Some(uri) => {
+                self.plain
+                    .execute(uri, method, envelope, template.soap_action.as_deref())
+                    .await
+            }
             None => {
                 let server = self.security_server.as_ref().ok_or_else(|| {
                     XtrError::Internal(

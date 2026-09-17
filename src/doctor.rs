@@ -87,6 +87,7 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_wsdl_watch_dir_writable_rootfs(cfg, &mut findings);
     check_no_caller_auth(&mut findings);
     check_offline_mode(&mut findings);
+    check_soap_action_missing(cfg, &mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
 }
@@ -194,6 +195,80 @@ fn check_offline_mode(out: &mut Vec<Finding>) {
         });
     }
 }
+/// Plain-HTTPS SOAP DSLs that don't declare `soap_action:` will
+/// silently omit the SOAPAction HTTP header. SOAP 1.1 §6.1.1
+/// requires it on every request, and strict servers (some .NET
+/// stacks, some Java `WEB-INF/web.xml`-gated services, the
+/// Apache CXF strict-mode config) reject calls that omit it or
+/// use it for operation dispatch. Not FATAL/WEAK because tolerant
+/// upstreams exist and empty is spec-legal ("intent by other
+/// means"); INFO surfaces the coverage gap so operators know
+/// where to look if a call comes back opaque 500 or wrong-op.
+///
+/// Silent for Security-Server-routed DSLs — X-Road dispatches on
+/// its own headers and the executor doesn't forward `soap_action`.
+fn check_soap_action_missing(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let services = match crate::dsl::loader::load_all(&cfg.dsl_path) {
+        Ok(m) => m,
+        Err(_) => return,
+    };
+    let mut missing: Vec<String> = Vec::new();
+    for ((group, service), tpl) in services.iter() {
+        let crate::dsl::TemplateKind::Soap(soap) = &tpl.kind else {
+            continue;
+        };
+        if soap.service.is_none() {
+            continue; // Security-Server-routed — not our lane.
+        }
+        let has_action = soap.soap_action.as_deref().is_some_and(|s| !s.is_empty());
+        if !has_action {
+            missing.push(format!("{group}/{service}"));
+        }
+    }
+    if missing.is_empty() {
+        return;
+    }
+    missing.sort();
+    let sample = missing
+        .iter()
+        .take(5)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    let list_hint = if missing.len() > 5 {
+        format!("{sample}, +{} more", missing.len() - 5)
+    } else {
+        sample
+    };
+    out.push(Finding {
+        severity: Severity::Info,
+        code: "info-soap-action-missing".into(),
+        field: Some("dsl:*.soap_action".into()),
+        headline: format!(
+            "{} plain-HTTPS SOAP DSL(s) do not declare soap_action:",
+            missing.len()
+        ),
+        rationale: format!(
+            "SOAP 1.1 §6.1.1 requires the SOAPAction HTTP header on\n\
+             every request; strict servers reject calls that omit it\n\
+             or use it for operation dispatch. Tolerant upstreams\n\
+             accept the missing header, which is why this is INFO\n\
+             rather than WEAK — but a strict upstream will fail with\n\
+             an opaque HTTP 500 or dispatch to the wrong operation,\n\
+             both hard to diagnose from the caller side.\n\
+             Affected DSLs: {list_hint}."
+        ),
+        recovery: Some(
+            "If the WSDL declares soapAction on the binding, regenerate\n\
+             DSLs from the WSDL — the generator emits soap_action:\n\
+             automatically. Otherwise add it by hand:\n\n  \
+             soap_action: <value from the WSDL binding>\n\n\
+             See book/src/getting-started.md → soap_action field."
+                .into(),
+        ),
+    });
+}
+
 /// Format a `Vec<Finding>` for human consumption. Groups by
 /// severity, orders FATAL → BREAK → WEAK → INFO, and prints a
 /// trailing summary line with counts.
@@ -1074,6 +1149,98 @@ mod tests {
             &findings,
             "weak-writable-rootfs-wsdl-folder-drop"
         ));
+    }
+
+    fn write_soap_dsl(dir: &std::path::Path, group: &str, service: &str, yaml: &str) {
+        let d = dir.join(group);
+        std::fs::create_dir_all(&d).unwrap();
+        std::fs::write(d.join(format!("{service}.yml")), yaml).unwrap();
+    }
+
+    #[test]
+    fn soap_action_missing_fires_info_when_plain_https_dsl_omits_it() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_soap_dsl(
+            tmp.path(),
+            "ar",
+            "lookup",
+            "params: []\nservice: https://example.org/svc\nmethod: POST\nenvelope: <x/>\n",
+        );
+        // wsdl_watch_dir: None disables the shipping-posture WEAK
+        // (weak-writable-rootfs-wsdl-folder-drop) so this test can
+        // isolate the INFO-severity contract without noise.
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            wsdl_watch_dir: None,
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        let f = findings
+            .iter()
+            .find(|f| f.code == "info-soap-action-missing")
+            .expect("info-soap-action-missing should fire");
+        // Contract: INFO severity — surfaces the gap without ever
+        // failing --strict, because tolerant upstreams exist and
+        // there is no config change that suppresses it in the
+        // shipped posture.
+        assert_eq!(f.severity, Severity::Info);
+    }
+
+    #[test]
+    fn soap_action_missing_does_not_fire_when_declared() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_soap_dsl(
+            tmp.path(),
+            "ar",
+            "lookup",
+            "params: []\nservice: https://example.org/svc\nmethod: POST\nsoap_action: DoStuff\nenvelope: <x/>\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(!has_code(&findings, "info-soap-action-missing"));
+    }
+
+    #[test]
+    fn soap_action_missing_does_not_fire_for_security_server_routed_dsl() {
+        // No `service:` → X-Road-routed. Executor ignores
+        // soap_action, so its absence is not a coverage gap.
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_soap_dsl(
+            tmp.path(),
+            "ar",
+            "lookup",
+            "params: []\nmethod: POST\nenvelope: <x/>\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(!has_code(&findings, "info-soap-action-missing"));
+    }
+
+    #[test]
+    fn soap_action_missing_fires_when_value_is_empty_string() {
+        // Explicit `soap_action: ""` is spec-legal (intent by other
+        // means) but the executor's absent-header path is equivalent
+        // and doesn't help strict-mode servers. Treat empty as
+        // "missing" for the doctor's purposes.
+        let tmp = tempfile::TempDir::new().unwrap();
+        write_soap_dsl(
+            tmp.path(),
+            "ar",
+            "lookup",
+            "params: []\nservice: https://example.org/svc\nmethod: POST\nsoap_action: \"\"\nenvelope: <x/>\n",
+        );
+        let cfg = AppConfig {
+            dsl_path: tmp.path().to_path_buf(),
+            ..Default::default()
+        };
+        let findings = run(&cfg, None);
+        assert!(has_code(&findings, "info-soap-action-missing"));
     }
 
     #[test]
