@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Schema-aware SOAP lanes — XTR in both directions from one WSDL.**
+  A `<name>.soap.yaml` sidecar next to a WSDL enables an **inbound**
+  SOAP 1.1 provider endpoint (`POST /soap-in/<group>/<name>`: SOAP →
+  JSON backend → SOAP, `?wsdl`, local XSDs) and/or a schema-aware
+  **outbound** client (`POST /soap-out/<group>/<name>/<operation>`:
+  JSON → SOAP → JSON, own PKCS#12 client certificate or the Security
+  Server identity, optional X-Road header). Shared XML ⇄ JSON codec
+  understands attributes (`@name`), repeated elements, `xs:choice`,
+  `extension`, per-element namespaces. Inbound passes the X-Road SOAP
+  header to the backend as `X-Road-Client` / `X-Road-Service` /
+  `X-Road-Id` / `X-Road-UserId`; `request_pointer` / `response_pointer`
+  / `response_wrap` adapt X-Road v4 `<request>`/`<response>` shapes to
+  existing REST/JSON flows. Backend 5xx messages stay out of SOAP
+  faults unless `expose_soap_fault_detail`; XML-forbidden characters
+  from the backend become U+FFFD; `@xml*` attribute keys are dropped.
+  New config: `inbound.wsdl_dir`,
+  `inbound.public_base_url`, `inbound.port` (separate peer-facing
+  listener). Opt-in; nothing changes without a `.soap.yaml`. See
+  `book/src/soap-lanes.md`.
+- **Loud failure for SOAP-lane configuration.** A WSDL with a
+  `.soap.yaml` is validated strictly at boot (sidecar schema, backend
+  URLs, JSON Pointers, WSDL usability, outbound target / keystore /
+  password env / CA file, Security Server target without
+  `xroad_service` or with sidecar `keystore_path` / `trust_ca_path`
+  that route would ignore, endpoint-name and XSD-URL collisions, missing
+  or unparsable local includes, unresolved types used by operations):
+  any problem stops boot with the full list. `dsl: false` retires DSLs
+  previously generated from that WSDL, identified by a new
+  `# source: <wsdl>` header line in generated DSLs; two WSDLs of a group
+  generating the same DSL file now log a WARN (later one still wins). WSDLs
+  without a sidecar keep the lenient folder-drop behaviour. The same
+  static check backs five new doctor rules:
+  `fatal-soap-sidecar-invalid`, `fatal-soap-outbound-invalid`,
+  `fatal-soap-lanes-shared-listener-no-token` (inbound lane on the main
+  listener next to `/soap-out/` lanes or DSL endpoints without a token —
+  boot is also refused), `weak-soap-inbound-shared-listener`,
+  `weak-soap-inbound-op-without-backend`. The doctor never opens a
+  keystore.
+- `examples/soap-lanes/` — runnable demo (synthetic X-Road v4
+  `PersonCheck` contract, stand-in REST backend) behind every
+  sample in `book/src/soap-lanes.md`. Dockerfile `EXPOSE 8081` and
+  commented `inbound.port` examples in `docker-compose.yml` / `xtr.yaml`.
+
+### Not included
+- XSD validation of SOAP payloads; `/soap-*` routes in `GET /api`;
+  peer-specific message profiles on top of SOAP (async callbacks,
+  business-level correlation).
+
 ## [0.4.3-rc] - 2026-09-18
 
 Closes the four "genuinely open" residuals from
@@ -950,7 +999,9 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...HEAD
+[0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
+[0.4.2-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...v0.4.2-rc
 [0.4.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.0-rc...v0.4.1-rc
 [0.4.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...v0.4.0-rc
 [0.3.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.3.0-rc

@@ -38,6 +38,8 @@ COPY wsdl /app/wsdl
 COPY DSL /app/DSL
 
 EXPOSE 8080
+# Optional peer-facing listener for the inbound SOAP lane (`inbound.port`).
+EXPOSE 8081
 RUN useradd -m -u 1000 xtr && chown -R xtr:xtr /app
 USER xtr
 

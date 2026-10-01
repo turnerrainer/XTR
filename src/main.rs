@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 use xtr_on_rust::{
-    config::AppConfig, doctor, dsl::loader, executor::Executor, openapi, router, wsdl,
+    config::AppConfig, doctor, dsl::loader, executor::Executor, inbound, openapi, router, wsdl,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -171,10 +171,57 @@ async fn serve_inner() -> anyhow::Result<()> {
         inter_service_token,
     };
 
-    let app = router::build(state);
+    // Schema-aware SOAP lanes: WSDLs with a `.soap.yaml` sidecar get
+    // an inbound provider endpoint (/soap-in/…) and/or a JSON outbound
+    // endpoint (/soap-out/…).
+    let soap_dir = cfg
+        .inbound
+        .wsdl_dir
+        .clone()
+        .or_else(|| cfg.wsdl_watch_dir.clone());
+    let registry = inbound::load_all(soap_dir.as_deref(), &cfg).map_err(anyhow::Error::msg)?;
+    let inbound_port = cfg.inbound.port.filter(|p| *p != cfg.port);
+    if let Some(msg) = inbound::exposure_error(
+        registry.summary(),
+        state.services.len(),
+        inbound_port.is_some(),
+        state.inter_service_token.is_some(),
+    ) {
+        anyhow::bail!(msg);
+    }
+    let (main_extra, isolated) = if registry.is_empty() {
+        (None, None)
+    } else {
+        tracing::info!("schema-aware SOAP lanes: {} WSDL(s)", registry.len());
+        let lane = inbound::handler::LaneState::new(
+            registry,
+            state.cfg.clone(),
+            state.executor.is_offline(),
+            state.inter_service_token.clone(),
+        )?;
+        let inbound_routes = inbound::handler::inbound_router(lane.clone());
+        let outbound_routes = inbound::handler::outbound_router(lane);
+        match inbound_port {
+            Some(p) => (
+                Some(outbound_routes),
+                Some((p, router::build_isolated(state.clone(), inbound_routes))),
+            ),
+            None => (Some(outbound_routes.merge(inbound_routes)), None),
+        }
+    };
+    let app = router::build_with(state, main_extra);
     let addr = format!("0.0.0.0:{}", cfg.port);
     tracing::info!("listening on {}", addr);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
+    // One shutdown signal fans out to every listener.
+    let (stop_tx, stop_rx) = tokio::sync::watch::channel(false);
+    tokio::spawn(async move {
+        shutdown_signal().await;
+        let _ = stop_tx.send(true);
+    });
+    let stopped = |mut rx: tokio::sync::watch::Receiver<bool>| async move {
+        let _ = rx.changed().await;
+    };
     // Fleet stronghold — graceful shutdown on SIGTERM / SIGINT.
     // axum stops accepting new connections and awaits every
     // in-flight future before returning. The handler-level
@@ -183,9 +230,21 @@ async fn serve_inner() -> anyhow::Result<()> {
     // (30s) comfortably covers it. Without this, SIGTERM kills the
     // process mid-request → mTLS-attributed calls left in an
     // indeterminate state upstream. Traced from h2ck.me T-20.
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    let main_server = axum::serve(listener, app).with_graceful_shutdown(stopped(stop_rx.clone()));
+    match isolated {
+        None => main_server.await?,
+        Some((port, inbound_app)) => {
+            let inbound_addr = format!("0.0.0.0:{port}");
+            tracing::info!(
+                "inbound SOAP lane (/soap-in/) listening on {}",
+                inbound_addr
+            );
+            let inbound_listener = tokio::net::TcpListener::bind(&inbound_addr).await?;
+            let inbound_server =
+                axum::serve(inbound_listener, inbound_app).with_graceful_shutdown(stopped(stop_rx));
+            tokio::try_join!(async { main_server.await }, async { inbound_server.await })?;
+        }
+    }
     tracing::info!("shutdown complete");
     Ok(())
 }

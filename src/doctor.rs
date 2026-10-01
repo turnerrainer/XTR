@@ -89,8 +89,151 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_offline_mode(&mut findings);
     check_soap_action_missing(cfg, &mut findings);
     check_inter_service_token(&mut findings);
+    check_soap_lanes_exposure(cfg, &mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
+}
+
+/// Schema-aware SOAP lanes (`.soap.yaml` sidecars). `/soap-in/` must be
+/// reachable by the SOAP peer network (Security Server, other SOAP peers);
+/// `/soap-out/` and `/:group/:service` must not — they make XTR act with
+/// its own identity. Reads sidecars only (no keystores, no clients).
+fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let dir = cfg
+        .inbound
+        .wsdl_dir
+        .clone()
+        .or_else(|| cfg.wsdl_watch_dir.clone());
+    let check = crate::inbound::check_all(dir.as_deref(), cfg);
+    for p in &check.problems {
+        use crate::inbound::ProblemKind;
+        let (severity, code, headline, rationale) = match p.kind {
+            ProblemKind::SidecarInvalid => (
+                Severity::Fatal,
+                "fatal-soap-sidecar-invalid",
+                "A .soap.yaml sidecar or its WSDL is unusable — XTR refuses to boot",
+                "Sidecars are explicit opt-in config: a typo (unknown field,\n\
+                 bad backend URL, WSDL without a SOAP 1.1 binding or without\n\
+                 resolvable operations, sidecar without a WSDL next to it)\n\
+                 must not silently drop a published SOAP service.",
+            ),
+            ProblemKind::OutboundInvalid => (
+                Severity::Fatal,
+                "fatal-soap-outbound-invalid",
+                "An `outbound:` lane cannot work — XTR refuses to boot",
+                "Target URL rejected by the URL guard, keystore or CA file\n\
+                 missing, keystore password env var unset, or the target is the\n\
+                 Security Server (TURVASERVER address) without\n\
+                 `outbound.xroad_service`.",
+            ),
+            ProblemKind::InboundOpWithoutBackend => (
+                Severity::Weak,
+                "weak-soap-inbound-op-without-backend",
+                "An inbound WSDL operation has no backend",
+                "The operation is published (it is in the WSDL) but every call\n\
+                 gets a SOAP Server fault. Map it or accept the fault.",
+            ),
+        };
+        out.push(Finding {
+            severity,
+            code: code.into(),
+            field: Some(p.file.display().to_string()),
+            headline: headline.into(),
+            rationale: format!("{rationale}\n\nDetail: {}", p.message),
+            recovery: Some(
+                "See book/src/soap-lanes.md for the sidecar reference, fix the\n\
+                 file named in `field`, then re-run `xtr-on-rust doctor`."
+                    .into(),
+            ),
+        });
+    }
+    let sum = check.summary;
+    if sum.inbound == 0 {
+        return;
+    }
+    let separate = cfg.inbound.port.filter(|p| *p != cfg.port).is_some();
+    // DSL endpoints call out with XTR's identity too: those on disk now
+    // plus those boot will generate from WSDLs without `dsl: false`.
+    let dsl_on_disk = crate::dsl::loader::load_all(&cfg.dsl_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let dsl_pending = cfg
+        .wsdl_watch_dir
+        .as_deref()
+        .map(count_dsl_generating_wsdls)
+        .unwrap_or(0);
+    let dsl_endpoints = dsl_on_disk + dsl_pending;
+    let token = std::env::var("XTR_INTER_SERVICE_TOKEN")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+    let recovery = Some(
+        "Give the inbound lane its own listener and expose only that port\n\
+         to the SOAP peer network:\n\
+         \n  \
+         inbound:\n    \
+         port: 8081          # /soap-in/… + /health only\n\
+         \n\
+         and/or gate the outbound lane:\n\
+         \n  \
+         export XTR_INTER_SERVICE_TOKEN=$(openssl rand -hex 32)"
+            .into(),
+    );
+    if let Some(msg) = crate::inbound::exposure_error(sum, dsl_endpoints, separate, token) {
+        out.push(Finding {
+            severity: Severity::Fatal,
+            code: "fatal-soap-lanes-shared-listener-no-token".into(),
+            field: Some("inbound.port".into()),
+            headline:
+                "SOAP inbound + outbound on one listener without a token — XTR refuses to boot"
+                    .into(),
+            rationale: format!(
+                "Inbound SOAP endpoints must be reachable by the peer network,\n\
+                 which cannot send bearer tokens. Everything else on that\n\
+                 listener that calls out with XTR's identity — /soap-out/ lanes\n\
+                 and DSL endpoints on /:group/:service — would be reachable too.\n\
+                 \nDetail: {msg}"
+            ),
+            recovery,
+        });
+    } else if !separate {
+        out.push(Finding {
+            severity: Severity::Weak,
+            code: "weak-soap-inbound-shared-listener".into(),
+            field: Some("inbound.port".into()),
+            headline: "Inbound SOAP lane shares the main listener".into(),
+            rationale: "Exposing /soap-in/ to the peer network then relies on a\n\
+                        path-based ingress rule to keep /:group/:service, /api and\n\
+                        /soap-out/ private. A dedicated inbound port makes the\n\
+                        separation structural instead of a routing-rule detail."
+                .into(),
+            recovery,
+        });
+    }
+}
+
+/// WSDLs under the watch dir that boot will turn into DSL endpoints
+/// (every `*.wsdl` unless its `.soap.yaml` says `dsl: false`).
+fn count_dsl_generating_wsdls(dir: &Path) -> usize {
+    let mut n = 0;
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&d) else {
+            continue;
+        };
+        for p in rd.flatten().map(|e| e.path()) {
+            if p.is_dir() {
+                stack.push(p);
+            } else if p
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("wsdl"))
+                && !crate::inbound::dsl_disabled(&p)
+            {
+                n += 1;
+            }
+        }
+    }
+    n
 }
 
 /// Audit RUNTIME v1 FN4 — WSDL folder-drop needs a writable DSL
@@ -974,6 +1117,259 @@ mod tests {
         assert!(
             fatal.is_empty(),
             "defaults should not trip any FATAL: {fatal:?}"
+        );
+    }
+
+    fn soap_lane_dir(inbound: bool, outbound: bool) -> tempfile::TempDir {
+        let d = tempfile::TempDir::new().unwrap();
+        std::fs::create_dir_all(d.path().join("g")).unwrap();
+        let mut sc = String::from("dsl: false\n");
+        if inbound {
+            sc.push_str("inbound:\n  backend: http://b\n");
+        }
+        if outbound {
+            sc.push_str("outbound:\n  url: https://peer\n");
+        }
+        std::fs::write(d.path().join("g/s.soap.yaml"), sc).unwrap();
+        std::fs::write(d.path().join("g/s.wsdl"), MIN_WSDL).unwrap();
+        d
+    }
+
+    #[test]
+    fn soap_lanes_shared_listener_without_token_is_fatal() {
+        // SAFETY: test-local env mutation; XTR_INTER_SERVICE_TOKEN is not
+        // read concurrently by other tests in this module.
+        unsafe { std::env::remove_var("XTR_INTER_SERVICE_TOKEN") };
+        let d = soap_lane_dir(true, true);
+        let mut cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            dsl_path: d.path().join("no-dsl"),
+            ..Default::default()
+        };
+        assert!(has_code(
+            &run(&cfg, None),
+            "fatal-soap-lanes-shared-listener-no-token"
+        ));
+        cfg.inbound.port = Some(8081);
+        let f = run(&cfg, None);
+        assert!(!has_code(&f, "fatal-soap-lanes-shared-listener-no-token"));
+        assert!(!has_code(&f, "weak-soap-inbound-shared-listener"));
+    }
+
+    fn soap_dir_with(files: &[(&str, &str)]) -> tempfile::TempDir {
+        let d = tempfile::TempDir::new().unwrap();
+        for (name, body) in files {
+            let p = d.path().join(name);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, body).unwrap();
+        }
+        d
+    }
+
+    const MIN_WSDL: &str = r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:t" targetNamespace="urn:t">
+      <wsdl:types><xs:schema targetNamespace="urn:t"><xs:element name="Q" type="xs:string"/></xs:schema></wsdl:types>
+      <wsdl:message name="M"><wsdl:part name="p" element="t:Q"/></wsdl:message>
+      <wsdl:portType name="P"><wsdl:operation name="Op"><wsdl:input message="t:M"/></wsdl:operation></wsdl:portType>
+      <wsdl:binding name="B" type="t:P"><soap:binding transport="http://schemas.xmlsoap.org/soap/http"/></wsdl:binding>
+      <wsdl:service name="S"><wsdl:port name="p" binding="t:B"><soap:address location="http://TURVASERVER/x"/></wsdl:port></wsdl:service>
+    </wsdl:definitions>"#;
+
+    #[test]
+    fn soap_sidecar_with_typo_or_without_wsdl_is_fatal() {
+        let d = soap_dir_with(&[
+            ("g/a.wsdl", MIN_WSDL),
+            (
+                "g/a.soap.yaml",
+                "inbound:\n  backend: http://b\n  bakend_typo: 1\n",
+            ),
+            ("g/orphan.soap.yaml", "inbound:\n  backend: http://b\n"),
+        ]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        let n = f
+            .iter()
+            .filter(|x| x.code == "fatal-soap-sidecar-invalid")
+            .count();
+        assert_eq!(n, 2, "{f:#?}");
+        assert!(
+            crate::inbound::load_all(Some(d.path()), &cfg).is_err(),
+            "boot refused"
+        );
+    }
+
+    #[test]
+    fn soap_endpoint_name_collision_is_fatal() {
+        let d = soap_dir_with(&[
+            ("g/a/x.wsdl", MIN_WSDL),
+            ("g/a/x.soap.yaml", "inbound:\n  backend: http://b\n"),
+            ("g/a-x.wsdl", MIN_WSDL),
+            ("g/a-x.soap.yaml", "inbound:\n  backend: http://b\n"),
+        ]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        let hits: Vec<_> = f
+            .iter()
+            .filter(|x| x.code == "fatal-soap-sidecar-invalid")
+            .collect();
+        assert_eq!(hits.len(), 1, "{f:#?}");
+        assert!(
+            hits[0].rationale.contains("already taken"),
+            "{:#?}",
+            hits[0]
+        );
+        assert!(crate::inbound::load_all(Some(d.path()), &cfg).is_err());
+    }
+
+    #[test]
+    fn soap_xsd_name_collision_within_a_group_is_fatal() {
+        let inc = |t: &str| {
+            format!(
+                r#"<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:t="urn:t" targetNamespace="urn:t">
+                <wsdl:types><xs:schema targetNamespace="urn:t"><xs:include schemaLocation="types.xsd"/><xs:element name="{t}" type="t:T"/></xs:schema></wsdl:types>
+                <wsdl:message name="M"><wsdl:part name="p" element="t:{t}"/></wsdl:message>
+                <wsdl:portType name="P"><wsdl:operation name="Op"><wsdl:input message="t:M"/></wsdl:operation></wsdl:portType>
+                <wsdl:binding name="B" type="t:P"><soap:binding transport="http://schemas.xmlsoap.org/soap/http"/></wsdl:binding>
+                </wsdl:definitions>"#
+            )
+        };
+        let xsd = |n: &str| {
+            format!(
+                r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:t"><xs:complexType name="T"><xs:sequence><xs:element name="{n}" type="xs:string"/></xs:sequence></xs:complexType></xs:schema>"#
+            )
+        };
+        let d = soap_dir_with(&[
+            ("g/a/x.wsdl", &inc("X")),
+            ("g/a/types.xsd", &xsd("one")),
+            (
+                "g/a/x.soap.yaml",
+                "dsl: false\ninbound:\n  backend: http://b\n",
+            ),
+            ("g/b/y.wsdl", &inc("Y")),
+            ("g/b/types.xsd", &xsd("two")),
+            (
+                "g/b/y.soap.yaml",
+                "dsl: false\ninbound:\n  backend: http://b\n",
+            ),
+        ]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        let hit = f
+            .iter()
+            .find(|x| x.code == "fatal-soap-sidecar-invalid")
+            .expect("collision finding");
+        assert!(hit.rationale.contains("/soap-in/g/types.xsd"), "{hit:#?}");
+        assert!(crate::inbound::load_all(Some(d.path()), &cfg).is_err());
+    }
+
+    #[test]
+    fn soap_outbound_to_security_server_without_xroad_service_is_fatal() {
+        let d = soap_dir_with(&[("g/a.wsdl", MIN_WSDL), ("g/a.soap.yaml", "outbound: {}\n")]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            ..Default::default()
+        };
+        assert!(has_code(&run(&cfg, None), "fatal-soap-outbound-invalid"));
+        let err = crate::inbound::load_all(Some(d.path()), &cfg).unwrap_err();
+        assert!(err.contains("no security_server is configured"), "{err}");
+    }
+
+    #[test]
+    fn soap_outbound_identity_fields_with_security_server_target_are_fatal() {
+        let d = soap_dir_with(&[
+            ("g/a.wsdl", MIN_WSDL),
+            (
+                "g/a.soap.yaml",
+                "outbound:\n  trust_ca_path: /etc/ssl/ca.pem\n  xroad_service:\n    member_class: GOV\n    member_code: \"1\"\n    subsystem_code: s\n",
+            ),
+        ]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            security_server: Some(crate::config::SecurityServer {
+                url: "https://ss.example:5500/".into(),
+                keystore_path: "/app/ssl/ss.p12".into(),
+                keystore_password_env: "XTR_KEYSTORE_PASSWORD".into(),
+                trust_ca_path: None,
+            }),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        let hit = f
+            .iter()
+            .find(|x| x.code == "fatal-soap-outbound-invalid")
+            .expect("finding");
+        assert!(hit.rationale.contains("are not used"), "{hit:#?}");
+    }
+
+    #[test]
+    fn soap_inbound_op_without_backend_is_weak_and_boots() {
+        let d = soap_dir_with(&[("g/a.wsdl", MIN_WSDL), ("g/a.soap.yaml", "inbound: {}\n")]);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            ..Default::default()
+        };
+        assert!(has_code(
+            &run(&cfg, None),
+            "weak-soap-inbound-op-without-backend"
+        ));
+        assert!(crate::inbound::load_all(Some(d.path()), &cfg).is_ok());
+    }
+
+    #[test]
+    fn soap_inbound_only_on_main_listener_is_weak() {
+        let d = soap_lane_dir(true, false);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            dsl_path: d.path().join("no-dsl"),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        assert!(has_code(&f, "weak-soap-inbound-shared-listener"));
+        assert!(!has_code(&f, "fatal-soap-lanes-shared-listener-no-token"));
+    }
+
+    #[test]
+    fn soap_inbound_next_to_dsl_endpoints_without_token_is_fatal() {
+        // SAFETY: see soap_lanes_shared_listener_without_token_is_fatal.
+        unsafe { std::env::remove_var("XTR_INTER_SERVICE_TOKEN") };
+        // Inbound only, but the main listener also serves DSL endpoints:
+        // the shipped DSL tree, and a WSDL that still generates DSLs.
+        let d = soap_lane_dir(true, false);
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            dsl_path: std::path::PathBuf::from("DSL"),
+            ..Default::default()
+        };
+        let f = run(&cfg, None);
+        let hit = f
+            .iter()
+            .find(|x| x.code == "fatal-soap-lanes-shared-listener-no-token")
+            .expect("shipped DSL endpoints must count");
+        assert!(hit.rationale.contains("DSL endpoint(s)"), "{hit:#?}");
+        std::fs::write(
+            d.path().join("g/s.soap.yaml"),
+            "inbound:\n  backend: http://b\n",
+        )
+        .unwrap();
+        let cfg = AppConfig {
+            wsdl_watch_dir: Some(d.path().to_path_buf()),
+            dsl_path: d.path().join("no-dsl"),
+            ..Default::default()
+        };
+        assert!(
+            has_code(
+                &run(&cfg, None),
+                "fatal-soap-lanes-shared-listener-no-token"
+            ),
+            "a WSDL with dsl defaulting to true will generate DSL endpoints"
         );
     }
 

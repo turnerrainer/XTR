@@ -133,6 +133,56 @@ When the upstream returns a SOAP Fault, XTR extracts `code` +
 The sanitisation applies **on both paths** — the flag controls
 detail visibility, not byte-transparent passthrough.
 
+## Schema-aware SOAP lanes
+
+Details: [Schema-aware SOAP lanes](./soap-lanes.md). Both lanes pass
+through the same middleware (security headers, access log, timeout).
+
+### Inbound — `/soap-in/<group>/<name>`
+
+Speaks SOAP 1.1 to SOAP clients; **every** error is a SOAP Fault, never
+the JSON error body.
+
+| Request | Status | Body |
+|---|---|---|
+| `POST`, operation with an output element | `200` | `text/xml; charset=utf-8` SOAP envelope; inbound `<Header>` children echoed |
+| `POST`, one-way operation (no output) | `202` | empty |
+| `POST`, malformed XML / `DOCTYPE` / not an Envelope / empty Body / unknown operation / `SOAPAction` mismatch | `500` | Fault `SOAP-ENV:Client` |
+| `POST`, SOAP 1.2 envelope | `500` | Fault `SOAP-ENV:VersionMismatch` |
+| `POST`, backend 4xx | `500` | Fault `SOAP-ENV:Client`, `faultstring` = backend `message`/`error` |
+| `POST`, backend 5xx | `500` | Fault `SOAP-ENV:Server`, `faultstring` = `backend returned HTTP <status>` (backend message only with `expose_soap_fault_detail`) |
+| `POST`, backend unreachable / timeout / no backend configured | `500` | Fault `SOAP-ENV:Server` |
+| `POST`, backend `{"fault": {…}}` | `500` | Fault with the backend's `code` / `string` / `detail` |
+| `POST`, body over `limits.max_request_bytes` | `413` | Fault `SOAP-ENV:Client` |
+| `POST`, no such service | `404` | Fault `SOAP-ENV:Client` |
+| `GET …?wsdl` | `200` | the WSDL, `soap:address` rewritten |
+| `GET /soap-in/<group>/<file>.xsd` | `200` / `404` | a local XSD the WSDL includes, else 404 |
+
+Fault shape (`faultstring` control characters → U+FFFD, max 400
+chars) — captured from the [runnable example](./soap-lanes.md#try-it)
+with the X-Road header removed:
+
+```console
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><SOAP-ENV:Fault><faultcode>SOAP-ENV:Client</faultcode><faultstring>backend returned HTTP 403: X-Road-Client header is missing or has invalid format</faultstring></SOAP-ENV:Fault></SOAP-ENV:Body></SOAP-ENV:Envelope>
+```
+
+### Outbound — `/soap-out/<group>/<name>/<operation>`
+
+JSON in, JSON out, regular [JSON error body](#json-error-body-shape).
+Gated by `XTR_INTER_SERVICE_TOKEN` when set (`401`).
+
+| Outcome | Status | Body |
+|---|---|---|
+| peer replied | `200` | `{"header": … \| null, "response": …}` |
+| peer replied with an empty 2xx (one-way) | `202` | `{"header": null, "response": null}` |
+| body not a JSON object | `400` | `invalid_json_body` |
+| unknown service / operation / no `outbound:` | `404` | `template_not_found` |
+| peer SOAP Fault | `502` | `upstream_soap_fault` (detail gated by `expose_soap_fault_detail`) |
+| peer non-2xx without Fault | `502` | `upstream_http_error` |
+| timeout | `504` | `upstream_timeout` |
+| `XTR_OFFLINE` | `599` | `xtr_offline` |
+
 ## Handler timeout (audit-v2 §6.2)
 
 Every request has a hard ceiling of

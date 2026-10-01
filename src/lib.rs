@@ -8,6 +8,7 @@ pub mod doctor;
 pub mod dsl;
 pub mod error;
 pub mod executor;
+pub mod inbound;
 pub mod openapi;
 pub mod router;
 pub mod translate;

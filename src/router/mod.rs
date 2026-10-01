@@ -46,17 +46,15 @@ pub struct AppState {
 }
 
 pub fn build(state: AppState) -> Router {
+    build_with(state, None)
+}
+
+/// Same as [`build`], plus extra routes (the inbound SOAP lane) that
+/// get the shared middleware stack — timeout, security headers,
+/// access log — exactly like the built-in routes.
+pub fn build_with(state: AppState, extra: Option<Router<AppState>>) -> Router {
     let limit = state.cfg.limits.max_request_bytes;
-    // Fleet stronghold §6.2 — cap the entire handler pipeline.
-    // The reqwest client already caps the OUTBOUND call at
-    // `limits.request_timeout_secs`; this layer caps the whole
-    // handler (parse + expand + upstream + translate) so a slow
-    // step other than the outbound can't hold a connection open
-    // forever. Add a small grace on top of the outbound budget
-    // so a legitimate slow-but-in-progress upstream isn't cut off
-    // by this layer before the reqwest timeout fires.
-    let handler_timeout = Duration::from_secs(state.cfg.limits.request_timeout_secs + 5);
-    Router::new()
+    let mut routes = Router::new()
         .route("/health", get(health))
         .route("/api", get(openapi))
         // A single `any` handler covers both SOAP (POST only) and
@@ -74,8 +72,34 @@ pub fn build(state: AppState) -> Router {
                     state.inter_service_token.clone(),
                     inter_service_token::apply,
                 )),
-        )
-        // Fleet stronghold §6.2 — cap the entire handler pipeline.
+        );
+    if let Some(extra) = extra {
+        routes = routes.merge(extra);
+    }
+    with_middleware(routes, state)
+}
+
+/// A listener that serves only `/health` + `extra` (the inbound SOAP
+/// lane on `inbound.port`) — none of `/api`, `/:group/:service`,
+/// `/soap-out/…` — with the same middleware stack as the main router.
+pub fn build_isolated(state: AppState, extra: Router<AppState>) -> Router {
+    with_middleware(
+        Router::new().route("/health", get(health)).merge(extra),
+        state,
+    )
+}
+
+fn with_middleware(routes: Router<AppState>, state: AppState) -> Router {
+    // Fleet stronghold §6.2 — cap the entire handler pipeline.
+    // The reqwest client already caps the OUTBOUND call at
+    // `limits.request_timeout_secs`; this layer caps the whole
+    // handler (parse + expand + upstream + translate) so a slow
+    // step other than the outbound can't hold a connection open
+    // forever. Add a small grace on top of the outbound budget
+    // so a legitimate slow-but-in-progress upstream isn't cut off
+    // by this layer before the reqwest timeout fires.
+    let handler_timeout = Duration::from_secs(state.cfg.limits.request_timeout_secs + 5);
+    routes
         // Innermost middleware layer so the timeout fires even if a
         // downstream layer holds the future.
         .layer(TimeoutLayer::with_status_code(

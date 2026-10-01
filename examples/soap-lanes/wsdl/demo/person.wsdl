@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic X-Road v4 (SOAP) provider contract, shaped like a real
+     PersonCheck service: unqualified schema, <request>/<response>
+     wrappers, X-Road headers in the binding. Example only. -->
+<wsdl:definitions name="demo" targetNamespace="http://demo.x-road.eu" xmlns:tns="http://demo.x-road.eu"
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:xrd="http://x-road.eu/xsd/xroad.xsd"
+    xmlns:id="http://x-road.eu/xsd/identifiers" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/">
+  <wsdl:types>
+    <xs:schema targetNamespace="http://demo.x-road.eu" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:import namespace="http://x-road.eu/xsd/xroad.xsd" schemaLocation="http://x-road.eu/xsd/xroad.xsd"/>
+      <xs:element name="PersonCheck"><xs:complexType><xs:sequence>
+        <xs:element name="request" type="tns:PersonCheckRequestType"/>
+      </xs:sequence></xs:complexType></xs:element>
+      <xs:element name="PersonCheckResponse"><xs:complexType><xs:sequence>
+        <xs:element name="request" type="tns:PersonCheckRequestType"/>
+        <xs:element name="response" type="tns:PersonCheckResponseType"/>
+      </xs:sequence></xs:complexType></xs:element>
+      <xs:complexType name="PersonCheckRequestType"><xs:sequence>
+        <xs:element name="personCode" type="xs:string"/>
+      </xs:sequence></xs:complexType>
+      <xs:complexType name="PersonCheckResponseType"><xs:sequence>
+        <xs:element name="checks"><xs:complexType><xs:sequence>
+          <xs:element name="item" minOccurs="0" maxOccurs="unbounded"><xs:complexType><xs:sequence>
+            <xs:element name="date" type="xs:dateTime"/>
+            <xs:element name="title" type="xs:string"/>
+          </xs:sequence></xs:complexType></xs:element>
+        </xs:sequence></xs:complexType></xs:element>
+      </xs:sequence></xs:complexType>
+    </xs:schema>
+  </wsdl:types>
+  <wsdl:message name="requestheader">
+    <wsdl:part name="client" element="xrd:client"/><wsdl:part name="service" element="xrd:service"/>
+    <wsdl:part name="userId" element="xrd:userId"/><wsdl:part name="id" element="xrd:id"/>
+    <wsdl:part name="protocolVersion" element="xrd:protocolVersion"/>
+  </wsdl:message>
+  <wsdl:message name="PersonCheckInputMessage"><wsdl:part name="body" element="tns:PersonCheck"/></wsdl:message>
+  <wsdl:message name="PersonCheckOutputMessage"><wsdl:part name="body" element="tns:PersonCheckResponse"/></wsdl:message>
+  <wsdl:portType name="demo_porttype">
+    <wsdl:operation name="PersonCheck">
+      <wsdl:input message="tns:PersonCheckInputMessage"/><wsdl:output message="tns:PersonCheckOutputMessage"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="demo_binding" type="tns:demo_porttype">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="PersonCheck">
+      <soap:operation soapAction=""/>
+      <xrd:version>v1</xrd:version>
+      <wsdl:input>
+        <soap:header message="tns:requestheader" part="client" use="literal"/>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output><soap:body use="literal"/></wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="demoService"><wsdl:port name="demoServicePort" binding="tns:demo_binding">
+    <soap:address location="http://TURVASERVER/cgi-bin/consumer_proxy"/>
+  </wsdl:port></wsdl:service>
+</wsdl:definitions>

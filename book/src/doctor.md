@@ -115,6 +115,19 @@ Every code the doctor can emit, grouped by area.
 | INFO | `info-no-caller-auth` | Always emitted. Reminder that XTR ships zero built-in caller authentication on `/:group/:service` — a reverse proxy or service mesh MUST gate the route in every deployment. Design property, not a fixable-in-config finding. |
 | INFO | `info-soap-action-missing` | One or more plain-HTTPS SOAP DSLs (`service:` set, no Security Server routing) omit `soap_action:`. SOAP 1.1 §6.1.1 requires the `SOAPAction` HTTP header on every request; strict servers reject calls that omit it. Not WEAK because tolerant upstreams exist. Fix by regenerating DSLs from a WSDL whose binding declares `<soap:operation soapAction="…"/>`, or add `soap_action:` by hand. |
 
+### Schema-aware SOAP lanes (`.soap.yaml`)
+
+See [Schema-aware SOAP lanes](./soap-lanes.md). The doctor validates
+sidecars statically — it never opens a keystore.
+
+| Severity | Code | Fires when |
+|---|---|---|
+| FATAL | `fatal-soap-sidecar-invalid` | A `<name>.soap.yaml` sidecar is unparseable (unknown field, bad backend URL, bad JSON Pointer), has no WSDL with the same name next to it, maps to an endpoint name another WSDL already uses (`g/a/x.wsdl` vs `g/a-x.wsdl`), would publish an XSD under a `/soap-in/<group>/<file>.xsd` URL another WSDL of the group uses for a different file, or its WSDL has no SOAP 1.1 binding / no resolvable operation / a missing or unparsable local `xs:include`/`xs:import` / a type or element used by an operation that no schema defines. **XTR refuses to boot** — a sidecar is explicit opt-in config, a typo must not silently drop a published service. |
+| FATAL | `fatal-soap-outbound-invalid` | An `outbound:` lane cannot work: target URL rejected by the URL guard, `keystore_path` / `trust_ca_path` missing, keystore password env var unset, or the target is the Security Server (WSDL address `TURVASERVER`) while `outbound.xroad_service` is unset, no `security_server` is configured, or `outbound.keystore_path` / `outbound.trust_ca_path` are set (that route uses the `security_server` identity — the sidecar values would be ignored). **XTR refuses to boot.** |
+| FATAL | `fatal-soap-lanes-shared-listener-no-token` | The inbound lane would share the main listener with endpoints that call out with XTR's identity — `/soap-out/` lanes or DSL endpoints on `/:group/:service` (on disk, or to be generated from WSDLs without `dsl: false`) — while `inbound.port` and `XTR_INTER_SERVICE_TOKEN` are unset. **XTR refuses to boot.** |
+| WEAK | `weak-soap-inbound-shared-listener` | Inbound lane served on the main listener (no `inbound.port`) — with a token set, or with no outbound endpoints there. Exposing `/soap-in/` then relies on an ingress path rule to keep `/:group/:service`, `/api`, `/soap-out/` private. |
+| WEAK | `weak-soap-inbound-op-without-backend` | An inbound WSDL operation has no backend (`inbound.backend` unset and no `inbound.operations.<op>`). The operation is published but every call gets a SOAP `Server` fault. |
+
 > **Upgrade note — `doctor --strict` exit code change in audit-v2.**
 >
 > The shipped `xtr.yaml` sets `wsdl_watch_dir: ./wsdl` to make

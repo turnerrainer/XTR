@@ -352,7 +352,7 @@ fn build_url(
 /// Percent-encode a single identifier segment for the URL or the
 /// X-Road-Client header. Empty input → empty output (validation
 /// happens elsewhere).
-fn pct(s: &str) -> String {
+pub(crate) fn pct(s: &str) -> String {
     utf8_percent_encode(s, &IDENTIFIER_ALLOWED).collect()
 }
 

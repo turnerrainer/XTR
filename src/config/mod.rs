@@ -85,6 +85,32 @@ pub struct AppConfig {
     /// Observability posture — currently just the `/api` gate.
     #[serde(default)]
     pub observability: Observability,
+
+    /// Schema-aware SOAP lanes (inbound provider + JSON outbound).
+    /// Enabled per WSDL by a `<name>.soap.yaml` sidecar — see
+    /// `src/inbound/mod.rs`.
+    #[serde(default)]
+    pub inbound: Inbound,
+}
+
+/// Schema-aware SOAP lane settings.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct Inbound {
+    /// Directory scanned for WSDLs with `.soap.yaml` sidecars. `None` →
+    /// `wsdl_watch_dir` (one folder, direction chosen per WSDL).
+    #[serde(default)]
+    pub wsdl_dir: Option<PathBuf>,
+    /// Public base URL written into `soap:address` of served WSDLs,
+    /// e.g. `https://demo.example.ee/xtr`. `None` → derived from
+    /// the request `Host` header (`http://<host>`).
+    #[serde(default)]
+    pub public_base_url: Option<String>,
+    /// Serve the inbound routes (`/soap-in/…` + `/health`) on this port
+    /// only, instead of the main `port`. Lets the ingress expose the
+    /// SOAP provider endpoint to the peer network without also exposing
+    /// `/soap-out/…` and `/:group/:service`.
+    #[serde(default)]
+    pub port: Option<u16>,
 }
 
 /// Observability / operator-visibility knobs. Kept as a nested
@@ -238,6 +264,7 @@ impl Default for AppConfig {
             wsdl: WsdlIngest::default(),
             expose_soap_fault_detail: false,
             observability: Observability::default(),
+            inbound: Inbound::default(),
         }
     }
 }

@@ -72,6 +72,12 @@ security_server:                         # X-Road Security Server routing (mTLS)
   # system trust store. Point at the CA bundle PEM.
   trust_ca_path: /app/ssl/xroad-ca.pem   # optional; PEM CA bundle
 
+inbound:                                 # schema-aware SOAP lanes (.soap.yaml sidecars)
+  # wsdl_dir: ./wsdl                     # default: wsdl_watch_dir
+  # public_base_url: https://xtr.example.ee   # soap:address in served ?wsdl
+  # port: 8081                           # separate listener for /soap-in/ only —
+                                         # expose THIS port to the SOAP peer network
+
 limits:                                  # resource ceilings
   max_request_bytes: 1048576             # 1 MiB inbound  → 413 on overflow
   max_response_bytes: 16777216           # 16 MiB upstream → 502 on overflow
@@ -122,6 +128,17 @@ consulted by SOAP and REST DSLs alike.
 | Field | Default | Lane | Purpose |
 |---|---|---|---|
 | `observability.expose_openapi` | `true` | Both | Audit-v2 F-XTR-1. When true, `GET /api` returns the auto-generated OpenAPI 3.1 spec. When false, `GET /api` returns 404 with a structured JSON body that does NOT enumerate any DSL group. Recommended `false` when XTR is reachable from untrusted networks (the spec is a service-discovery map for anyone planning an unauth probe of `/:group/:service`). |
+
+### Schema-aware SOAP lanes
+
+Per-WSDL settings live in `<name>.soap.yaml` next to the WSDL — see
+[Schema-aware SOAP lanes](./soap-lanes.md). Global settings:
+
+| Field | Default | Lane | Purpose |
+|---|---|---|---|
+| `inbound.wsdl_dir` | `wsdl_watch_dir` | SOAP lanes | Directory scanned for `*.wsdl` + `*.soap.yaml`. |
+| `inbound.public_base_url` | absent | Inbound | Base URL written into `soap:address` of `GET /soap-in/…?wsdl`. Absent → `<X-Forwarded-Proto or http>://<Host>`. |
+| `inbound.port` | absent | Inbound | Serve `/soap-in/…` (and `/health`) on this port **only**; the main `port` keeps `/:group/:service`, `/api`, `/soap-out/…`. Recommended whenever `/soap-in/` is exposed to a peer network. Without it, an inbound lane next to `/soap-out/` lanes or any DSL endpoint requires `XTR_INTER_SERVICE_TOKEN`, or boot is refused. |
 
 ### Security Server (mTLS)
 

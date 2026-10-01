@@ -1,7 +1,9 @@
 # Migrating XTR
 
-Three migration guides on this page:
+Four migration guides on this page:
 
+- **`0.4.3-rc → next (unreleased)`** (schema-aware SOAP lanes) —
+  additive; nothing changes without a `.soap.yaml` sidecar.
 - **`0.3.0-rc → 0.4.0-rc`** (audit-v2) — three small breaking
   changes on the response wire + a `doctor --strict` exit-code
   flip on the shipping posture. Read this first if you're
@@ -12,6 +14,57 @@ Three migration guides on this page:
   migration, retained as a canonical reference.
 
 ---
+
+## `0.4.3-rc` → next (unreleased)
+
+Additive only — nothing changes unless a WSDL gets a
+`<name>.soap.yaml` sidecar. Operator recipe:
+`book/src/soap-lanes.md`.
+
+### New config fields (opt-in)
+
+```yaml
+inbound:
+  wsdl_dir: ./wsdl                 # default: wsdl_watch_dir
+  public_base_url: https://xtr.example.ee   # soap:address in served WSDLs
+  port: 8081                       # separate peer-facing listener for /soap-in/
+```
+
+### New doctor rules
+
+| Sev | Code | Fires when |
+|---|---|---|
+| FATAL | `fatal-soap-sidecar-invalid` | Invalid `.soap.yaml`; WSDL unusable (no SOAP 1.1 binding, missing/unparsable local include, unresolved type used by an operation); sidecar without WSDL; endpoint or XSD URL collision. Boot refused. |
+| FATAL | `fatal-soap-outbound-invalid` | `outbound:` cannot work (URL guard, keystore/CA file, password env, Security Server target without `xroad_service` or with sidecar `keystore_path`/`trust_ca_path`). Boot refused. |
+| FATAL | `fatal-soap-lanes-shared-listener-no-token` | Inbound lane on the main listener next to `/soap-out/` lanes or DSL endpoints (`/:group/:service`), no `inbound.port`, no `XTR_INTER_SERVICE_TOKEN`. Boot refused. |
+| WEAK | `weak-soap-inbound-shared-listener` | Inbound lane on the main listener (no `inbound.port`). |
+| WEAK | `weak-soap-inbound-op-without-backend` | Inbound operation without a backend — calls get a SOAP fault. |
+
+### Boot behaviour
+
+A WSDL **with** a `.soap.yaml` is validated strictly: any FATAL above
+stops boot with the full list of problems. WSDLs without a sidecar keep
+the lenient legacy behaviour (a broken WSDL becomes missing DSL
+endpoints, XTR still boots). `dsl: false` removes DSLs previously
+generated from that WSDL, identified by the new `# source:` header line
+(hand-written files and other WSDLs' files are kept).
+
+### Generated DSL header
+
+Generated DSLs gain a second header line `# source: <wsdl path>`. Tools
+that only check the first line (the marker) are unaffected. Two WSDLs of
+one group generating the same file now log a WARN at boot (behaviour is
+unchanged — the later WSDL wins); the shipped `maa-amet` corpus has five
+such pairs.
+
+### Rollback
+
+Older versions ignore the `inbound:` block in `xtr.yaml` and the
+`.soap.yaml` sidecars silently (unknown config keys are not rejected,
+sidecars are not read): `/soap-in/` and `/soap-out/` disappear, the
+second listener on `inbound.port` is not opened, and WSDLs with
+`dsl: false` start generating Handlebars DSLs again. Remove those
+files, or keep them — no boot failure either way.
 
 ## `0.3.0-rc` → `0.4.0-rc`
 
