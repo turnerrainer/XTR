@@ -5,7 +5,187 @@ All notable changes to XTR-on-Rust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0-rc] - 2026-10-05
+
+Fifth minor release. Adds schema-aware SOAP lanes — a `.soap.yaml`
+sidecar next to a WSDL turns XTR into a SOAP 1.1 provider
+(`/soap-in/`) and/or a schema-aware JSON → SOAP client
+(`/soap-out/`), sharing one WSDL contract model and one XML ⇄ JSON
+codec. Opt-in and additive: without a sidecar, nothing changes
+except a `# source: <wsdl>` provenance line in generated DSLs.
+Test count: **321** (was 262 at `0.4.3-rc`; +59 across the inbound
+module, outbound-mTLS seam, and X-Road provider end-to-end).
+
+### Added
+- **Schema-aware SOAP lanes — XTR in both directions from one WSDL.**
+  A `<name>.soap.yaml` sidecar next to a WSDL enables an **inbound**
+  SOAP 1.1 provider endpoint (`POST /soap-in/<group>/<name>`: SOAP →
+  JSON backend → SOAP, `?wsdl`, local XSDs) and/or a schema-aware
+  **outbound** client (`POST /soap-out/<group>/<name>/<operation>`:
+  JSON → SOAP → JSON, own PKCS#12 client certificate or the Security
+  Server identity, optional X-Road header). Shared XML ⇄ JSON codec
+  understands attributes (`@name`), repeated elements, `xs:choice`,
+  `extension`, per-element namespaces. Inbound passes the X-Road SOAP
+  header to the backend as `X-Road-Client` / `X-Road-Service` /
+  `X-Road-Id` / `X-Road-UserId`; `request_pointer` / `response_pointer`
+  / `response_wrap` adapt X-Road v4 `<request>`/`<response>` shapes to
+  existing REST/JSON flows. Backend 5xx messages stay out of SOAP
+  faults unless `expose_soap_fault_detail`; XML-forbidden characters
+  from the backend become U+FFFD; `@xml*` attribute keys are dropped.
+  New config: `inbound.wsdl_dir`,
+  `inbound.public_base_url`, `inbound.port` (separate peer-facing
+  listener). Opt-in; nothing changes without a `.soap.yaml`. See
+  `book/src/soap-lanes.md`.
+- **Loud failure for SOAP-lane configuration.** A WSDL with a
+  `.soap.yaml` is validated strictly at boot (sidecar schema, backend
+  URLs, JSON Pointers, WSDL usability, outbound target / keystore /
+  password env / CA file, Security Server target without
+  `xroad_service` or with sidecar `keystore_path` / `trust_ca_path`
+  that route would ignore, endpoint-name and XSD-URL collisions, missing
+  or unparsable local includes, unresolved types used by operations):
+  any problem stops boot with the full list. `dsl: false` retires DSLs
+  previously generated from that WSDL, identified by a new
+  `# source: <wsdl>` header line in generated DSLs; two WSDLs of a group
+  generating the same DSL file now log a WARN (later one still wins). WSDLs
+  without a sidecar keep the lenient folder-drop behaviour. The same
+  static check backs five new doctor rules:
+  `fatal-soap-sidecar-invalid`, `fatal-soap-outbound-invalid`,
+  `fatal-soap-lanes-shared-listener-no-token` (inbound lane on the main
+  listener next to `/soap-out/` lanes or DSL endpoints without a token —
+  boot is also refused), `weak-soap-inbound-shared-listener`,
+  `weak-soap-inbound-op-without-backend`. The doctor never opens a
+  keystore.
+- `examples/soap-lanes/` — runnable demo (synthetic X-Road v4
+  `PersonCheck` contract, stand-in REST backend) behind every
+  sample in `book/src/soap-lanes.md`. Dockerfile `EXPOSE 8081` and
+  commented `inbound.port` examples in `docker-compose.yml` / `xtr.yaml`.
+
+### Not included
+- XSD validation of SOAP payloads; `/soap-*` routes in `GET /api`;
+  peer-specific message profiles on top of SOAP (async callbacks,
+  business-level correlation).
+
+## [0.4.3-rc] - 2026-09-18
+
+Closes the four "genuinely open" residuals from
+[h2ck.me NEXT-TASKS v1](https://github.com/h2ckme/XTR/blob/main/v1/NEXT-TASKS.md)
+that survived the audit-v2 landing: T-8 (public-launch bearer
+gate), T-13 (docs polish on `unsafe` blocks), T-19 (slow-body
+regression pin), T-20 (graceful shutdown). Every open item on
+the backlog is now closed; the remaining backlog items are all
+verified as previously closed by audit-v2 or by earlier
+releases.
+
+### Added
+- **`XTR_INTER_SERVICE_TOKEN` — bearer-token gate on
+  `/:group/:service`.** New env var; when set at boot, every
+  request to the SOAP/REST route MUST carry
+  `Authorization: Bearer <TOKEN>` or receive HTTP **401**
+  `{"error": "unauthorized", ...}`. `/health` and `/api` are
+  unconditionally exempt. Constant-time equality via
+  `subtle::ConstantTimeEq`; length mismatch bails early
+  (leakable regardless). Default off — backward-compatible with
+  0.4.x behind Ruuter (the intended auth boundary in Buerostack
+  deployments). Recommended for standalone / hostile-network
+  posture. Three new doctor rules surface the posture:
+  `info-inter-service-token-active` (≥ 32 bytes),
+  `weak-inter-service-token-short` (< 32 bytes),
+  `info-inter-service-token-off` (env unset — cross-references
+  `info-no-caller-auth`). Doctor NEVER reads the token value into
+  a finding, only its length, so `--format json` output is safe
+  to ship to CI logs. Operator recipe added to `SECURITY.md`
+  under "Operator recipe — bearer-gate `/:group/:service` on
+  standalone deployments." Env var documented in
+  `book/src/configuration.md`. Covered by 12 tests: 5 unit
+  (constant-time equality edge cases, env loader empty/whitespace
+  handling) + 7 integration (gate off, missing bearer, wrong
+  bearer, correct bearer, `/health` exempt, `/api` exempt, bare
+  token without `Bearer ` prefix rejected). Closes #29 (h2ck.me
+  T-8) — public-launch prereq per h2ck.me.
+- **Graceful shutdown on SIGTERM / SIGINT.** `main::serve_inner` now
+  wires `axum::serve(...).with_graceful_shutdown(shutdown_signal())`.
+  On SIGTERM (Kubernetes rolling deploy, `docker stop`, systemd
+  `ExecStop`) or SIGINT (Ctrl-C on interactive runs), axum stops
+  accepting new connections and awaits every in-flight future before
+  exiting. Emits an INFO tracing line when either signal fires so
+  the drain window is visible in SIEM / operator logs. The handler-
+  level `TimeoutLayer` (`request_timeout_secs + 5`) bounds the drain
+  ceiling; Kubernetes' default `terminationGracePeriodSeconds` (30s)
+  comfortably covers it. Regression pin
+  `shutdown_signal_resolves_on_sigterm` raises a real SIGTERM to
+  the current process and asserts `shutdown_signal()` resolves
+  within 2s. Closes #28 (h2ck.me T-20).
+
+### Security
+- **Regression test — slow-body attack must be cut off by the handler
+  `TimeoutLayer`.** New `tests/slow_body_timeout_regression.rs` boots
+  XTR with `request_timeout_secs = 1` (handler_timeout = 6s), sends
+  an HTTP request advertising `Content-Length: 1000` but delivering
+  only 5 body bytes over a raw TCP connection, and asserts the
+  response is HTTP 504 GATEWAY_TIMEOUT within the safety window. The
+  behavior itself was already correct — the fleet-stronghold §6.2
+  layer wired in `router::build` bounds every route's total handler
+  time. This test guards against a future refactor silently dropping
+  or reordering the layer. Closes #27 (h2ck.me T-19).
+- **SAFETY comments on 2 remaining `unsafe` env-mutation blocks in
+  `src/doctor.rs`** (test-only; the third block already carried one).
+  Rust 2024 made `std::env::{set_var, remove_var}` `unsafe` because
+  env mutation is not thread-safe with concurrent readers. All three
+  XTR blocks are `#[test]`-scoped and touch a test-only env-var name
+  unique to a single test — no cross-test contention. Documenting the
+  invariant inline so a pentest reviewer greps for `unsafe`, reads the
+  comment, and moves on. Closes #26 (h2ck.me T-13).
+
+## [0.4.2-rc] - 2026-09-17
+
+### Added
+- **End-to-end `SOAPAction` support for `service:`-routed (plain HTTPS) SOAP DSLs.**
+  SOAP 1.1 ([§6.1.1](https://www.w3.org/TR/2000/NOTE-SOAP-20000508/#_Toc478383528))
+  requires a `SOAPAction` HTTP header on every request, carrying the quoted
+  `soapAction` value that the WSDL binding declares for the operation; strict
+  servers reject calls that omit it, and some use it for operation dispatch.
+  XTR never sent the header, so `service:`-routed DSLs could not talk to such
+  a provider. Three coordinated changes land the fix without any operator
+  action on WSDL-generated DSLs:
+  - **Executor** — new optional `soap_action:` field on SOAP DSLs. When set,
+    `PlainExecutor` sends the value quoted (`SOAPAction: "DoStuff_Request"`);
+    when absent, no header is sent (byte-identical to prior behaviour). The
+    Security Server executor ignores the field — X-Road dispatches on its
+    own headers. (Contributed by @Aljoxa88 / @AlexeyFilippov88 in PR #25.)
+  - **WSDL parser** — walks the first `<wsdl:binding>` in the document and
+    records the `<soap:operation soapAction="…"/>` value per op. Multi-binding
+    WSDLs: first binding wins, matching the parser's existing "first port"
+    heuristic. Empty-string `soapAction` (spec-legal per §6.1.1: "intent
+    provided by other means") is preserved distinctly from absence.
+  - **DSL generator** — emits `soap_action:` into the generated DSL when the
+    binding declared a non-empty value and the DSL routes plain-HTTPS
+    (`service:` present). Skipped on Security-Server-routed DSLs and on
+    empty-string values (adds nothing on the wire). Result: WSDL folder-drop
+    users get correct SOAP 1.1 behaviour on every generated endpoint with no
+    hand-edit.
+  - **DSL-load validation** — `soap_action:` values containing CR/LF/NUL or a
+    bare `"` are rejected at DSL deserialise time (would either crash
+    `reqwest`'s header codec or collide with the §6.1.1 quoting). Boot fails
+    loud with a clear error, not the first live request.
+  - **Doctor rule `info-soap-action-missing`** — INFO-severity finding per
+    plain-HTTPS SOAP DSL where `soap_action:` is absent or empty. Not
+    WEAK/FATAL because tolerant upstreams exist; INFO surfaces the coverage
+    gap so operators can spot which endpoints will fail against a strict
+    server. Never contributes to `--strict` exit code.
+  - **Docs** — `book/src/getting-started.md`, `book/src/doctor.md`,
+    `MIGRATION.md` doctor rule catalogue.
+  - **Tests** — 23 new tests over the 0.4.1-rc baseline: parser (5),
+    generator (5), DSL validator (4), doctor (4), pipeline (1), executor
+    integration (3, incl. empty-string), plus the 2 executor pins from the
+    contributor's base commit (`soap_action_header_sent_when_declared`,
+    `soap_action_header_absent_when_not_declared` — the latter guards
+    backward-compatibility: every existing DSL file is unaffected).
+    Total test count: 248 (was 225).
+- **Attribution.** The executor plumbing this release builds on was
+  contributed in PR #25 by @Aljoxa88 / @AlexeyFilippov88. The
+  maintainer-side widening (parser + generator + doctor + validator)
+  layered the ingest-side coverage on top so the fix works out-of-the-box
+  for every folder-drop endpoint, not only for hand-authored DSLs.
 
 ## [0.4.1-rc] - 2026-09-13
 
@@ -820,7 +1000,9 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...HEAD
+[0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc
+[0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
+[0.4.2-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...v0.4.2-rc
 [0.4.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.0-rc...v0.4.1-rc
 [0.4.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.3.0-rc...v0.4.0-rc
 [0.3.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.2.0-rc.1...v0.3.0-rc

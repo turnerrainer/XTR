@@ -17,8 +17,9 @@ Both lanes share one XML ⇄ JSON codec that understands what the
 qualified/unqualified namespaces**. That lane keeps working unchanged;
 this one is opt-in and does nothing without a sidecar.
 
-> Status: on `dev`, not in a published image yet — build it from
-> source (`docker build -t xtr:local .`).
+> Status: shipping in `0.5.0-rc`. Pin `:0.5.0-rc` once the image
+> publishes; until then, build from source
+> (`docker build -t xtr:local .`).
 
 ## Try it
 

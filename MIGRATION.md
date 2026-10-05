@@ -2,7 +2,7 @@
 
 Four migration guides on this page:
 
-- **`0.4.3-rc → next (unreleased)`** (schema-aware SOAP lanes) —
+- **`0.4.3-rc → 0.5.0-rc`** (schema-aware SOAP lanes) —
   additive; nothing changes without a `.soap.yaml` sidecar.
 - **`0.3.0-rc → 0.4.0-rc`** (audit-v2) — three small breaking
   changes on the response wire + a `doctor --strict` exit-code
@@ -15,7 +15,7 @@ Four migration guides on this page:
 
 ---
 
-## `0.4.3-rc` → next (unreleased)
+## `0.4.3-rc` → `0.5.0-rc`
 
 Additive only — nothing changes unless a WSDL gets a
 `<name>.soap.yaml` sidecar. Operator recipe:
