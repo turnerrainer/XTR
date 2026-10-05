@@ -79,6 +79,8 @@ struct Counters {
     wsdls: usize,
     ops: usize,
     overrides: usize,
+    /// Generated DSL path → WSDL that wrote it during THIS ingestion run.
+    written: std::collections::HashMap<PathBuf, String>,
 }
 
 /// Recurse `dir`, ingesting every `.wsdl` found. WSDL layout maps
@@ -129,13 +131,46 @@ fn walk_and_ingest(
             [owner] => (PathBuf::from(owner), String::new()),
             [owner, rest @ ..] => (PathBuf::from(owner), format!("{}-", rest.join("-"))),
         };
+        // Provenance written into every generated DSL, so cleanup can tell
+        // which WSDL a generated file came from.
+        let source = entry
+            .strip_prefix(root)
+            .unwrap_or(&entry)
+            .components()
+            .filter_map(|c| c.as_os_str().to_str())
+            .collect::<Vec<_>>()
+            .join("/");
+        if crate::inbound::dsl_disabled(&entry) {
+            // Switching an existing WSDL to `dsl: false` must also retire
+            // the endpoints generated from it on earlier boots — otherwise
+            // they keep loading as live outbound services.
+            let target = WsdlTarget {
+                path: &entry,
+                source: &source,
+                group: &group_dir,
+                op_prefix: &op_prefix,
+            };
+            let removed = remove_generated(&target, dsl_path)?;
+            tracing::info!(
+                "WSDL {} has `dsl: false` in its .soap.yaml — no Handlebars DSLs generated \
+                 ({} previously generated DSL(s) removed; hand-written files untouched)",
+                entry.display(),
+                removed
+            );
+            continue;
+        }
+        let target = WsdlTarget {
+            path: &entry,
+            source: &source,
+            group: &group_dir,
+            op_prefix: &op_prefix,
+        };
         match ingest_one(
-            &entry,
-            &group_dir,
-            &op_prefix,
+            &target,
             dsl_path,
             wsdl_cfg,
             client_data,
+            &mut counters.written,
         ) {
             Ok(ing) => {
                 counters.ops += ing.ops_written;
@@ -154,20 +189,108 @@ fn walk_and_ingest(
     Ok(())
 }
 
+/// Second header line of a generated DSL: the WSDL it came from,
+/// relative to `wsdl_watch_dir`.
+const SOURCE_PREFIX: &str = "# source: ";
+
+/// `Some(source)` for a generated DSL that records its WSDL, `None` for
+/// hand-written files and for generated files from older versions.
+fn generated_source(path: &Path) -> Option<String> {
+    let text = fs::read_to_string(path).ok()?;
+    let mut lines = text.lines();
+    if !lines.next()?.starts_with(MARKER) {
+        return None;
+    }
+    lines
+        .next()
+        .and_then(|l| l.strip_prefix(SOURCE_PREFIX))
+        .map(|s| s.trim().to_string())
+}
+
+/// Delete every generated DSL that came from this WSDL — by recorded
+/// provenance, so operations removed from the WSDL since are retired too
+/// and same-named operations of *other* WSDLs are left alone.
+/// Generated files from older versions carry no provenance: those are
+/// matched by the WSDL's current operation names (an active WSDL
+/// rewrites its own files with provenance on every boot, so this cannot
+/// remove another WSDL's endpoint for good). Hand-written files are
+/// never touched. An I/O error is fatal: a stale generated endpoint must
+/// not survive silently.
+fn remove_generated(target: &WsdlTarget, dsl_path: &Path) -> Result<usize, XtrError> {
+    let (wsdl_path, source, group, op_prefix) =
+        (target.path, target.source, target.group, target.op_prefix);
+    let dir = dsl_path.join(group);
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return Ok(0);
+    };
+    let legacy_names: Vec<String> = fs::read_to_string(wsdl_path)
+        .ok()
+        .and_then(|bytes| {
+            let wsdl_dir = wsdl_path.parent().map(PathBuf::from).unwrap_or_default();
+            parse_with_loader(&bytes, |location| resolve_local_schema(&wsdl_dir, location)).ok()
+        })
+        .map(|w| {
+            w.operations
+                .iter()
+                .map(|op| format!("{op_prefix}{}.yml", op.name))
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut removed = 0;
+    let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
+    paths.sort();
+    for path in paths {
+        if !path.is_file() || is_hand_written_override(&path)? {
+            continue;
+        }
+        let ours = match generated_source(&path) {
+            Some(src) => src == source,
+            None => path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| legacy_names.iter().any(|l| l == n)),
+        };
+        if ours {
+            fs::remove_file(&path).map_err(|e| {
+                XtrError::Internal(format!(
+                    "removing generated DSL {} (WSDL now has `dsl: false`): {}",
+                    path.display(),
+                    e
+                ))
+            })?;
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
 #[derive(Default)]
 struct Ingested {
     ops_written: usize,
     skipped_overrides: usize,
 }
 
+/// One WSDL being ingested: where it is, how it is recorded in
+/// generated DSLs, and where its DSLs land.
+struct WsdlTarget<'a> {
+    path: &'a Path,
+    /// Path relative to `wsdl_watch_dir` (`# source:` header value).
+    source: &'a str,
+    /// DSL group directory under `dsl_path`.
+    group: &'a Path,
+    /// Operation-name prefix for nested WSDL directories.
+    op_prefix: &'a str,
+}
+
 fn ingest_one(
-    wsdl_path: &Path,
-    group: &Path,
-    op_prefix: &str,
+    target: &WsdlTarget,
     dsl_path: &Path,
     wsdl_cfg: &WsdlIngest,
     client_data: &ClientData,
+    written: &mut std::collections::HashMap<PathBuf, String>,
 ) -> Result<Ingested, XtrError> {
+    let (wsdl_path, source, group, op_prefix) =
+        (target.path, target.source, target.group, target.op_prefix);
     let bytes = fs::read_to_string(wsdl_path)
         .map_err(|e| XtrError::Internal(format!("reading WSDL {}: {}", wsdl_path.display(), e)))?;
     let wsdl_dir = wsdl_path.parent().map(PathBuf::from).unwrap_or_default();
@@ -216,6 +339,25 @@ fn ingest_one(
             ing.skipped_overrides += 1;
             continue;
         }
+        if let Some(other) = written
+            .insert(out_path.clone(), source.to_string())
+            .filter(|s| s != source)
+        {
+            // Two WSDLs of one group map to the same DSL file in this run:
+            // the later one wins (pre-existing behaviour) — but say so.
+            tracing::warn!(
+                "generated DSL {} from WSDL {} is overwritten by WSDL {} (same operation name {})",
+                out_path.display(),
+                other,
+                source,
+                op_name
+            );
+        }
+        let yaml = yaml.replacen(
+            &format!("{MARKER}\n"),
+            &format!("{MARKER}\n{SOURCE_PREFIX}{source}\n"),
+            1,
+        );
         fs::write(&out_path, &yaml).map_err(|e| {
             XtrError::Internal(format!(
                 "writing generated DSL {}: {}",
@@ -259,7 +401,7 @@ fn is_hand_written_override(path: &Path) -> Result<bool, XtrError> {
 /// XSD (e.g. `passwd → /etc/passwd`) would otherwise escape the
 /// WSDL dir. Canonicalisation catches that; the charset guard
 /// stops odd filenames from ever reaching the filesystem.
-fn resolve_local_schema(wsdl_dir: &Path, location: &str) -> Option<String> {
+pub(crate) fn resolve_local_schema(wsdl_dir: &Path, location: &str) -> Option<String> {
     let filename = location
         .rsplit(['/', '\\'])
         .next()

@@ -1,0 +1,21 @@
+# Publish an existing REST/JSON flow as the X-Road SOAP service
+# described by person.wsdl. Block-style YAML only.
+dsl: false
+inbound:
+  operations:
+    PersonCheck:
+      backend: http://host.docker.internal:18091/demo/person-check
+  payload: request
+  request_pointer: /request
+  response_pointer: /response
+  response_wrap:
+    request: request
+    response: backend
+# Demo only: the outbound lane calls this same XTR's inbound endpoint,
+# closing the loop JSON → /soap-out/ → SOAP → /soap-in/ → backend.
+outbound:
+  url: http://localhost:8081/soap-in/demo/person
+  xroad_service:                 # adds the X-Road header; client = client_data
+    member_class: GOV
+    member_code: "70000000"
+    subsystem_code: demo

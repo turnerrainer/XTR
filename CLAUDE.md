@@ -148,7 +148,15 @@ wsdl:
 expose_soap_fault_detail: false       # default; opt-in (audit-v1)
 observability:
   expose_openapi: true                # audit-v2 F-XTR-1; flip false to hide /api
+inbound:                              # schema-aware SOAP lanes (unreleased, on dev)
+  wsdl_dir: ./wsdl                    # default: wsdl_watch_dir
+  public_base_url: https://xtr.example.ee
+  port: 8081                          # peer-facing listener for /soap-in/ only
 ```
+
+Per-WSDL lane config lives in `<name>.soap.yaml` next to the WSDL
+(`inbound:` / `outbound:` / `dsl:`) — reference in
+`book/src/soap-lanes.md`, runnable demo in `examples/soap-lanes/`.
 
 Environment variables that shape runtime behaviour:
 
@@ -164,7 +172,7 @@ rationale in `MIGRATION.md` §"Doctor rule catalogue".
 ### "How do I run the tests?"
 
 ```bash
-cargo test                                # 225 tests on dev (post audit-v2)
+cargo test --release --no-fail-fast      # 321 tests on dev (post SOAP lanes)
 cargo clippy --all-targets -- -D warnings  # style/lint gate
 cargo fmt --check                          # style gate (CI enforces)
 cargo audit --deny warnings                # supply-chain gate
@@ -226,8 +234,16 @@ src/
   executor/         plain HTTPS + Security Server mTLS + REST-lane clients
                     (audit-v2: XTR_OFFLINE short-circuit at dispatch)
   translate/        SOAP XML → JSON
+  inbound/          schema-aware SOAP lanes, driven by <name>.soap.yaml sidecars
+    mod.rs          sidecar model, static check (shared with doctor), registry,
+                    exposure guard (inbound+outbound on one listener w/o token)
+    contract.rs     WSDL/XSD → operations, QNames, soapAction, schema hints
+    dom.rs          namespace-aware XML DOM (no DOCTYPE, depth cap) + serializer
+    codec.rs        schema-guided XML ⇄ JSON (@attr, arrays, per-element ns)
+    handler.rs      /soap-in/… (SOAP → JSON backend → SOAP, ?wsdl, *.xsd)
+    outbound.rs     /soap-out/… (JSON → SOAP → JSON, client cert, X-Road header)
   router/
-    mod.rs          axum routes + layered middleware
+    mod.rs          axum routes + layered middleware (build_with / build_isolated)
     security_headers.rs  audit-v2: five default response headers
     access_log.rs        audit-v2: INFO line + W3C traceparent per request
   error.rs          XtrError enum + IntoResponse
@@ -242,6 +258,11 @@ tests/
   security_default_headers.rs            audit-v2 §5.1 regression
   access_log_traceparent.rs              audit-v2 §1.2 + §1.6 regression
   xtr_offline_mode.rs                    audit-v2 FN-LOG-3 regression
+  it_inbound_soap.rs                     SOAP lanes: both directions, faults, loop
+  it_soap_xroad_provider.rs              REST flow published as X-Road SOAP
+  it_soap_outbound_mtls.rs               outbound over real mTLS / via Security Server
+examples/
+  soap-lanes/                            runnable demo used by book/src/soap-lanes.md
 ```
 
 ## Don't
@@ -279,6 +300,24 @@ tests/
 - **Don't bypass the Executor.offline short-circuit.** If you
   add a new outbound path in `executor/*`, gate it on
   `self.offline` too so `XTR_OFFLINE=true` stays comprehensive.
+- **Don't expose `/soap-out/` (or the main port) to a SOAP peer
+  network.** It makes XTR act with its own client certificate /
+  X-Road identity. Only `/soap-in/` faces peers — on `inbound.port`.
+  Boot refuses `/soap-in/` on a listener that also serves anything
+  calling out with XTR's identity (`/soap-out/` or DSL endpoints)
+  without `XTR_INTER_SERVICE_TOKEN`; don't weaken that guard, and count
+  any new outbound surface in `inbound::exposure_error`.
+- **Don't treat inbound `X-Road-*` headers as authenticated.** They
+  are copied from the SOAP envelope and trustworthy only when nothing
+  but the Security Server can reach `inbound.port`.
+- **Don't let a broken `.soap.yaml` boot quietly.** Sidecar problems
+  go through `inbound::check_all` → FATAL at boot + a doctor rule. New
+  sidecar fields need a doctor-visible failure mode.
+- **Don't let backend JSON keys become prefixed XML names.** Encode
+  only NCNames (`codec::is_xml_name`); the root name comes from the
+  schema.
+- **Don't put third-party WSDLs in the repo.** Tests and
+  `examples/` use synthetic contracts.
 - **Don't invent `mdbook` pages that duplicate CHANGELOG.**
   The book is user-facing (operator recipes, config reference,
   doctor rule catalogue). Audit paper trails live in

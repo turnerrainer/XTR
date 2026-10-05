@@ -9,6 +9,9 @@ services:
     container_name: xtr-on-rust
     ports:
       - "8080:8080"
+      # Inbound SOAP lane on its own listener (xtr.yaml `inbound.port: 8081`);
+      # expose only this port to the SOAP peer network:
+      # - "8081:8081"
     # The image ships xtr.yaml + wsdl/ + DSL/ baked in as the
     # demo. Override any of those with bind mounts:
     #

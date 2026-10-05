@@ -11,6 +11,11 @@ behalf. Two service kinds share one deployment:
   endpoints** for real Estonian X-Road services (Ariregister +
   Maa-amet + Keskkonnaamet + RMK + Kliimaministeerium). SOAP
   responses are translated to JSON.
+- **SOAP, both directions (opt-in)** — a `<name>.soap.yaml` next to a
+  WSDL turns it into an inbound SOAP provider endpoint
+  (`/soap-in/…`, SOAP → your JSON backend) and/or a schema-aware
+  JSON → SOAP client (`/soap-out/…`). See
+  [`book/src/soap-lanes.md`](./book/src/soap-lanes.md).
 - **REST** — hand-written DSL, passthrough. Body + headers + query
   forwarded verbatim over mTLS per [X-Road Message Protocol for
   REST v1.0.4](https://github.com/nordic-institute/X-Road/blob/develop/doc/Protocols/pr-rest_x-road_message_protocol_for_rest.md).

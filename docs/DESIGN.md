@@ -237,12 +237,18 @@ integration.
 - **Not a general REST-to-SOAP proxy.** X-Road-shaped envelopes
   specifically (`<xroad:client>`, `<xroad:service>`,
   `<xroad:protocolVersion>`).
-- **Not an X-Road Security Server.** XTR is a client of one.
+- **Not an X-Road Security Server.** XTR is a client of one — and,
+  since the schema-aware SOAP lanes (`src/inbound/`,
+  `book/src/soap-lanes.md`), optionally also an information system
+  *behind* one: the inbound lane lets a Security Server (or any SOAP
+  1.1 peer) call XTR, which forwards to a JSON backend. Message log,
+  signing and `requestHash` stay with the Security Server.
 - **Not a workflow engine.** One inbound request → one outbound
   X-Road call → one response. No fan-out, no aggregation.
 - **Not an ETL.** Request/response only. No batching, no
   streaming.
-- **Not a general SOAP toolkit.** Envelopes are string-templated,
+- **Not a general SOAP toolkit.** (The schema-aware lanes add a
+  WSDL/XSD-guided codec, still without XSD validation.) DSL envelopes are string-templated,
   not object-built.
 - **No authentication on XTR's own endpoints** — assumed to be
   behind a network perimeter (typically Ruuter or a gateway).

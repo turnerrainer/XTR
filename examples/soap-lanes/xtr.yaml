@@ -1,0 +1,13 @@
+dsl_path: /app/DSL
+port: 8080
+xroad_instance: ee-dev
+client_data:
+  member_class: GOV
+  member_code: "70000000"
+  subsystem_code: demo
+wsdl_watch_dir: /app/wsdl
+inbound:
+  port: 8081                     # /soap-in/… + /health only — the peer-facing port
+  public_base_url: http://localhost:18581
+wsdl:
+  allow_http_upstream: true      # demo only (plain-http loop to our own inbound)
