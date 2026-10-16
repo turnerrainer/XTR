@@ -5,6 +5,12 @@ All notable changes to XTR-on-Rust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Decode the five predefined XML entities in upstream SOAP responses and faults.
+  Preserve spaces around entity references. Custom entities remain rejected.
+
 ## [0.5.0-rc] - 2026-10-05
 
 Fifth minor release. Adds schema-aware SOAP lanes — a `.soap.yaml`

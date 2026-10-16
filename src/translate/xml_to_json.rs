@@ -38,7 +38,9 @@ const MAX_XML_EVENTS: usize = 100_000;
 
 pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // Trim the complete leaf in parse_children, not individual text events.
+    // Entity events split text, so event-level trimming loses inner spaces.
+    reader.config_mut().trim_text(false);
 
     let mut event_budget: usize = MAX_XML_EVENTS;
     let root = parse_element(&mut reader, &mut event_budget)?;
@@ -70,7 +72,9 @@ pub fn translate_soap(xml: &str) -> Result<Value, XtrError> {
 /// `UpstreamHttpError`.
 pub fn try_extract_soap_fault(xml: &str) -> Option<XtrError> {
     let mut reader = Reader::from_str(xml);
-    reader.config_mut().trim_text(true);
+    // Trim the complete leaf in parse_children, not individual text events.
+    // Entity events split text, so event-level trimming loses inner spaces.
+    reader.config_mut().trim_text(false);
     let mut event_budget: usize = MAX_XML_EVENTS;
     let root = parse_element(&mut reader, &mut event_budget).ok()?;
     let (_, body) = extract_header_and_body(&root);
@@ -307,8 +311,8 @@ fn parse_children(
             | Ok(Event::DocType(_)) => {
                 continue;
             }
-            // quick-xml 0.41 emits GeneralRef for entity references
-            // that aren't in the XML-predefined set. Two flavours:
+            // quick-xml 0.41 emits GeneralRef for entity references,
+            // including the five predefined XML entities. Other flavours:
             //   * Character references (&#228;, &#xE4;) — always
             //     resolve to a Unicode codepoint. Standard XML.
             //   * Custom entities (&nbsp;, &copy;) — require a
@@ -316,7 +320,15 @@ fn parse_children(
             //     Rejected explicitly.
             Ok(Event::GeneralRef(g)) => {
                 let name = String::from_utf8_lossy(g.as_ref()).into_owned();
-                if let Some(ch) = decode_char_ref(&name) {
+                let predefined = match name.as_str() {
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "amp" => Some('&'),
+                    "apos" => Some('\''),
+                    "quot" => Some('"'),
+                    _ => None,
+                };
+                if let Some(ch) = predefined.or_else(|| decode_char_ref(&name)) {
                     text_buf.push(ch);
                     continue;
                 }
@@ -484,6 +496,33 @@ mod tests {
             "<soap:Envelope><soap:Body><name>Peeter K&#xE4;rp</name></soap:Body></soap:Envelope>";
         let v = translate_soap(xml).unwrap();
         assert_eq!(body(&v), &json!({ "name": "Peeter Kärp" }));
+    }
+
+    #[test]
+    fn predefined_xml_entities_decoded() {
+        let xml = "<soap:Envelope><soap:Body><text>&quot;otsus&quot; &amp; &apos;alus&apos; &lt;2026&gt;</text></soap:Body></soap:Envelope>";
+        let v = translate_soap(xml).unwrap();
+        assert_eq!(body(&v), &json!({ "text": "\"otsus\" & 'alus' <2026>" }));
+    }
+
+    #[test]
+    fn escaped_entity_is_decoded_only_once() {
+        let xml = "<soap:Envelope><soap:Body><text>&amp;quot; &amp;custom;</text></soap:Body></soap:Envelope>";
+        let v = translate_soap(xml).unwrap();
+        assert_eq!(body(&v), &json!({ "text": "&quot; &custom;" }));
+    }
+
+    #[test]
+    fn soap_fault_preserves_spaces_around_predefined_entities() {
+        let xml = "<soap:Envelope><soap:Body><soap:Fault><faultcode>soap:Server</faultcode><faultstring>Invalid &quot;case&quot; &amp; reference</faultstring></soap:Fault></soap:Body></soap:Envelope>";
+        for err in [
+            translate_soap(xml).unwrap_err(),
+            try_extract_soap_fault(xml).unwrap(),
+        ] {
+            assert!(
+                matches!(err, XtrError::UpstreamSoapFault { string, .. } if string == "Invalid \"case\" & reference")
+            );
+        }
     }
 
     #[test]
