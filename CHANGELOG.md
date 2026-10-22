@@ -5,6 +5,12 @@ All notable changes to XTR-on-Rust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Decode the five predefined XML entities in upstream SOAP responses and faults.
+  Preserve spaces around entity references. Custom entities remain rejected.
+
 ## [0.5.0-rc] - 2026-10-05
 
 Fifth minor release. Adds schema-aware SOAP lanes — a `.soap.yaml`
@@ -1008,6 +1014,7 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...HEAD
 [0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc
 [0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
 [0.4.2-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...v0.4.2-rc
