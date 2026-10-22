@@ -7,9 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1-rc] - 2026-10-22
+
+Patch release — one upstream-parsing bug fix contributed by
+@sviljus (PR #37). Unblocks e-Toimik SOAP responses in LJVIS that
+contain `&quot;`, `&amp;`, `&lt;`, `&gt;`, or `&apos;`.
+
 ### Fixed
-- Decode the five predefined XML entities in upstream SOAP responses and faults.
-  Preserve spaces around entity references. Custom entities remain rejected.
+- **Predefined XML entities decoded in upstream SOAP responses and
+  faults.** `quick-xml 0.41` emits `Event::GeneralRef` for the five
+  XML-predefined entities too, not only for custom ones. The existing
+  `GeneralRef` handler only decoded numeric character references, so
+  valid upstream SOAP containing `&quot;` was rejected with
+  `upstream_xml_parse_error`. The handler now resolves the five
+  predefined entities in both `translate_soap` and
+  `try_extract_soap_fault`; custom entities (anything requiring a
+  DTD) are still rejected explicitly as an XXE guard, and the
+  `audit_c2_billion_laughs_rejected_no_expansion` regression pin
+  remains green. Event-level `trim_text` turned off so inner spaces
+  around entity references survive — single `.trim()` still runs on
+  the full leaf text at the `End` event. Covered by 3 new tests
+  (all five predefined entities round-trip, escaped `&amp;quot;`
+  decodes exactly once, SOAP fault preserves spaces around
+  entities through both parsing entry points). Fixes real-world
+  blockage of e-Toimik SOAP responses in LJVIS.
+
+Full test suite: **324 passed** (was 321 on `0.5.0-rc`).
+
+### Attribution
+- PR #37 contributed by @sviljus. Maintainer-side hardening added a
+  `[Unreleased]` reference link in CHANGELOG.md (unblocks
+  mdbook-linkcheck) and merged in #38's `rustls-webpki 0.103.16`
+  lockfile bump (RUSTSEC-2026-0382, Certificate verification may
+  accept distrusted intermediates) so CI goes green on the branch.
+
+### Security
+- **`rustls-webpki` bumped 0.103.15 → 0.103.16** (PR #38). Closes
+  RUSTSEC-2026-0382: affected versions may accept certificate paths
+  containing distrusted emSign intermediate public keys when
+  configured trust anchors allow such paths. Private keys for the
+  affected intermediates are now well-known. Semver-compatible
+  `Cargo.lock`-only bump.
 
 ## [0.5.0-rc] - 2026-10-05
 
@@ -1014,7 +1052,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.5.1-rc...HEAD
+[0.5.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...v0.5.1-rc
 [0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc
 [0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
 [0.4.2-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...v0.4.2-rc
