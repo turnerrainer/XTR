@@ -48,6 +48,9 @@ percent-encoding = "2"
 # leak the correct prefix byte-by-byte. `subtle::ConstantTimeEq`
 # is already in the transitive tree via rustls/aws-lc-rs.
 subtle = "2"
+# Raw-XML lane: SHA-256 digest of the received bytes, handed to the backend
+# so it can implement idempotency / replay detection.
+sha2 = "0.10"
 
 [dev-dependencies]
 tempfile = "3"

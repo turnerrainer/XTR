@@ -147,7 +147,11 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
             ),
         });
     }
-    let sum = check.summary;
+    let xml = crate::xmllane::count_lanes(dir.as_deref());
+    let sum = crate::inbound::LaneSummary {
+        inbound: check.summary.inbound + xml.inbound,
+        outbound: check.summary.outbound + xml.outbound,
+    };
     if sum.inbound == 0 {
         return;
     }
@@ -214,26 +218,17 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
 /// WSDLs under the watch dir that boot will turn into DSL endpoints
 /// (every `*.wsdl` unless its `.soap.yaml` says `dsl: false`).
 fn count_dsl_generating_wsdls(dir: &Path) -> usize {
-    let mut n = 0;
-    let mut stack = vec![dir.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(rd) = std::fs::read_dir(&d) else {
-            continue;
-        };
-        for p in rd.flatten().map(|e| e.path()) {
-            if p.is_dir() {
-                stack.push(p);
-            } else if p
-                .extension()
+    // An error here is a walk over the limit; boot refuses it, doctor counts 0.
+    crate::fswalk::files(dir)
+        .unwrap_or_default()
+        .iter()
+        .filter(|p| {
+            p.extension()
                 .and_then(|e| e.to_str())
                 .is_some_and(|e| e.eq_ignore_ascii_case("wsdl"))
-                && !crate::inbound::dsl_disabled(&p)
-            {
-                n += 1;
-            }
-        }
-    }
-    n
+                && !crate::inbound::dsl_disabled(p)
+        })
+        .count()
 }
 
 /// Audit RUNTIME v1 FN4 — WSDL folder-drop needs a writable DSL

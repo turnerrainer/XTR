@@ -118,16 +118,120 @@ fn lookup(scope: &[(String, String)], prefix: &str) -> Option<String> {
         .filter(|u| !u.is_empty())
 }
 
+/// What kind of error `parse` found. Callers pick a status or code from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DomErrorKind {
+    /// The text is not well-formed XML (or breaks a rule of this parser).
+    Malformed,
+    /// The XML declaration names an encoding other than UTF-8.
+    Encoding,
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
-pub struct DomError(pub String);
+pub struct DomError(pub String, pub DomErrorKind);
 
 fn err(msg: impl Into<String>) -> DomError {
-    DomError(msg.into())
+    DomError(msg.into(), DomErrorKind::Malformed)
 }
 
 /// Parse a complete document and return its root element.
 pub fn parse(xml: &str) -> Result<Element, DomError> {
+    parse_impl(xml, false)
+}
+
+/// Parse a message that a peer sent. Stricter than [`parse`], for the raw-XML
+/// lanes: the prolog must be well-formed (XML 1.0 §2.8) and the XML declaration
+/// must say UTF-8 or leave the encoding out. The checks live in the parser,
+/// so what they accept is what the codec reads.
+///
+/// * One leading BOM is allowed.
+/// * The XML declaration is allowed only as the first event, once. It follows
+///   XML 1.0 §2.8: `version` (1.0 or 1.1), then an optional `encoding`, then an
+///   optional `standalone`, each once, in lower case. `encoding` must be `UTF-8`
+///   or `utf8` (any case).
+/// * A processing instruction named `xml` (any case) is refused.
+/// * Text, CDATA and references outside the root element are refused, except
+///   white space.
+pub fn parse_message(xml: &str) -> Result<Element, DomError> {
+    parse_impl(xml.strip_prefix('\u{feff}').unwrap_or(xml), true)
+}
+
+/// One `name="value"` pair of the XML declaration (XML 1.0 §2.8).
+/// Needs white space before the name. Returns `None` when the next name is
+/// another one: the caller then tries its next pseudo-attribute.
+fn pseudo_attr<'a>(rest: &mut &'a str, name: &str) -> Result<Option<&'a str>, DomError> {
+    let s = *rest;
+    let trimmed = s.trim_start_matches([' ', '\t', '\r', '\n']);
+    if trimmed.len() == s.len() {
+        return Ok(None); // no white space before the name
+    }
+    let Some(after) = trimmed.strip_prefix(name) else {
+        return Ok(None);
+    };
+    let after = after.trim_start_matches([' ', '\t', '\r', '\n']);
+    let after = after
+        .strip_prefix('=')
+        .ok_or_else(|| err(format!("XML declaration: '=' expected after {name}")))?
+        .trim_start_matches([' ', '\t', '\r', '\n']);
+    let quote = after
+        .chars()
+        .next()
+        .filter(|c| *c == '"' || *c == '\'')
+        .ok_or_else(|| err(format!("XML declaration: quoted value expected for {name}")))?;
+    let body = &after[1..];
+    let end = body
+        .find(quote)
+        .ok_or_else(|| err(format!("XML declaration: unterminated value for {name}")))?;
+    *rest = &body[end + 1..];
+    Ok(Some(&body[..end]))
+}
+
+/// XML 1.0 §2.8: `version`, then an optional `encoding`, then an optional
+/// `standalone`, each once, in lower case. Anything else is an error.
+fn check_decl(d: &quick_xml::events::BytesDecl<'_>) -> Result<(), DomError> {
+    let raw = std::str::from_utf8(d).map_err(|_| err("XML declaration is not UTF-8"))?;
+    let mut rest = raw
+        .strip_prefix("xml")
+        .ok_or_else(|| err("XML declaration expected"))?;
+    let version = pseudo_attr(&mut rest, "version")?
+        .ok_or_else(|| err("XML declaration: version is required, and comes first"))?;
+    if version != "1.0" && version != "1.1" {
+        return Err(err("XML declaration: version must be 1.0 or 1.1"));
+    }
+    if let Some(enc) = pseudo_attr(&mut rest, "encoding")? {
+        let mut chars = enc.chars();
+        let name_ok = chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+        if !name_ok {
+            return Err(err("XML declaration: invalid encoding name"));
+        }
+        if !enc.eq_ignore_ascii_case("utf-8") && !enc.eq_ignore_ascii_case("utf8") {
+            return Err(DomError(
+                "the XML declaration must say UTF-8 or leave the encoding out".into(),
+                DomErrorKind::Encoding,
+            ));
+        }
+    }
+    if let Some(st) = pseudo_attr(&mut rest, "standalone")? {
+        if st != "yes" && st != "no" {
+            return Err(err("XML declaration: standalone must be yes or no"));
+        }
+    }
+    if !rest.trim_matches([' ', '\t', '\r', '\n']).is_empty() {
+        return Err(err(
+            "XML declaration: only version, encoding and standalone are allowed, once each, in this order",
+        ));
+    }
+    Ok(())
+}
+
+fn is_xml_space(s: &str) -> bool {
+    s.chars().all(|c| matches!(c, ' ' | '\t' | '\r' | '\n'))
+}
+
+fn parse_impl(xml: &str, strict: bool) -> Result<Element, DomError> {
+    let mut first = true;
     let mut reader = Reader::from_str(xml);
     let mut stack: Vec<Element> = Vec::new();
     let mut root: Option<Element> = None;
@@ -136,6 +240,7 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
         let ev = reader
             .read_event()
             .map_err(|e| err(format!("XML parse error: {e}")))?;
+        let is_first = std::mem::replace(&mut first, false);
         match ev {
             Event::Start(e) => {
                 if stack.len() >= MAX_DEPTH {
@@ -161,9 +266,15 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
             }
             Event::Text(t) => {
                 let raw = t.decode().map_err(|e| err(format!("text decode: {e}")))?;
+                if strict && stack.is_empty() && !is_xml_space(&raw) {
+                    return Err(err("text outside the root element"));
+                }
                 let text = quick_xml::escape::unescape(&raw)
                     .map_err(|e| err(format!("text unescape: {e}")))?;
                 push_text(&mut stack, &text);
+            }
+            Event::CData(_) | Event::GeneralRef(_) if strict && stack.is_empty() => {
+                return Err(err("text outside the root element"));
             }
             Event::CData(t) => {
                 let raw = t.decode().map_err(|e| err(format!("cdata decode: {e}")))?;
@@ -181,7 +292,22 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
             Event::DocType(_) => {
                 return Err(err("DOCTYPE is not allowed (XXE / entity-expansion risk)"));
             }
-            Event::Decl(_) | Event::Comment(_) | Event::PI(_) => {}
+            Event::Decl(d) => {
+                if strict {
+                    if !is_first {
+                        return Err(err(
+                            "XML declaration is allowed only at the very start of the document",
+                        ));
+                    }
+                    check_decl(&d)?;
+                }
+            }
+            Event::PI(pi) => {
+                if strict && pi.target().eq_ignore_ascii_case(b"xml") {
+                    return Err(err("processing instruction target 'xml' is reserved"));
+                }
+            }
+            Event::Comment(_) => {}
             Event::Eof => break,
         }
     }

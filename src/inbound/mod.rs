@@ -267,11 +267,12 @@ pub fn exposure_error(
     let outbound_like = sum.outbound + dsl_endpoints;
     (sum.inbound > 0 && outbound_like > 0 && !separate_port && !token_set).then(|| {
         format!(
-            "the inbound SOAP lane (/soap-in/) would share one listener with {} \
-             outbound endpoint(s) ({} /soap-out/ lane(s), {} DSL endpoint(s) on \
-             /:group/:service) while XTR_INTER_SERVICE_TOKEN is unset: whoever can \
-             reach /soap-in/ (the SOAP peer network) could make XTR call out with its \
-             own identity. Set `inbound.port` (separate listener for /soap-in/) or \
+            "an inbound lane (/soap-in/ or /xml-in/, incl. `inbound.path` aliases) would \
+             share one listener with {} outbound endpoint(s) ({} /soap-out/ or /xml-out/ \
+             lane(s), {} DSL endpoint(s) on /:group/:service) while \
+             XTR_INTER_SERVICE_TOKEN is unset: whoever can reach the inbound lane (the \
+             peer network) could make XTR call out with its own identity. Set \
+             `inbound.port` (separate listener for the inbound lanes) or \
              XTR_INTER_SERVICE_TOKEN.",
             outbound_like, sum.outbound, dsl_endpoints
         )
@@ -310,22 +311,14 @@ pub struct Check {
     pub problems: Vec<Problem>,
 }
 
-fn sidecar_files(root: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(rd) = fs::read_dir(&d) else { continue };
-        for p in rd.flatten().map(|e| e.path()) {
+fn sidecar_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    Ok(crate::fswalk::files(root)?
+        .into_iter()
+        .filter(|p| {
             let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if p.is_dir() {
-                stack.push(p);
-            } else if name.ends_with(".soap.yaml") || name.ends_with(".soap.yml") {
-                out.push(p);
-            }
-        }
-    }
-    out.sort();
-    out
+            name.ends_with(".soap.yaml") || name.ends_with(".soap.yml")
+        })
+        .collect())
 }
 
 /// `wsdl/g/x.soap.yaml` → `wsdl/g/x.wsdl` (or `.WSDL`).
@@ -352,7 +345,18 @@ pub fn check_all(dir: Option<&Path>, cfg: &AppConfig) -> Check {
     // (group, xsd file name) → canonical path: `/soap-in/<group>/<file>.xsd`
     // is one URL per group, so two different files must not share it.
     let mut xsds: BTreeMap<(String, String), PathBuf> = BTreeMap::new();
-    for sc in sidecar_files(root) {
+    let sidecars = match sidecar_files(root) {
+        Ok(v) => v,
+        Err(message) => {
+            check.problems.push(Problem {
+                kind: ProblemKind::SidecarInvalid,
+                file: root.to_path_buf(),
+                message,
+            });
+            return check;
+        }
+    };
+    for sc in sidecars {
         let problem = |kind, message: String| Problem {
             kind,
             file: sc.clone(),
@@ -459,7 +463,7 @@ pub fn load_all(dir: Option<&Path>, cfg: &AppConfig) -> Result<Registry, String>
     let Some(root) = dir.filter(|d| d.is_dir()) else {
         return Ok(reg);
     };
-    for sc in sidecar_files(root) {
+    for sc in sidecar_files(root)? {
         let wsdl = wsdl_for_sidecar(&sc).ok_or("sidecar without WSDL")?;
         let prepared = prepare(root, &wsdl, &sc)?;
         let outbound = match &prepared.sidecar.outbound {
