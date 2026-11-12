@@ -1,0 +1,1 @@
+<!DOCTYPE x [<!ENTITY a "b">]><Selftest_Request xmlns="urn:selftest"><Header technicalId="T-1"/><Body><Item id="AB123"><Value>A</Value></Item></Body></Selftest_Request>

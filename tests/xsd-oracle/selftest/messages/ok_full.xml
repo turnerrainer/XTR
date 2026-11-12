@@ -1,0 +1,1 @@
+<Selftest_Request xmlns="urn:selftest"><Header technicalId="T-1" version="1" sentOn="2026-01-31" sentAt="2026-01-31T10:00:00Z"/><Body><Item id="AB123" note="ok"><Value>A</Value></Item><Item id="CD456"><Value>B</Value></Item><Count>10</Count><Code>abc</Code><Flag>true</Flag><Beta>x</Beta></Body></Selftest_Request>

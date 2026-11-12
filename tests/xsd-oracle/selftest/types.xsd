@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:selftest"
+    xmlns="urn:selftest" elementFormDefault="qualified">
+  <xs:simpleType name="CodeType">
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="A"/>
+      <xs:enumeration value="B"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="IdType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="[A-Z]{2}[0-9]{3}"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="NumType">
+    <xs:restriction base="xs:positiveInteger">
+      <xs:minInclusive value="10"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ShortType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="2"/>
+      <xs:maxLength value="5"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ExactType">
+    <xs:restriction base="xs:string">
+      <xs:length value="3"/>
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FlagType">
+    <xs:restriction base="xs:boolean"/>
+  </xs:simpleType>
+  <xs:complexType name="ItemType">
+    <xs:sequence>
+      <xs:element name="Value" type="CodeType"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="IdType" use="required"/>
+    <xs:attribute name="note" type="ShortType"/>
+  </xs:complexType>
+</xs:schema>

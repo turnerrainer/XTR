@@ -13,6 +13,7 @@
 use std::sync::Arc;
 use xtr_on_rust::{
     config::AppConfig, doctor, dsl::loader, executor::Executor, inbound, openapi, router, wsdl,
+    xmllane,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -180,18 +181,34 @@ async fn serve_inner() -> anyhow::Result<()> {
         .clone()
         .or_else(|| cfg.wsdl_watch_dir.clone());
     let registry = inbound::load_all(soap_dir.as_deref(), &cfg).map_err(anyhow::Error::msg)?;
+    // Raw-XML lanes (`*.xml.yaml`): same directory, same exposure rules.
+    let xml_registry = xmllane::load_all(soap_dir.as_deref(), &cfg).map_err(anyhow::Error::msg)?;
     let inbound_port = cfg.inbound.port.filter(|p| *p != cfg.port);
+    let alias_clash = xml_registry.alias_conflicts(
+        |g, n| state.services.contains_key(&(g.to_string(), n.to_string())),
+        inbound_port.is_some(),
+    );
+    if !alias_clash.is_empty() {
+        anyhow::bail!(
+            "invalid raw-XML lane configuration:\n  {}",
+            alias_clash.join("\n  ")
+        );
+    }
+    let (soap_sum, xml_sum) = (registry.summary(), xml_registry.summary());
     if let Some(msg) = inbound::exposure_error(
-        registry.summary(),
+        inbound::LaneSummary {
+            inbound: soap_sum.inbound + xml_sum.inbound,
+            outbound: soap_sum.outbound + xml_sum.outbound,
+        },
         state.services.len(),
         inbound_port.is_some(),
         state.inter_service_token.is_some(),
     ) {
         anyhow::bail!(msg);
     }
-    let (main_extra, isolated) = if registry.is_empty() {
-        (None, None)
-    } else {
+    let mut outbound_routes: Option<axum::Router<router::AppState>> = None;
+    let mut inbound_routes: Option<axum::Router<router::AppState>> = None;
+    if !registry.is_empty() {
         tracing::info!("schema-aware SOAP lanes: {} WSDL(s)", registry.len());
         let lane = inbound::handler::LaneState::new(
             registry,
@@ -199,14 +216,42 @@ async fn serve_inner() -> anyhow::Result<()> {
             state.executor.is_offline(),
             state.inter_service_token.clone(),
         )?;
-        let inbound_routes = inbound::handler::inbound_router(lane.clone());
-        let outbound_routes = inbound::handler::outbound_router(lane);
-        match inbound_port {
-            Some(p) => (
-                Some(outbound_routes),
-                Some((p, router::build_isolated(state.clone(), inbound_routes))),
-            ),
-            None => (Some(outbound_routes.merge(inbound_routes)), None),
+        inbound_routes = Some(inbound::handler::inbound_router(lane.clone()));
+        outbound_routes = Some(inbound::handler::outbound_router(lane));
+    }
+    if !xml_registry.is_empty() {
+        tracing::info!("raw-XML lanes: {} sidecar(s)", xml_registry.len());
+        let lane = xmllane::handler::XmlLaneState::new(
+            xml_registry,
+            state.cfg.clone(),
+            state.executor.is_offline(),
+            state.inter_service_token.clone(),
+        )?;
+        let (i, o) = (
+            xmllane::handler::inbound_router(lane.clone()),
+            xmllane::handler::outbound_router(lane),
+        );
+        inbound_routes = Some(match inbound_routes {
+            Some(r) => r.merge(i),
+            None => i,
+        });
+        outbound_routes = Some(match outbound_routes {
+            Some(r) => r.merge(o),
+            None => o,
+        });
+    }
+    let (main_extra, isolated) = match (outbound_routes, inbound_routes) {
+        (None, None) => (None, None),
+        (out, inb) => {
+            let out = out.unwrap_or_default();
+            let inb = inb.unwrap_or_default();
+            match inbound_port {
+                Some(p) => (
+                    Some(out),
+                    Some((p, router::build_isolated(state.clone(), inb))),
+                ),
+                None => (Some(out.merge(inb)), None),
+            }
         }
     };
     let app = router::build_with(state, main_extra);
@@ -236,7 +281,7 @@ async fn serve_inner() -> anyhow::Result<()> {
         Some((port, inbound_app)) => {
             let inbound_addr = format!("0.0.0.0:{port}");
             tracing::info!(
-                "inbound SOAP lane (/soap-in/) listening on {}",
+                "inbound lane (/soap-in/, /xml-in/ and aliases) listening on {}",
                 inbound_addr
             );
             let inbound_listener = tokio::net::TcpListener::bind(&inbound_addr).await?;

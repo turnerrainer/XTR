@@ -90,8 +90,83 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_soap_action_missing(cfg, &mut findings);
     check_inter_service_token(&mut findings);
     check_soap_lanes_exposure(cfg, &mut findings);
+    check_xml_lane_validation(cfg, &mut findings);
+    check_xml_lane_annotate(cfg, &mut findings);
+    check_xml_lane_backend_header(cfg, &mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
+}
+
+/// Raw-XML lanes whose `backend_headers_env` value is shorter than 32 bytes.
+/// The finding names the variable, never the value.
+fn check_xml_lane_backend_header(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let short = crate::xmllane::short_backend_headers(cfg.wsdl_watch_dir.as_deref());
+    if short.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Weak,
+        code: "weak-xml-lane-backend-header-short".into(),
+        field: Some("inbound.backend_headers_env".into()),
+        headline: "A backend header value of a raw-XML lane is short".into(),
+        rationale: format!(
+            "The backend uses this header to know that a request comes from XTR. A\n\
+             short value is easy to guess. Use a random value of at least {} bytes.\n\n\
+             Lane and variable:\n  {}",
+            crate::xmllane::BACKEND_HEADER_MIN_LEN,
+            short.join("\n  ")
+        ),
+        recovery: Some("Set the variable to a random value of at least 32 bytes.".into()),
+    });
+}
+
+/// Raw-XML lanes in `annotate` mode: XTR passes every request body that
+/// reaches the lane to the backend.
+fn check_xml_lane_annotate(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let lanes = crate::xmllane::annotate_lanes(cfg.wsdl_watch_dir.as_deref());
+    if lanes.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Info,
+        code: "info-xml-lane-annotate".into(),
+        field: Some("validate".into()),
+        headline: "A raw-XML lane uses `annotate`".into(),
+        rationale: format!(
+            "With `annotate`, the backend receives every request body that reaches\n\
+             the lane, also unreadable input, and it decides the answer. The backend\n\
+             must refuse a message with schemaValid=false. In production, you must\n\
+             restrict the inbound port to the peer (ingress mTLS or a network rule).\n\nLanes:\n  {}",
+            lanes.join("\n  ")
+        ),
+        recovery: None,
+    });
+}
+
+/// Raw-XML lanes whose served direction does not enforce XSD validation.
+/// `report` and `off` let a message through that breaks the XSD.
+fn check_xml_lane_validation(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let weak = crate::xmllane::weak_validation(cfg.wsdl_watch_dir.as_deref());
+    if weak.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Weak,
+        code: "weak-xml-lane-validation-not-enforced".into(),
+        field: Some("validate".into()),
+        headline: "A raw-XML lane does not enforce XSD validation".into(),
+        rationale: format!(
+            "A receiver of XML messages is expected to validate each message\n\
+             against its XSD. With `report` or `off`, a message that breaks the\n\
+             XSD reaches the backend or the peer.\n\nLanes:\n  {}",
+            weak.join("\n  ")
+        ),
+        recovery: Some(
+            "Remove the `validate:` key of the lane, or set the direction to\n\
+             `enforce`. Use `report` only in a test environment, for a limited time."
+                .into(),
+        ),
+    });
 }
 
 /// Schema-aware SOAP lanes (`.soap.yaml` sidecars). `/soap-in/` must be
@@ -147,7 +222,11 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
             ),
         });
     }
-    let sum = check.summary;
+    let xml = crate::xmllane::count_lanes(dir.as_deref());
+    let sum = crate::inbound::LaneSummary {
+        inbound: check.summary.inbound + xml.inbound,
+        outbound: check.summary.outbound + xml.outbound,
+    };
     if sum.inbound == 0 {
         return;
     }
@@ -214,26 +293,17 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
 /// WSDLs under the watch dir that boot will turn into DSL endpoints
 /// (every `*.wsdl` unless its `.soap.yaml` says `dsl: false`).
 fn count_dsl_generating_wsdls(dir: &Path) -> usize {
-    let mut n = 0;
-    let mut stack = vec![dir.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(rd) = std::fs::read_dir(&d) else {
-            continue;
-        };
-        for p in rd.flatten().map(|e| e.path()) {
-            if p.is_dir() {
-                stack.push(p);
-            } else if p
-                .extension()
+    // An error here is a walk over the limit; boot refuses it, doctor counts 0.
+    crate::fswalk::files(dir)
+        .unwrap_or_default()
+        .iter()
+        .filter(|p| {
+            p.extension()
                 .and_then(|e| e.to_str())
                 .is_some_and(|e| e.eq_ignore_ascii_case("wsdl"))
-                && !crate::inbound::dsl_disabled(&p)
-            {
-                n += 1;
-            }
-        }
-    }
-    n
+                && !crate::inbound::dsl_disabled(p)
+        })
+        .count()
 }
 
 /// Audit RUNTIME v1 FN4 — WSDL folder-drop needs a writable DSL

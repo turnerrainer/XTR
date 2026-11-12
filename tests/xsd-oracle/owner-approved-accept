@@ -1,0 +1,5 @@
+# Closed list of differences that the owner of the system has approved on purpose.
+# A difference is allowed only when XTR accepts and Xerces refuses, because of a rule that the owner chose.
+# The oracle runs Xerces again after it removes the difference from the message. The verdict and the
+# rule class must then agree in full. The report counts these hits apart from expected-differences.
+utf8_label: The XML declaration has encoding="utf8" (any case). XTR accepts it as an alias of UTF-8 (decision of the owner). Xerces refuses it. With the label replaced by UTF-8, Xerces must agree with XTR.
