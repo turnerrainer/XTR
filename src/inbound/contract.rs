@@ -341,6 +341,51 @@ pub fn load(wsdl_xml: &str, loader: &SchemaLoader) -> Result<Contract, String> {
     })
 }
 
+/// Schema model built from bare XSD documents (no WSDL) — used by the
+/// raw-XML lanes. `entries` are the root XSD documents; local
+/// `xs:include` / `xs:import` targets are resolved through `loader`
+/// exactly like the WSDL path.
+pub fn load_xsd(
+    entries: &[(String, String)],
+    loader: &SchemaLoader,
+) -> Result<(Schema, BTreeMap<String, PathBuf>), String> {
+    let mut schema = Schema::default();
+    let mut schema_files = BTreeMap::new();
+    let mut visited = BTreeSet::new();
+    let mut problems: Vec<String> = Vec::new();
+    for (file, xml) in entries {
+        if !visited.insert(file.clone()) {
+            continue; // already pulled in by an earlier entry's include/import
+        }
+        let root = dom::parse(xml).map_err(|e| format!("{file}: {}", e.0))?;
+        if !is_xsd(&root, "schema") {
+            return Err(format!("{file} is not an <xs:schema>"));
+        }
+        let mut ing = Ingest {
+            schema: &mut schema,
+            loader,
+            files: &mut schema_files,
+            visited: &mut visited,
+            problems: &mut problems,
+        };
+        ing.schema_doc(&root, None, 0);
+    }
+    if !problems.is_empty() {
+        return Err(format!("schema problems: {}", problems.join("; ")));
+    }
+    let mut unresolved = BTreeSet::new();
+    for ty in schema.elements.values() {
+        check_type(&schema, ty, &mut BTreeSet::new(), &mut unresolved);
+    }
+    if !unresolved.is_empty() {
+        return Err(format!(
+            "schema problems: unresolved {}",
+            unresolved.into_iter().collect::<Vec<_>>().join(", ")
+        ));
+    }
+    Ok((schema, schema_files))
+}
+
 fn guess_output(input: &QName, schema: &Schema) -> Option<QName> {
     let candidates = [
         input.local.replace("_Request", "_Response"),

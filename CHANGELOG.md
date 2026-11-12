@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Sidecar and WSDL discovery no longer follows a symlink that points outside the watch
+  directory (a link to a directory or to a file). A link inside the directory still works. The
+  discovery fails at boot when it reads more than 50 000 directories and files. (#43)
+
+### Fixed
+- Sidecar and WSDL discovery (`inbound`, `xmllane`, `xtr doctor`) uses one shared walk. It enters each
+  directory once (by canonical path) and follows a symlink only inside the root, so a symlink cycle or a link out of the root no longer creates phantom lanes or stalls boot.
+  It skips directories whose name starts with `.` (the `..data` directories of a Kubernetes ConfigMap
+  mount). Symlinks to files and directories still work. (#43)
+
+### Added
+- Raw-XML lanes: `validate.inbound: annotate`. XTR always calls the backend and adds `schemaValid` and `violations`. Input that XTR cannot read as a message (not UTF-8, bad prolog, DOCTYPE, unknown root) goes to `<backend>/_invalid`. Invalid input is sent as `rawBase64` only. `xtr doctor` reports an `annotate` lane as INFO.
+- Raw-XML lanes: `inbound.backend_headers_env` adds headers (value from an environment variable named `XTR_BACKEND_HEADER_*`) to the calls to `inbound.backend`. The headers do not go to `forward` targets, to messages with their own `backend`, or to peers. `xtr doctor` warns about a value shorter than 32 bytes.
+- XSD validation of raw-XML lanes, in Rust, for inbound messages and outbound requests. The sidecar
+  key `validate:` sets `off`, `report` or `enforce` per direction. A missing key means `enforce`:
+  a message that breaks the XSD gets HTTP 422 `schema_invalid` (the answer lists the element path,
+  the rule code and the line, never a value), and XTR does not call the backend, forward the message
+  or send the request. An XSD construct outside the supported subset stops the boot with the file and
+  the line. `xtr doctor` reports `off` and `report` as WEAK. Existing lanes validate from now on.
+  Set `validate: {inbound: off, outbound: off}` to keep the old behavior. Until a differential
+  test against a second XSD processor shows no differences for your schemas, write
+  `validate: report` in the sidecar of a production lane. Boot logs the validation mode of each lane.
+  The warn log of violations is rate capped per lane (10 entries per minute, with a `suppressed`
+  count).
+- Raw-XML inbound refuses an XML declaration whose `encoding` is not UTF-8 or utf8
+  (HTTP 400 `unsupported_encoding`), also before `forward`, and a prolog that is not well-formed
+  (`malformed_xml`). The checks are in the parser (`dom::parse_message`). Docs: the `sha256`
+  digest is for integrity and audit, not for duplicate detection.
+- **Raw-XML lanes** (`<name>.xml.yaml` sidecar next to XSD files, no WSDL,
+  no SOAP envelope) for peers that exchange bare XML over HTTP(S), e.g.
+  the EU ERRU MOVEHUB. Inbound `POST /xml-in/<group>/<name>` (optional
+  `inbound.path` alias): raw XML → XSD-guided JSON → backend, handing
+  the backend the received bytes (`rawXml`) and their SHA-256; the
+  backend's status decides the peer's answer. Outbound
+  `POST /xml-out/<group>/<name>/<message>` (token-gated): JSON → raw XML
+  → peer, with per-message timeout, optional own client certificate and
+  the upstream status returned as data. `messages.X.forward` relays
+  received bytes unchanged to another receiver for staged migrations.
+  Reuses the SOAP lanes' codec and SSRF guard; stateless by design. No
+  XSD validation. Backend 4xx codes reach the peer only when listed in
+  `inbound.relay_statuses` (default 400/409/422), `messages.X.direction`
+  (`in`/`out`/`both`) scopes a message to one side. A `forward` loop
+  guard (`x-xtr-forwarded` request header) makes XTR answer 508
+  `loop_detected` when a message that arrives with this header must be
+  forwarded again. A forwarded message that goes to a backend is
+  accepted. `/xml-in` and `/xml-out` are reserved paths, also without a
+  trailing path. The alias clash check with DSL endpoints runs only on a
+  shared listener. See `book/src/xml-lanes.md`.
+
 ## [0.5.1-rc] - 2026-10-22
 
 Patch release — one upstream-parsing bug fix contributed by

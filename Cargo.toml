@@ -13,6 +13,7 @@ repository = "https://github.com/turnerrainer/XTR"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
+base64 = "0.22"
 # Fleet stronghold §6.2: `TimeoutLayer` — cap the entire handler
 # pipeline, not just the outbound reqwest call.
 tower-http = { version = "0.6", features = ["timeout"] }
@@ -48,6 +49,10 @@ percent-encoding = "2"
 # leak the correct prefix byte-by-byte. `subtle::ConstantTimeEq`
 # is already in the transitive tree via rustls/aws-lc-rs.
 subtle = "2"
+# Raw-XML lane: SHA-256 digest of the received bytes, handed to the backend
+# so it can implement idempotency / replay detection.
+sha2 = "0.10"
+regex = { version = "1.13.1", default-features = false, features = ["std", "perf", "unicode-gencat", "unicode-perl"] }
 
 [dev-dependencies]
 tempfile = "3"

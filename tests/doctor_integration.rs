@@ -260,3 +260,125 @@ client_data:
     assert_eq!(run_doctor(tmp3.path(), &[]).0, 1);
     assert_eq!(run_doctor(tmp3.path(), &["--strict"]).0, 1);
 }
+
+// ---------- XSD validation of raw-XML lanes ----------
+
+fn xml_lane_with(validate: &str) -> TempDir {
+    let cfg = "xroad_protocol_version: \"4.0\"\nwsdl_watch_dir: ./wsdl\n";
+    let tmp = tmp_with_config(cfg);
+    let lane = tmp.path().join("wsdl/erru");
+    std::fs::create_dir_all(&lane).unwrap();
+    std::fs::write(
+        lane.join("m.xml.yaml"),
+        format!(
+            "schemas: [M.xsd]\nmessages: {{Msg: {{}}}}\ninbound: {{backend: 'http://b'}}\n{validate}"
+        ),
+    )
+    .unwrap();
+    tmp
+}
+
+#[test]
+fn doctor_warns_when_a_raw_xml_lane_does_not_enforce_xsd_validation() {
+    for validate in [
+        "validate: {inbound: report}\n",
+        "validate: {inbound: off}\n",
+    ] {
+        let tmp = xml_lane_with(validate);
+        let (code, stdout, _) = run_doctor(tmp.path(), &[]);
+        assert_eq!(code, 0, "{stdout}");
+        assert!(
+            stdout.contains("weak-xml-lane-validation-not-enforced"),
+            "{validate}: {stdout}"
+        );
+        assert!(stdout.contains("erru/m"), "names the lane: {stdout}");
+    }
+}
+
+#[test]
+fn doctor_is_quiet_about_validation_when_the_lane_enforces_it() {
+    for validate in [
+        "",
+        "validate: {inbound: enforce}\n",
+        "validate: {outbound: off}\n",
+    ] {
+        let tmp = xml_lane_with(validate);
+        let (_, stdout, _) = run_doctor(tmp.path(), &[]);
+        assert!(
+            !stdout.contains("weak-xml-lane-validation-not-enforced"),
+            "{validate}: {stdout}"
+        );
+    }
+}
+
+#[test]
+fn doctor_gives_info_not_weak_for_an_annotate_lane() {
+    let tmp = xml_lane_with("validate: {inbound: annotate}\n");
+    let (code, stdout, _) = run_doctor(tmp.path(), &[]);
+    assert_eq!(code, 0, "{stdout}");
+    assert!(stdout.contains("info-xml-lane-annotate"), "{stdout}");
+    assert!(stdout.contains("erru/m"), "names the lane: {stdout}");
+    assert!(
+        stdout.contains("restrict the inbound port to the peer"),
+        "{stdout}"
+    );
+    assert!(
+        !stdout.contains("weak-xml-lane-validation-not-enforced"),
+        "{stdout}"
+    );
+}
+
+fn run_doctor_env(cwd: &Path, env: &[(&str, &str)]) -> (i32, String, String) {
+    let mut cmd = Command::new(BIN);
+    cmd.arg("doctor").current_dir(cwd);
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+    let out = cmd.output().expect("doctor binary must be runnable");
+    (
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+        String::from_utf8_lossy(&out.stderr).into_owned(),
+    )
+}
+
+#[test]
+fn doctor_warns_about_a_short_backend_header_value_and_never_prints_the_value() {
+    let lane = "validate: {inbound: enforce}\n";
+    let with_header = |tmp: &TempDir| {
+        let f = tmp.path().join("wsdl/erru/m.xml.yaml");
+        let t = std::fs::read_to_string(&f).unwrap();
+        std::fs::write(
+            &f,
+            t.replace(
+                "inbound: {backend: 'http://b'}",
+                "inbound: {backend: 'http://b', backend_headers_env: {x-backend-token: XTR_BACKEND_HEADER_DOC}}",
+            ),
+        )
+        .unwrap();
+    };
+    // Short value: WEAK, names the variable, hides the value.
+    let tmp = xml_lane_with(lane);
+    with_header(&tmp);
+    let (code, stdout, _) = run_doctor_env(
+        tmp.path(),
+        &[("XTR_BACKEND_HEADER_DOC", "shortSECRETvalue")],
+    );
+    assert_eq!(code, 0, "{stdout}");
+    assert!(
+        stdout.contains("weak-xml-lane-backend-header-short"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("XTR_BACKEND_HEADER_DOC"), "{stdout}");
+    assert!(!stdout.contains("shortSECRETvalue"), "{stdout}");
+    // Long value: quiet, and the value is still hidden.
+    let tmp = xml_lane_with(lane);
+    with_header(&tmp);
+    let long = "LONGSECRET0123456789abcdef0123456789abcdef";
+    let (_, stdout, _) = run_doctor_env(tmp.path(), &[("XTR_BACKEND_HEADER_DOC", long)]);
+    assert!(
+        !stdout.contains("weak-xml-lane-backend-header-short"),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("LONGSECRET"), "{stdout}");
+}

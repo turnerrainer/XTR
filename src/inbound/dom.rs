@@ -39,6 +39,9 @@ pub struct Element {
     /// in source order — re-emitted by `serialize` so declarations that
     /// are only used inside attribute values (QNames) are not lost.
     pub decls: Vec<(String, String)>,
+    /// Line of the start tag in the source document, counted from 1.
+    /// `0` means unknown (an element that the parser did not create).
+    pub line: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -118,24 +121,163 @@ fn lookup(scope: &[(String, String)], prefix: &str) -> Option<String> {
         .filter(|u| !u.is_empty())
 }
 
+/// What kind of error `parse` found. Callers pick a status or code from it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DomErrorKind {
+    /// The text is not well-formed XML (or breaks a rule of this parser).
+    Malformed,
+    /// The XML declaration names an encoding other than UTF-8.
+    Encoding,
+    /// The document has a DOCTYPE / DTD.
+    Doctype,
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("{0}")]
-pub struct DomError(pub String);
+pub struct DomError(pub String, pub DomErrorKind);
 
 fn err(msg: impl Into<String>) -> DomError {
-    DomError(msg.into())
+    DomError(msg.into(), DomErrorKind::Malformed)
 }
 
 /// Parse a complete document and return its root element.
 pub fn parse(xml: &str) -> Result<Element, DomError> {
+    parse_impl(xml, false)
+}
+
+/// Parse a message that a peer sent. Stricter than [`parse`], for the raw-XML
+/// lanes: the prolog must be well-formed (XML 1.0 §2.8) and the XML declaration
+/// must say UTF-8 or leave the encoding out. The checks live in the parser,
+/// so what they accept is what the codec reads.
+///
+/// * One leading BOM is allowed.
+/// * The XML declaration is allowed only as the first event, once. It follows
+///   XML 1.0 §2.8: `version` (1.0 or 1.1), then an optional `encoding`, then an
+///   optional `standalone`, each once, in lower case. `encoding` must be `UTF-8`
+///   or `utf8` (any case).
+/// * A processing instruction named `xml` (any case) is refused.
+/// * Text, CDATA and references outside the root element are refused, except
+///   white space.
+pub fn parse_message(xml: &str) -> Result<Element, DomError> {
+    parse_impl(xml.strip_prefix('\u{feff}').unwrap_or(xml), true)
+}
+
+/// One `name="value"` pair of the XML declaration (XML 1.0 §2.8).
+/// Needs white space before the name. Returns `None` when the next name is
+/// another one: the caller then tries its next pseudo-attribute.
+fn pseudo_attr<'a>(rest: &mut &'a str, name: &str) -> Result<Option<&'a str>, DomError> {
+    let s = *rest;
+    let trimmed = s.trim_start_matches([' ', '\t', '\r', '\n']);
+    if trimmed.len() == s.len() {
+        return Ok(None); // no white space before the name
+    }
+    let Some(after) = trimmed.strip_prefix(name) else {
+        return Ok(None);
+    };
+    let after = after.trim_start_matches([' ', '\t', '\r', '\n']);
+    let after = after
+        .strip_prefix('=')
+        .ok_or_else(|| err(format!("XML declaration: '=' expected after {name}")))?
+        .trim_start_matches([' ', '\t', '\r', '\n']);
+    let quote = after
+        .chars()
+        .next()
+        .filter(|c| *c == '"' || *c == '\'')
+        .ok_or_else(|| err(format!("XML declaration: quoted value expected for {name}")))?;
+    let body = &after[1..];
+    let end = body
+        .find(quote)
+        .ok_or_else(|| err(format!("XML declaration: unterminated value for {name}")))?;
+    *rest = &body[end + 1..];
+    Ok(Some(&body[..end]))
+}
+
+/// XML 1.0 §2.8: `version`, then an optional `encoding`, then an optional
+/// `standalone`, each once, in lower case. Anything else is an error.
+fn check_decl(d: &quick_xml::events::BytesDecl<'_>) -> Result<(), DomError> {
+    let raw = std::str::from_utf8(d).map_err(|_| err("XML declaration is not UTF-8"))?;
+    let mut rest = raw
+        .strip_prefix("xml")
+        .ok_or_else(|| err("XML declaration expected"))?;
+    let version = pseudo_attr(&mut rest, "version")?
+        .ok_or_else(|| err("XML declaration: version is required, and comes first"))?;
+    if version != "1.0" && version != "1.1" {
+        return Err(err("XML declaration: version must be 1.0 or 1.1"));
+    }
+    if let Some(enc) = pseudo_attr(&mut rest, "encoding")? {
+        let mut chars = enc.chars();
+        let name_ok = chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+        if !name_ok {
+            return Err(err("XML declaration: invalid encoding name"));
+        }
+        if !enc.eq_ignore_ascii_case("utf-8") && !enc.eq_ignore_ascii_case("utf8") {
+            return Err(DomError(
+                "the XML declaration must say UTF-8 or leave the encoding out".into(),
+                DomErrorKind::Encoding,
+            ));
+        }
+    }
+    if let Some(st) = pseudo_attr(&mut rest, "standalone")? {
+        if st != "yes" && st != "no" {
+            return Err(err("XML declaration: standalone must be yes or no"));
+        }
+    }
+    if !rest.trim_matches([' ', '\t', '\r', '\n']).is_empty() {
+        return Err(err(
+            "XML declaration: only version, encoding and standalone are allowed, once each, in this order",
+        ));
+    }
+    Ok(())
+}
+
+fn is_xml_space(s: &str) -> bool {
+    s.chars().all(|c| matches!(c, ' ' | '\t' | '\r' | '\n'))
+}
+
+/// Counts line ends incrementally: each call looks only at the bytes
+/// after the last position, so a whole document costs one pass.
+/// A line end is LF, CRLF or a lone CR (XML 1.0 section 2.11).
+struct LineCounter {
+    pos: usize,
+    line: u32,
+}
+
+impl LineCounter {
+    fn new() -> Self {
+        Self { pos: 0, line: 1 }
+    }
+
+    /// Line (from 1) at byte offset `to`. `to` must not go backwards.
+    fn at(&mut self, bytes: &[u8], to: usize) -> u32 {
+        let to = to.min(bytes.len());
+        for i in self.pos..to {
+            match bytes[i] {
+                b'\n' => self.line = self.line.saturating_add(1),
+                b'\r' if bytes.get(i + 1) != Some(&b'\n') => {
+                    self.line = self.line.saturating_add(1)
+                }
+                _ => {}
+            }
+        }
+        self.pos = self.pos.max(to);
+        self.line
+    }
+}
+
+fn parse_impl(xml: &str, strict: bool) -> Result<Element, DomError> {
+    let mut first = true;
+    let mut lines = LineCounter::new();
     let mut reader = Reader::from_str(xml);
     let mut stack: Vec<Element> = Vec::new();
     let mut root: Option<Element> = None;
     let empty_scope: Scope = Arc::new(Vec::new());
     loop {
+        let start = reader.buffer_position() as usize;
         let ev = reader
             .read_event()
             .map_err(|e| err(format!("XML parse error: {e}")))?;
+        let is_first = std::mem::replace(&mut first, false);
         match ev {
             Event::Start(e) => {
                 if stack.len() >= MAX_DEPTH {
@@ -145,14 +287,17 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
                     .last()
                     .map(|p| p.scope.clone())
                     .unwrap_or_else(|| empty_scope.clone());
-                stack.push(open_element(&e, parent_scope)?);
+                let mut el = open_element(&e, parent_scope)?;
+                el.line = lines.at(xml.as_bytes(), start);
+                stack.push(el);
             }
             Event::Empty(e) => {
                 let parent_scope = stack
                     .last()
                     .map(|p| p.scope.clone())
                     .unwrap_or_else(|| empty_scope.clone());
-                let el = open_element(&e, parent_scope)?;
+                let mut el = open_element(&e, parent_scope)?;
+                el.line = lines.at(xml.as_bytes(), start);
                 attach(&mut stack, &mut root, el)?;
             }
             Event::End(_) => {
@@ -161,9 +306,15 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
             }
             Event::Text(t) => {
                 let raw = t.decode().map_err(|e| err(format!("text decode: {e}")))?;
+                if strict && stack.is_empty() && !is_xml_space(&raw) {
+                    return Err(err("text outside the root element"));
+                }
                 let text = quick_xml::escape::unescape(&raw)
                     .map_err(|e| err(format!("text unescape: {e}")))?;
                 push_text(&mut stack, &text);
+            }
+            Event::CData(_) | Event::GeneralRef(_) if strict && stack.is_empty() => {
+                return Err(err("text outside the root element"));
             }
             Event::CData(t) => {
                 let raw = t.decode().map_err(|e| err(format!("cdata decode: {e}")))?;
@@ -179,9 +330,27 @@ pub fn parse(xml: &str) -> Result<Element, DomError> {
                 push_text(&mut stack, ch.encode_utf8(&mut [0u8; 4]));
             }
             Event::DocType(_) => {
-                return Err(err("DOCTYPE is not allowed (XXE / entity-expansion risk)"));
+                return Err(DomError(
+                    "DOCTYPE is not allowed (XXE / entity-expansion risk)".into(),
+                    DomErrorKind::Doctype,
+                ));
             }
-            Event::Decl(_) | Event::Comment(_) | Event::PI(_) => {}
+            Event::Decl(d) => {
+                if strict {
+                    if !is_first {
+                        return Err(err(
+                            "XML declaration is allowed only at the very start of the document",
+                        ));
+                    }
+                    check_decl(&d)?;
+                }
+            }
+            Event::PI(pi) => {
+                if strict && pi.target().eq_ignore_ascii_case(b"xml") {
+                    return Err(err("processing instruction target 'xml' is reserved"));
+                }
+            }
+            Event::Comment(_) => {}
             Event::Eof => break,
         }
     }
@@ -319,6 +488,7 @@ fn open_element(e: &BytesStart, parent_scope: Scope) -> Result<Element, DomError
         children: Vec::new(),
         scope,
         decls,
+        line: 0,
     })
 }
 
@@ -439,6 +609,73 @@ fn write_el(el: &Element, out: &mut String, scope: &mut Vec<(String, String)>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn lines(xml: &str) -> Vec<(String, u32)> {
+        fn walk(e: &Element, out: &mut Vec<(String, u32)>) {
+            out.push((e.local.clone(), e.line));
+            for c in e.elements() {
+                walk(c, out);
+            }
+        }
+        let mut out = Vec::new();
+        walk(&parse(xml).unwrap(), &mut out);
+        out
+    }
+
+    #[test]
+    fn element_line_counts_from_one_and_follows_line_feeds() {
+        let got = lines("<a>\n  <b/>\n\n  <c>\n    <d/>\n  </c>\n</a>");
+        let want = [("a", 1), ("b", 2), ("c", 4), ("d", 5)];
+        let want: Vec<(String, u32)> = want.iter().map(|(n, l)| (n.to_string(), *l)).collect();
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn element_line_counts_crlf_once_and_a_lone_cr_as_a_line_end() {
+        let got = lines("<a>\r\n<b/>\r\n<c/>\r<d/>\n</a>");
+        let n: Vec<(&str, u32)> = got.iter().map(|(n, l)| (n.as_str(), *l)).collect();
+        assert_eq!(n, [("a", 1), ("b", 2), ("c", 3), ("d", 4)]);
+    }
+
+    #[test]
+    fn element_line_is_the_line_of_the_start_tag_also_for_a_multiline_tag() {
+        let got = lines("<a\n  x=\"1\"\n  y=\"2\">\n<b\n  z=\"3\"/>\n<c/></a>");
+        let n: Vec<(&str, u32)> = got.iter().map(|(n, l)| (n.as_str(), *l)).collect();
+        assert_eq!(n, [("a", 1), ("b", 4), ("c", 6)]);
+    }
+
+    #[test]
+    fn a_character_reference_for_a_line_feed_is_not_a_line_end() {
+        let got = lines("<a x=\"p&#10;q\">&#10;<b/></a>");
+        let n: Vec<(&str, u32)> = got.iter().map(|(n, l)| (n.as_str(), *l)).collect();
+        assert_eq!(n, [("a", 1), ("b", 1)]);
+    }
+
+    #[test]
+    fn element_line_of_a_message_with_a_leading_bom_and_declaration() {
+        let root = parse_message("\u{feff}<?xml version=\"1.0\"?>\n<a>\n<b/></a>").unwrap();
+        assert_eq!(root.line, 2);
+        assert_eq!(root.child("b").unwrap().line, 3);
+    }
+
+    #[test]
+    fn element_line_counting_is_linear_on_a_large_message() {
+        let n = 100_000u32;
+        let mut xml = String::from("<r>\n");
+        for _ in 0..n {
+            xml.push_str("<e/>\n");
+        }
+        xml.push_str("</r>");
+        let t = std::time::Instant::now();
+        let root = parse_message(&xml).unwrap();
+        let took = t.elapsed();
+        let last = root.elements().last().unwrap();
+        assert_eq!(last.line, n + 1);
+        assert!(
+            took < std::time::Duration::from_secs(5),
+            "parsing {n} lines took {took:?}: line counting is not linear"
+        );
+    }
 
     #[test]
     fn resolves_namespaces_and_attributes() {
