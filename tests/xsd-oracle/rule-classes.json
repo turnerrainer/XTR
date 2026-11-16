@@ -1,0 +1,36 @@
+{
+  "comment": "Maps a Xerces rule code to the rule codes of the Rust validator. A list means that more than one Rust code is accepted for the same fact. A Xerces code that is not here is an error.",
+  "mapping": {
+    "cvc-elt.1.a": ["root_unknown"],
+    "cvc-complex-type.2.1": ["text_not_allowed", "element_unexpected"],
+    "cvc-complex-type.2.2": ["simple_content_expected"],
+    "cvc-type.3.1.1": ["attribute_unexpected"],
+    "cvc-type.3.1.2": ["simple_content_expected"],
+    "cvc-complex-type.2.3": ["text_not_allowed"],
+    "cvc-complex-type.2.4.a": ["element_unexpected", "element_missing"],
+    "cvc-complex-type.2.4.b": ["element_missing"],
+    "cvc-complex-type.2.4.d": ["element_unexpected"],
+    "cvc-complex-type.3.1": ["attribute_fixed"],
+    "cvc-attribute.4": ["attribute_fixed"],
+    "cvc-complex-type.3.2.2": ["attribute_unexpected"],
+    "cvc-complex-type.4": ["attribute_missing"],
+    "cvc-datatype-valid.1.2.1": ["type_invalid"],
+    "cvc-datatype-valid.1.2.2": ["type_invalid"],
+    "cvc-datatype-valid.1.2.3": ["type_invalid"],
+    "cvc-enumeration-valid": ["enumeration"],
+    "cvc-pattern-valid": ["pattern"],
+    "cvc-length-valid": ["length"],
+    "cvc-minLength-valid": ["min_length"],
+    "cvc-maxLength-valid": ["max_length"],
+    "cvc-minInclusive-valid": ["min_inclusive", "type_invalid"],
+    "cvc-elt.3.1": ["xsi_not_allowed"],
+    "cvc-elt.3.2.1": ["xsi_not_allowed"],
+    "cvc-elt.4.1": ["xsi_not_allowed"],
+    "cvc-elt.4.2": ["xsi_not_allowed"],
+    "cvc-elt.4.3": ["xsi_not_allowed"]
+  },
+  "mapping_notes": {
+    "cvc-minInclusive-valid": "A restriction of positiveInteger with minInclusive: for a value below the base range (0, -1) Xerces names the facet that the schema author wrote (cvc-minInclusive-valid). XTR checks the base type first and reports type_invalid. The verdict is the same. The class differs only in the order of the checks. XTR reports min_inclusive when the value is in the base range."
+  },
+  "wrappers": ["cvc-attribute.3", "cvc-type.3.1.3", "cvc-elt.5.2.2.2.1", "cvc-elt.5.2.2.2.2"]
+}

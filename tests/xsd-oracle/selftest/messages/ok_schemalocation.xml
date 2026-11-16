@@ -1,0 +1,1 @@
+<Selftest_Request xmlns="urn:selftest" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:other http://127.0.0.1:9/x.xsd"><Header technicalId="T-1"/><Body><Item id="AB123"><Value>A</Value></Item></Body></Selftest_Request>

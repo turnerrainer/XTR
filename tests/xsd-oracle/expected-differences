@@ -1,0 +1,7 @@
+# Closed list of expected differences between XTR and the Xerces oracle.
+# A difference is allowed only when XTR refuses and Xerces accepts.
+# Each entry has a test in tests/xsd_oracle.rs. Any other difference is an error.
+non_utf8_declaration: The XML declaration names an encoding other than UTF-8. XTR refuses it. Xerces reads the encoding.
+strict_prolog: XTR refuses a prolog rule break (XML declaration rules) that Xerces accepts.
+unicode_unassigned: The message has a character that the JDK Unicode table lists as unassigned (Cn). XTR uses the Unicode table of the regex crate, so a pattern can refuse the character.
+year_over_nine_digits: A date or dateTime value has a year with 10 or more digits. XTR refuses it with type_invalid. Xerces accepts it.

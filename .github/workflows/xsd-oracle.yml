@@ -1,0 +1,60 @@
+name: xsd-oracle
+
+# Differential test of the Rust XSD validator against Apache Xerces.
+# Xerces runs only here, in a container without network.
+# The pull request run uses the synthetic self-test only.
+# The manual run can also run the gate test on a schema directory and
+# a sample directory that the caller puts in the workspace.
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "src/xsdval/**"
+      - "src/inbound/dom.rs"
+      - "tests/xsd_oracle.rs"
+      - "tests/xsd-oracle/**"
+      - ".github/workflows/xsd-oracle.yml"
+  workflow_dispatch:
+    inputs:
+      xsd_dir:
+        description: "Schema directory, relative to the workspace. Empty = self-test only."
+        required: false
+        default: ""
+        type: string
+      samples_dir:
+        description: "Directory with valid sample messages, relative to the workspace."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  XTR_XSD_ORACLE_REQUIRED: "1"
+
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - name: Cache the Xerces jar
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: tests/xsd-oracle/.cache
+          key: xerces-jar-${{ hashFiles('tests/xsd-oracle/pins.env') }}
+      - name: Fetch the Xerces jar
+        run: sh tests/xsd-oracle/fetch-xerces.sh
+      - name: Self-test
+        run: cargo test --test xsd_oracle -- --nocapture
+      - name: Gate test
+        if: github.event_name == 'workflow_dispatch' && inputs.xsd_dir != ''
+        env:
+          XTR_ERRU_XSD_DIR: ${{ github.workspace }}/${{ inputs.xsd_dir }}
+          XTR_ORACLE_SAMPLES_DIR: ${{ github.workspace }}/${{ inputs.samples_dir }}
+        run: cargo test --test xsd_oracle -- --ignored --nocapture
