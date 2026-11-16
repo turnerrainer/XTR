@@ -130,6 +130,17 @@ sidecars statically — it never opens a keystore.
 | WEAK | `weak-soap-inbound-shared-listener` | Inbound lane served on the main listener (no `inbound.port`) — with a token set, or with no outbound endpoints there. Exposing `/soap-in/` then relies on an ingress path rule to keep `/:group/:service`, `/api`, `/soap-out/` private. |
 | WEAK | `weak-soap-inbound-op-without-backend` | An inbound WSDL operation has no backend (`inbound.backend` unset and no `inbound.operations.<op>`). The operation is published but every call gets a SOAP `Server` fault. |
 
+### Raw-XML lanes (`.xml.yaml`)
+
+See [Raw-XML lanes](./xml-lanes.md). All three rules read sidecars
+only (no XSDs are opened by the doctor).
+
+| Severity | Code | Fires when |
+|---|---|---|
+| WEAK | `weak-xml-lane-validation-not-enforced` | A raw-XML lane serves a direction (inbound or outbound) whose `validate:` mode is `off` or `report`. The sidecar default is `off`, so a lane with no `validate:` key counts here. Fire-by-default is the "validator available, not in use" signal; flip to `enforce` or `annotate` per direction after the Xerces-oracle workflow (PR #48) shows zero differences on your XSD corpus. See [xml-lanes.md → Rolling out](./xml-lanes.md#rolling-out-a-version-with-validation). |
+| INFO | `info-xml-lane-annotate` | A raw-XML lane uses `validate.inbound: annotate` — XTR calls the backend on *every* request (also unreadable input, which routes to `<backend>/_invalid`) and the backend owns the peer-facing answer. The lane is only safe when the inbound port accepts the peer only (ingress mTLS or a network rule). Not WEAK: `annotate` is the correct posture for peers whose protocol requires an application-level error message (e.g. ERRU `ErrorNotification` with `InvalidFormat`). |
+| WEAK | `weak-xml-lane-backend-header-short` | A sidecar's `inbound.backend_headers_env` names an env var whose value is shorter than 32 bytes. The variable's name is reported; the value is never read into the finding (`--format json` output stays safe for CI logs). Rotate to a ≥ 32-byte random token. |
+
 > **Upgrade note — `doctor --strict` exit code change in audit-v2.**
 >
 > The shipped `xtr.yaml` sets `wsdl_watch_dir: ./wsdl` to make

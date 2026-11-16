@@ -35,9 +35,11 @@ Extras depend on variant:
 | `404` | `not_found` | `/api` | `observability.expose_openapi: false` and someone hit `/api` (audit-v2 F-XTR-1). Body does **not** enumerate any DSL. |
 | `405` | `method_not_allowed` | Both | Inbound HTTP method doesn't match the DSL's declared `method:`. SOAP DSLs are POST-only; REST DSLs contract whichever method they declare. |
 | `413` | `request_too_large` | All | Body exceeded `limits.max_request_bytes`. |
+| `422` | `schema_invalid` | Raw-XML (`/xml-in/…`, `/xml-out/…`) | A message or request fails XSD validation when the sidecar sets the direction's `validate:` to `enforce`. Body carries up to 10 `{path, rule, line, schemaFile, schemaLine}` violations; no message values are included (never leaks secrets or paths). |
 | `500` | `template_expansion_failed` | SOAP | Handlebars render error at request time. Startup validation catches most; anything reaching here is exotic (e.g. runtime helper failure). |
 | `500` | `keystore_load_failed` | Both | `.p12` couldn't be read/parsed. Both lanes share the mTLS identity, so either triggers this. |
 | `500` | `internal_error` | Both | Unexpected. REST DSLs also 500 with this when `security_server:` is missing — the doctor's `fatal-rest-no-security-server` catches this at deploy time. Check the log line. |
+| `500` | `validator_failed` | Raw-XML | Internal XSD validator error. XTR fails closed: no backend call, no forward, no outbound. Details go to the log only, never the response body. |
 | `502` | `upstream_http_error` | SOAP | Upstream returned non-2xx AND the body wasn't a parseable SOAP Fault. REST lane does not translate — see "REST passthrough" below. |
 | `502` | `upstream_soap_fault` | SOAP | Upstream returned `<Fault>` (on HTTP 200 OR wrapped in HTTP 5xx). Both SOAP 1.1 and 1.2 shapes handled. Control chars in `code` / `string` become `U+FFFD` (audit-v2 FN2). |
 | `502` | `upstream_xml_parse_error` | SOAP | Response wasn't valid XML. Includes XXE-guard rejections (custom entities) and nesting-depth cap. |
