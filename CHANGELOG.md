@@ -45,6 +45,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field, never process-level env.
 - **`book/src/configuration.md`** env var table and
   **`book/src/doctor.md`** rule catalogue updated.
+- **Symlink-safe WSDL / sidecar discovery walk** (closes #43).
+  The two pre-existing walks in `src/inbound/mod.rs::sidecar_files`
+  and `src/doctor.rs::count_dsl_generating_wsdls` used
+  `std::fs::read_dir` without guarding against symlink cycles or
+  out-of-root escapes. A single `loop -> .` under a group directory
+  yielded ~33 phantom lanes before the OS broke the walk with
+  `ELOOP`; two cycles stalled boot at ~2^32 paths. A symlink to the
+  filesystem root (or any operator-sensitive dir outside the WSDL
+  mount) was happily followed. Low real-world blast radius —
+  `/wsdl` ships inside the image for most deployments — but a
+  hostile WSDL mount could stall boot or trick the schema loader
+  into reading files it shouldn't touch. Fixed via a new
+  `src/fswalk.rs` module with four guarantees:
+  1. Directories tracked by canonical path — a cycle adds nothing.
+  2. A symlink (dir or file) is followed only when its target is
+     inside the root. `x -> /`, `x -> ../../etc` are ignored.
+  3. The walk fails after `MAX_ENTRIES = 50 000` directories +
+     files — fail-closed so lanes are never silently dropped.
+  4. Dotfile directories (`..data`, `..<ts>`) are skipped, so
+     Kubernetes ConfigMap mounts don't double-count.
+  Both callers now propagate the walk error: `check_all` surfaces
+  it as a fatal `Problem` keyed on the root path (boot refuses);
+  the doctor emits a new `fatal-wsdl-watch-dir-walk-cap` finding
+  with the mount name and the operator remedy (`find -type l`).
+  Regression coverage: 9 inline unit tests in `fswalk.rs` (one
+  cycle, many cycles, two-dir cycles, out-of-root escape, file
+  symlink leaks, root-symlink, entry cap, symlinked files that are
+  legitimate, Kubernetes ConfigMap layout) + 3 seam tests in
+  `tests/discovery_symlink_cycle.rs` that drive `inbound::check_all`
+  end-to-end with a symlink cycle and an out-of-root escape.
+
+### Attribution
+- The symlink-safe walker design is ported verbatim from @sviljus's
+  PR #41 (raw-XML lanes arc), stripped of its feature-level changes
+  and split into this standalone PR so the security fix is not
+  blocked on the raw-XML lane review. All credit for the walker
+  design and its test set to @sviljus.
 
 ## [0.5.1-rc] - 2026-10-22
 

@@ -111,6 +111,7 @@ Every code the doctor can emit, grouped by area.
 | Severity | Code | Fires when |
 |---|---|---|
 | WEAK | `weak-writable-rootfs-wsdl-folder-drop` | `wsdl_watch_dir` is set. Folder-drop needs a writable DSL dir, precluding `read_only: true` container rootfs (FLEET-STRONGHOLDS §7). Recovery text names the pre-generate-on-host workflow. |
+| FATAL | `fatal-wsdl-watch-dir-walk-cap` | The WSDL-mount walker enumerated more than 50 000 directories + files (`fswalk::MAX_ENTRIES`), almost certainly a symlink cycle in the mount. Boot is refused rather than silently dropping lanes. Recovery text names the `find -type l` recipe. Closes #43. |
 | WEAK | `weak-offline-mode-active` | `XTR_OFFLINE` env var is truthy. Every outbound SOAP + REST dispatch will be short-circuited with HTTP 599. Intended for pentest / break-test runs; refuse to leave in production. |
 | INFO | `info-proxy-env-ignored` | At least one of `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` (either case) is set in the process env. XTR's reqwest clients all call `.no_proxy()`, so the env has no effect on outbound routing — the finding exists to tell operators that intentionally, before "why doesn't my proxy work?" becomes a ticket. INFO (not WEAK) because env presence alone is not a defect. |
 | INFO | `info-no-caller-auth` | Always emitted. Reminder that XTR ships zero built-in caller authentication on `/:group/:service` — a reverse proxy or service mesh MUST gate the route in every deployment. Design property, not a fixable-in-config finding. |

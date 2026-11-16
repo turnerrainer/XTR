@@ -8,6 +8,7 @@ pub mod doctor;
 pub mod dsl;
 pub mod error;
 pub mod executor;
+pub mod fswalk;
 pub mod inbound;
 pub mod openapi;
 pub mod router;

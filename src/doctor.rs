@@ -158,11 +158,45 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
     let dsl_on_disk = crate::dsl::loader::load_all(&cfg.dsl_path)
         .map(|m| m.len())
         .unwrap_or(0);
-    let dsl_pending = cfg
+    let dsl_pending = match cfg
         .wsdl_watch_dir
         .as_deref()
         .map(count_dsl_generating_wsdls)
-        .unwrap_or(0);
+    {
+        None | Some(Ok(0)) => 0,
+        Some(Ok(n)) => n,
+        Some(Err(message)) => {
+            // #43 — walk hit the 50 000-entry cap (likely a symlink
+            // cycle in the WSDL mount). Emit a fatal finding so the
+            // operator sees the mount name and the limit, and skip
+            // the dependent exposure check (it reads from the walk).
+            out.push(Finding {
+                severity: Severity::Fatal,
+                code: "fatal-wsdl-watch-dir-walk-cap".into(),
+                field: Some("wsdl_watch_dir".into()),
+                headline: "wsdl_watch_dir: directory walk exceeded 50 000 entries".into(),
+                rationale: format!(
+                    "The WSDL-mount walker refuses to enumerate beyond\n\
+                     50 000 directories and files (`fswalk::MAX_ENTRIES`).\n\
+                     A symlink cycle inside the mount typically multiplies\n\
+                     the path count exponentially; the cap stops boot\n\
+                     stalls and silent lane-drop at the cost of surfacing\n\
+                     a loud configuration error.\n\
+                     \nDetail: {message}"
+                ),
+                recovery: Some(
+                    "Remove symlink loops and non-lane content from\n\
+                     the WSDL mount:\n\
+                     \n  \
+                     find ./wsdl -type l -exec ls -l {} \\;\n\
+                     \n\
+                     then re-run `xtr-on-rust doctor`."
+                        .into(),
+                ),
+            });
+            return;
+        }
+    };
     let dsl_endpoints = dsl_on_disk + dsl_pending;
     let token = std::env::var("XTR_INTER_SERVICE_TOKEN")
         .map(|v| !v.trim().is_empty())
@@ -214,27 +248,21 @@ fn check_soap_lanes_exposure(cfg: &AppConfig, out: &mut Vec<Finding>) {
 
 /// WSDLs under the watch dir that boot will turn into DSL endpoints
 /// (every `*.wsdl` unless its `.soap.yaml` says `dsl: false`).
-fn count_dsl_generating_wsdls(dir: &Path) -> usize {
-    let mut n = 0;
-    let mut stack = vec![dir.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(rd) = std::fs::read_dir(&d) else {
-            continue;
-        };
-        for p in rd.flatten().map(|e| e.path()) {
-            if p.is_dir() {
-                stack.push(p);
-            } else if p
-                .extension()
+///
+/// Uses [`crate::fswalk::files`] so a symlink cycle in the mount
+/// cannot stall the doctor either. On walk failure (50 000-entry
+/// cap hit), returns `Err` — the caller surfaces a FATAL finding
+/// rather than silently reporting zero.
+fn count_dsl_generating_wsdls(dir: &Path) -> Result<usize, String> {
+    Ok(crate::fswalk::files(dir)?
+        .into_iter()
+        .filter(|p| {
+            p.extension()
                 .and_then(|e| e.to_str())
                 .is_some_and(|e| e.eq_ignore_ascii_case("wsdl"))
-                && !crate::inbound::dsl_disabled(&p)
-            {
-                n += 1;
-            }
-        }
-    }
-    n
+                && !crate::inbound::dsl_disabled(p)
+        })
+        .count())
 }
 
 /// Audit RUNTIME v1 FN4 — WSDL folder-drop needs a writable DSL

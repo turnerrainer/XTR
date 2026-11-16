@@ -310,22 +310,20 @@ pub struct Check {
     pub problems: Vec<Problem>,
 }
 
-fn sidecar_files(root: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(rd) = fs::read_dir(&d) else { continue };
-        for p in rd.flatten().map(|e| e.path()) {
+/// Fail-closed: #43 — a symlink cycle in the WSDL mount used to
+/// create thousands of phantom lanes or stall boot. `fswalk::files`
+/// tracks canonical directory paths so a cycle adds nothing, caps
+/// the walk at 50 000 entries, and rejects symlink targets outside
+/// `root`. Returning `Err` propagates to `check_all` which turns it
+/// into a fatal boot problem.
+fn sidecar_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    Ok(crate::fswalk::files(root)?
+        .into_iter()
+        .filter(|p| {
             let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            if p.is_dir() {
-                stack.push(p);
-            } else if name.ends_with(".soap.yaml") || name.ends_with(".soap.yml") {
-                out.push(p);
-            }
-        }
-    }
-    out.sort();
-    out
+            name.ends_with(".soap.yaml") || name.ends_with(".soap.yml")
+        })
+        .collect())
 }
 
 /// `wsdl/g/x.soap.yaml` → `wsdl/g/x.wsdl` (or `.WSDL`).
@@ -352,7 +350,22 @@ pub fn check_all(dir: Option<&Path>, cfg: &AppConfig) -> Check {
     // (group, xsd file name) → canonical path: `/soap-in/<group>/<file>.xsd`
     // is one URL per group, so two different files must not share it.
     let mut xsds: BTreeMap<(String, String), PathBuf> = BTreeMap::new();
-    for sc in sidecar_files(root) {
+    let sidecars = match sidecar_files(root) {
+        Ok(v) => v,
+        Err(message) => {
+            // #43 — the walk hit the 50 000-entry cap, almost
+            // certainly a symlink cycle in the WSDL mount. Surface
+            // it as a fatal problem keyed on the root path so the
+            // boot error and the doctor rule both name the mount.
+            check.problems.push(Problem {
+                kind: ProblemKind::SidecarInvalid,
+                file: root.to_path_buf(),
+                message,
+            });
+            return check;
+        }
+    };
+    for sc in sidecars {
         let problem = |kind, message: String| Problem {
             kind,
             file: sc.clone(),
@@ -459,7 +472,12 @@ pub fn load_all(dir: Option<&Path>, cfg: &AppConfig) -> Result<Registry, String>
     let Some(root) = dir.filter(|d| d.is_dir()) else {
         return Ok(reg);
     };
-    for sc in sidecar_files(root) {
+    // `check_all` above has already run the same walk; a walk-cap
+    // error would have surfaced as a fatal `Problem` and short-
+    // circuited this function. `?` here is belt-and-suspenders for
+    // the (near-impossible) case where a filesystem race lets the
+    // walk succeed the first time and fail the second.
+    for sc in sidecar_files(root)? {
         let wsdl = wsdl_for_sidecar(&sc).ok_or("sidecar without WSDL")?;
         let prepared = prepare(root, &wsdl, &sc)?;
         let outbound = match &prepared.sidecar.outbound {
