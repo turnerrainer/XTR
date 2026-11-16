@@ -10,6 +10,7 @@
 - [REST passthrough](./rest-passthrough.md)
 - [Schema-aware SOAP lanes (both directions)](./soap-lanes.md)
 - [Raw-XML lanes (no SOAP envelope)](./xml-lanes.md)
+  - [Decision record: XSD validation](./adr-xsd-validation.md)
 - [X-Road Security Server setup](./security-server.md)
 - [Failure modes](./failure-modes.md)
 

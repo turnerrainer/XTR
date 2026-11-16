@@ -84,8 +84,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   design and its test set to @sviljus.
 
 ### Added
-- Raw-XML inbound refuses an XML declaration whose `encoding` is not UTF-8
-  (HTTP 400 `unsupported_encoding`), also before `forward`. Docs: the `sha256`
+- Raw-XML lanes: `validate.inbound: annotate`. XTR always calls the backend and adds `schemaValid` and `violations`. Input that XTR cannot read as a message (not UTF-8, bad prolog, DOCTYPE, unknown root) goes to `<backend>/_invalid`. Invalid input is sent as `rawBase64` only. `xtr doctor` reports an `annotate` lane as INFO.
+- Raw-XML lanes: `inbound.backend_headers_env` adds headers (value from an environment variable named `XTR_BACKEND_HEADER_*`) to the calls to `inbound.backend`. The headers do not go to `forward` targets, to messages with their own `backend`, or to peers. `xtr doctor` warns about a value shorter than 32 bytes.
+- XSD validation of raw-XML lanes, in Rust, for inbound messages and outbound requests. The sidecar
+  key `validate:` sets `off`, `report`, `enforce` or `annotate` per direction. **A missing key
+  means `off`** — validation is opt-in per deployment, because the differential test against Apache
+  Xerces (see below) runs against the operator's own XSD corpus in a manual workflow. "Zero
+  differences" is a per-deployment claim rather than a repo-level invariant, so an XTR upgrade does
+  not silently flip an existing lane into `enforce` against a validator that has not been
+  Xerces-gated on the operator's schemas. Rollout path is **off → report → enforce** (or
+  `annotate`), per direction, with the Xerces workflow run against the operator's own
+  schemas and samples before the final flip. An invalid message under `enforce` gets HTTP 422
+  `schema_invalid` (the answer lists the element path, the rule code and the line, never a value),
+  and XTR does not call the backend, forward the message or send the request. An XSD construct
+  outside the supported subset stops the boot with the file and the line, but only when some lane
+  direction has `validate` on (`report`, `enforce` or `annotate`); a lane that stays at the `off`
+  default is unaffected. `xtr doctor` reports a served direction with `off` or `report` as WEAK —
+  the WEAK on `off` is the "validator available, not in use" signal for the operator. Boot logs the
+  validation mode of each lane. The warn log of violations is rate capped per lane (10 entries per
+  minute, with a `suppressed` count).
+- Raw-XML inbound refuses an XML declaration whose `encoding` is not UTF-8 or utf8
+  (HTTP 400 `unsupported_encoding`), also before `forward`, and a prolog that is not well-formed
+  (`malformed_xml`). The checks are in the parser (`dom::parse_message`). Docs: the `sha256`
   digest is for integrity and audit, not for duplicate detection.
 - **Raw-XML lanes** (`<name>.xml.yaml` sidecar next to XSD files, no WSDL,
   no SOAP envelope) for peers that exchange bare XML over HTTP(S), e.g.

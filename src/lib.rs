@@ -15,3 +15,4 @@ pub mod router;
 pub mod translate;
 pub mod wsdl;
 pub mod xmllane;
+pub mod xsdval;

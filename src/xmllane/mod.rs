@@ -50,6 +50,68 @@ pub struct XmlSidecar {
     pub inbound: Option<XmlInbound>,
     #[serde(default)]
     pub outbound: Option<XmlOutbound>,
+    /// XSD validation per direction. A missing key means `off` —
+    /// validation is opt-in per deployment because the differential
+    /// gate against Apache Xerces (PR #48) runs against the operator's
+    /// own XSD corpus in a manual workflow, so "zero differences" is a
+    /// per-deployment claim rather than a repo-level invariant. The
+    /// rollout is `off` → `report` (observe, run the Xerces workflow
+    /// against your schemas and samples) → `enforce` or `annotate`.
+    /// `xtr doctor` emits WEAK for `off` / `report` and INFO for
+    /// `annotate` so the current posture is visible on every run.
+    #[serde(default)]
+    pub validate: ValidateCfg,
+}
+
+/// What XTR does with a message that breaks the XSD.
+///
+/// **Default is `Off`.** Flipping an existing lane to `Report` or
+/// `Enforce` on an upgrade must be an operator action, not a silent
+/// side effect of installing a new XTR version — see the doc comment
+/// on [`XmlSidecar::validate`] for the rollout story.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ValidateMode {
+    /// No validation. Default.
+    #[default]
+    Off,
+    /// Log and count the violations. Pass the message on.
+    Report,
+    /// Refuse the message with HTTP 422 `schema_invalid`.
+    Enforce,
+    /// Inbound only. Always call the backend and tell it the verdict
+    /// (`schemaValid`, `violations`). The backend owns the answer.
+    Annotate,
+}
+
+impl ValidateMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Report => "report",
+            Self::Enforce => "enforce",
+            Self::Annotate => "annotate",
+        }
+    }
+}
+
+/// `validate:` of a sidecar.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ValidateCfg {
+    #[serde(default)]
+    pub inbound: ValidateMode,
+    #[serde(default)]
+    pub outbound: ValidateMode,
+}
+
+impl ValidateCfg {
+    /// Whether the lane needs the validation model: some direction that
+    /// the sidecar serves validates.
+    fn needs_model(&self, sc: &XmlSidecar) -> bool {
+        (sc.inbound.is_some() && self.inbound != ValidateMode::Off)
+            || (sc.outbound.is_some() && self.outbound != ValidateMode::Off)
+    }
 }
 
 /// Which way a message type travels on this lane.
@@ -140,7 +202,25 @@ pub struct XmlInbound {
     /// reserved routes.
     #[serde(default)]
     pub path: Option<String>,
+    /// Extra headers for the calls to `inbound.backend` (a message URL
+    /// that comes from `inbound.backend`, and `_invalid`): header name →
+    /// name of an environment variable that holds the value. The variable
+    /// name must start with `XTR_BACKEND_HEADER_`. The value never goes
+    /// to a `forward` target, to a message with its own `backend` URL, or
+    /// to a peer.
+    #[serde(default)]
+    pub backend_headers_env: BTreeMap<String, String>,
 }
+
+/// Prefix that an environment variable of `backend_headers_env` must have.
+/// A sidecar can name the variable. The prefix stops a sidecar from sending
+/// another secret (a keystore password, the inter-service token) to its
+/// backend.
+pub const BACKEND_HEADER_ENV_PREFIX: &str = "XTR_BACKEND_HEADER_";
+
+/// Minimum length (bytes) of a backend header value that `xtr doctor`
+/// accepts without a warning.
+pub const BACKEND_HEADER_MIN_LEN: usize = 32;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -189,6 +269,61 @@ pub struct Message {
     pub cfg: MessageCfg,
 }
 
+/// Rate cap for the warn log of validation violations of one lane.
+/// `/xml-in` has no authentication: a sender of bad messages must not
+/// flood the log. At most [`LOG_BURST`] entries per [`LOG_WINDOW`]. The
+/// first entry of the next window reports how many entries were dropped.
+#[derive(Debug, Default)]
+pub struct LogLimit {
+    state: std::sync::Mutex<LimitState>,
+}
+
+#[derive(Debug, Default)]
+struct LimitState {
+    window_start: Option<std::time::Instant>,
+    logged: u32,
+    suppressed: u32,
+}
+
+/// Entries per window.
+pub const LOG_BURST: u32 = 10;
+/// Length of the window.
+pub const LOG_WINDOW: Duration = Duration::from_secs(60);
+
+impl LogLimit {
+    /// `Some(n)`: log now; `n` entries were dropped since the last log
+    /// entry of the previous window. `None`: drop this entry.
+    pub fn check(&self) -> Option<u32> {
+        self.check_at(std::time::Instant::now())
+    }
+
+    fn check_at(&self, now: std::time::Instant) -> Option<u32> {
+        let mut st = self
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let new_window = st
+            .window_start
+            .is_none_or(|s| now.saturating_duration_since(s) >= LOG_WINDOW);
+        if new_window {
+            let dropped = st.suppressed;
+            *st = LimitState {
+                window_start: Some(now),
+                logged: 1,
+                suppressed: 0,
+            };
+            return Some(dropped);
+        }
+        if st.logged < LOG_BURST {
+            st.logged += 1;
+            Some(0)
+        } else {
+            st.suppressed = st.suppressed.saturating_add(1);
+            None
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct XmlService {
     pub group: String,
@@ -198,9 +333,46 @@ pub struct XmlService {
     pub sidecar: XmlSidecar,
     /// Built at boot when `outbound:` is configured.
     pub http: Option<reqwest::Client>,
+    /// XSD validation model. Built at boot when a served direction
+    /// validates.
+    pub model: Option<Arc<crate::xsdval::Model>>,
+    /// Rate caps of the warn log of validation violations. One per
+    /// direction: a flood of invalid inbound messages must not hide the
+    /// violations of the own outbound requests.
+    pub log_limit_inbound: LogLimit,
+    pub log_limit_outbound: LogLimit,
+    /// Resolved `inbound.backend_headers_env`. The values are marked
+    /// sensitive: `Debug` does not print them.
+    pub backend_headers: Vec<(reqwest::header::HeaderName, reqwest::header::HeaderValue)>,
 }
 
 impl XmlService {
+    /// Whether the backend URL of a message comes from `inbound.backend`
+    /// (not from `messages.<M>.backend`). Only such a URL gets
+    /// `backend_headers`.
+    pub fn backend_is_lane(&self, message: &str) -> bool {
+        !self
+            .messages
+            .get(message)
+            .is_some_and(|m| m.cfg.backend.is_some())
+    }
+
+    /// Validation mode of each served direction, for the boot log
+    /// and for `xtr doctor`. Example: `inbound=enforce outbound=off`
+    /// for a lane with inbound explicitly enforcing and outbound
+    /// riding the `off` default.
+    pub fn validate_summary(&self) -> String {
+        let v = &self.sidecar.validate;
+        let mut parts = Vec::new();
+        if self.sidecar.inbound.is_some() {
+            parts.push(format!("inbound={}", v.inbound.as_str()));
+        }
+        if self.sidecar.outbound.is_some() {
+            parts.push(format!("outbound={}", v.outbound.as_str()));
+        }
+        parts.join(" ")
+    }
+
     pub fn backend_for(&self, message: &str) -> Option<String> {
         self.sidecar.backend_for(message)
     }
@@ -293,6 +465,10 @@ impl XmlRegistry {
     }
 }
 
+/// Route under `inbound.backend` that receives input XTR cannot read as a
+/// message of the lane (`annotate` only).
+pub const INVALID_ROUTE: &str = "_invalid";
+
 const RESERVED_PATHS: [&str; 6] = [
     "/health",
     "/api",
@@ -310,6 +486,77 @@ fn sidecar_files(root: &Path) -> Result<Vec<PathBuf>, String> {
             name.ends_with(".xml.yaml") || name.ends_with(".xml.yml")
         })
         .collect())
+}
+
+/// Lanes whose served direction does not enforce XSD validation, as
+/// `group/name inbound=report` lines — reads the sidecars only, for
+/// `xtr doctor`. Lanes that do not parse are skipped; boot refuses them.
+pub fn weak_validation(dir: Option<&Path>) -> Vec<String> {
+    let mut out = Vec::new();
+    let Some(root) = dir.filter(|d| d.is_dir()) else {
+        return out;
+    };
+    let Ok(files) = sidecar_files(root) else {
+        return out;
+    };
+    for sc in files {
+        let Ok(text) = fs::read_to_string(&sc) else {
+            continue;
+        };
+        let Ok(x) = serde_yaml_ng::from_str::<XmlSidecar>(&text) else {
+            continue;
+        };
+        let Ok((group, name)) = lane_id(root, &sc) else {
+            continue;
+        };
+        let lane = format!("{group}/{name}");
+        let mut weak = Vec::new();
+        for (served, name, mode) in [
+            (x.inbound.is_some(), "inbound", x.validate.inbound),
+            (x.outbound.is_some(), "outbound", x.validate.outbound),
+        ] {
+            if served && !matches!(mode, ValidateMode::Enforce | ValidateMode::Annotate) {
+                let m = if mode == ValidateMode::Off {
+                    "off"
+                } else {
+                    "report"
+                };
+                weak.push(format!("{name}={m}"));
+            }
+        }
+        if !weak.is_empty() {
+            out.push(format!("{lane} {}", weak.join(" ")));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Lanes with `validate.inbound: annotate`, as `group/name` — reads the
+/// sidecars only, for `xtr doctor`.
+pub fn annotate_lanes(dir: Option<&Path>) -> Vec<String> {
+    let mut out = Vec::new();
+    let Some(root) = dir.filter(|d| d.is_dir()) else {
+        return out;
+    };
+    let Ok(files) = sidecar_files(root) else {
+        return out;
+    };
+    for sc in files {
+        let Ok(text) = fs::read_to_string(&sc) else {
+            continue;
+        };
+        let Ok(x) = serde_yaml_ng::from_str::<XmlSidecar>(&text) else {
+            continue;
+        };
+        if x.inbound.is_some() && x.validate.inbound == ValidateMode::Annotate {
+            if let Ok((group, name)) = lane_id(root, &sc) {
+                out.push(format!("{group}/{name}"));
+            }
+        }
+    }
+    out.sort();
+    out
 }
 
 /// How many raw-XML sidecars under `dir` enable each lane — reads and
@@ -384,6 +631,8 @@ pub fn load_all(dir: Option<&Path>, cfg: &AppConfig) -> Result<XmlRegistry, Stri
         ));
     }
     for svc in reg.iter() {
+        tracing::info!(lane = %format!("{}/{}", svc.group, svc.name), validate = %svc.validate_summary(),
+            "raw-XML lane validation mode");
         let msgs: Vec<&str> = svc.messages.keys().map(String::as_str).collect();
         if svc.sidecar.inbound.is_some() {
             tracing::info!(endpoint = %format!("/xml-in/{}/{}", svc.group, svc.name), messages = ?msgs,
@@ -396,6 +645,112 @@ pub fn load_all(dir: Option<&Path>, cfg: &AppConfig) -> Result<XmlRegistry, Stri
         }
     }
     Ok(reg)
+}
+
+/// The resolved `inbound.backend_headers_env` of a sidecar.
+fn lane_backend_headers(
+    sc: &XmlSidecar,
+) -> Result<Vec<(reqwest::header::HeaderName, reqwest::header::HeaderValue)>, String> {
+    match &sc.inbound {
+        Some(ib) => resolve_backend_headers(&ib.backend_headers_env),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// Header names that a sidecar must not set (`backend_headers_env`): XTR
+/// sets them, or they change how the message is framed or routed.
+fn forbidden_backend_header(name: &str) -> bool {
+    matches!(
+        name,
+        "host"
+            | "transfer-encoding"
+            | "connection"
+            | "keep-alive"
+            | "te"
+            | "trailer"
+            | "expect"
+            | "upgrade"
+            | "traceparent"
+            | "forwarded"
+    ) || name.starts_with("content-")
+        || name.starts_with("proxy-")
+        || name.starts_with("x-xtr-")
+        || name.starts_with("x-forwarded-")
+}
+
+/// Resolves `inbound.backend_headers_env`. Any fault refuses boot. The
+/// messages never hold a value.
+fn resolve_backend_headers(
+    map: &BTreeMap<String, String>,
+) -> Result<Vec<(reqwest::header::HeaderName, reqwest::header::HeaderValue)>, String> {
+    let mut out: Vec<(reqwest::header::HeaderName, reqwest::header::HeaderValue)> = Vec::new();
+    for (header, env) in map {
+        let name = reqwest::header::HeaderName::from_bytes(header.as_bytes()).map_err(|_| {
+            format!("inbound.backend_headers_env: {header:?} is not a valid HTTP header name")
+        })?;
+        if forbidden_backend_header(name.as_str()) {
+            return Err(format!(
+                "inbound.backend_headers_env: the header name {header:?} is not allowed"
+            ));
+        }
+        if out.iter().any(|(n, _)| *n == name) {
+            return Err(format!(
+                "inbound.backend_headers_env: the header name {header:?} is set twice (names are not case-sensitive)"
+            ));
+        }
+        if !env.starts_with(BACKEND_HEADER_ENV_PREFIX) {
+            return Err(format!(
+                "inbound.backend_headers_env: the variable {env:?} must start with {BACKEND_HEADER_ENV_PREFIX}"
+            ));
+        }
+        let value = std::env::var(env)
+            .ok()
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| {
+                format!("inbound.backend_headers_env: the variable {env} is not set or is empty")
+            })?;
+        let mut hv = reqwest::header::HeaderValue::from_str(&value).map_err(|_| {
+            format!("inbound.backend_headers_env: the value of {env} is not a valid header value")
+        })?;
+        hv.set_sensitive(true);
+        out.push((name, hv));
+    }
+    Ok(out)
+}
+
+/// Lanes that name a `backend_headers_env` variable whose value is shorter
+/// than [`BACKEND_HEADER_MIN_LEN`], as `group/name VARIABLE` — for `xtr
+/// doctor`. The value is never returned.
+pub fn short_backend_headers(dir: Option<&Path>) -> Vec<String> {
+    let mut out = Vec::new();
+    let Some(root) = dir.filter(|d| d.is_dir()) else {
+        return out;
+    };
+    let Ok(files) = sidecar_files(root) else {
+        return out;
+    };
+    for sc in files {
+        let Ok(text) = fs::read_to_string(&sc) else {
+            continue;
+        };
+        let Ok(x) = serde_yaml_ng::from_str::<XmlSidecar>(&text) else {
+            continue;
+        };
+        let Ok((group, name)) = lane_id(root, &sc) else {
+            continue;
+        };
+        for env in x
+            .inbound
+            .iter()
+            .flat_map(|i| i.backend_headers_env.values())
+        {
+            if std::env::var(env).is_ok_and(|v| v.len() < BACKEND_HEADER_MIN_LEN) {
+                out.push(format!("{group}/{name} {env}"));
+            }
+        }
+    }
+    out.sort();
+    out
 }
 
 fn http_url(what: &str, url: &str) -> Result<(), String> {
@@ -415,10 +770,13 @@ fn prepare(root: &Path, sidecar: &Path, cfg: &AppConfig) -> Result<XmlService, S
     let entries = schema_entries(&sc, &loader)?;
     let (schema, _files) = contract::load_xsd(&entries, &loader)?;
 
+    check_annotate(&sc)?;
     let messages = resolve_messages(&sc, &schema)?;
     check_directions(&sc, &messages)?;
     check_inbound(&sc, &messages)?;
     let http = build_outbound(&sc, &messages, cfg)?;
+    let model = build_model(&sc, &entries, &loader)?;
+    let backend_headers = lane_backend_headers(&sc)?;
 
     Ok(XmlService {
         group,
@@ -427,6 +785,10 @@ fn prepare(root: &Path, sidecar: &Path, cfg: &AppConfig) -> Result<XmlService, S
         messages,
         sidecar: sc,
         http,
+        model,
+        log_limit_inbound: LogLimit::default(),
+        log_limit_outbound: LogLimit::default(),
+        backend_headers,
     })
 }
 
@@ -493,6 +855,44 @@ fn schema_entries(
         entries.push((fname, xml));
     }
     Ok(entries)
+}
+
+/// Rules for `validate: annotate`.
+fn check_annotate(sc: &XmlSidecar) -> Result<(), String> {
+    if sc.validate.outbound == ValidateMode::Annotate {
+        return Err(
+            "`validate.outbound: annotate` is not allowed: `annotate` applies to `inbound` only"
+                .into(),
+        );
+    }
+    if sc.inbound.is_some() && sc.validate.inbound == ValidateMode::Annotate {
+        if sc.messages.contains_key(INVALID_ROUTE) {
+            return Err(format!(
+                "`annotate` sends unreadable input to <backend>/{INVALID_ROUTE}: a message cannot be named {INVALID_ROUTE:?}"
+            ));
+        }
+        if sc
+            .inbound
+            .as_ref()
+            .and_then(|i| i.backend.as_deref())
+            .is_none()
+        {
+            return Err(
+                "`validate.inbound: annotate` needs `inbound.backend`: unreadable input goes to <inbound.backend>/_invalid"
+                    .into(),
+            );
+        }
+        if let Some((m, _)) = sc
+            .messages
+            .iter()
+            .find(|(_, c)| c.as_ref().is_some_and(|c| c.forward.is_some()))
+        {
+            return Err(format!(
+                "message {m}: `forward` cannot be combined with `validate.inbound: annotate` (forward sends the bytes unchanged, the old system would not learn the verdict)"
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Maps each message of the sidecar to a global element of the schemas.
@@ -684,6 +1084,40 @@ fn check_peer_target(
     Ok(url)
 }
 
+/// Builds the XSD validation model when a served direction validates.
+fn build_model(
+    sc: &XmlSidecar,
+    entries: &[(String, String)],
+    loader: &contract::SchemaLoader,
+) -> Result<Option<Arc<crate::xsdval::Model>>, String> {
+    if !sc.validate.needs_model(sc) {
+        return Ok(None);
+    }
+    let roots: Vec<&str> = sc.messages.keys().map(String::as_str).collect();
+    let built = crate::xsdval::build(entries, loader, &roots).map_err(|problems| {
+        let mut lines: Vec<String> = problems
+            .iter()
+            .take(20)
+            .map(|p| {
+                let at = if p.line > 0 {
+                    format!("{}:{}", p.file, p.line)
+                } else {
+                    p.file.clone()
+                };
+                format!("  {at}: {} (in {})", p.construct, p.component)
+            })
+            .collect();
+        if problems.len() > 20 {
+            lines.push(format!("  and {} more", problems.len() - 20));
+        }
+        format!(
+            "XSD validation cannot be built for this lane. Fix the schema or set `validate:` to `off`:\n{}",
+            lines.join("\n")
+        )
+    })?;
+    Ok(Some(Arc::new(built)))
+}
+
 fn build_http(
     ob: &XmlOutbound,
     any_url: String,
@@ -730,5 +1164,107 @@ fn build_http(
             }
             b.build().map_err(|e| e.to_string())
         }
+    }
+}
+
+#[cfg(test)]
+mod validate_tests {
+    use super::*;
+    use std::time::Instant;
+
+    #[test]
+    fn the_log_limit_allows_a_burst_and_then_counts_what_it_drops() {
+        let l = LogLimit::default();
+        let t0 = Instant::now();
+        for i in 0..LOG_BURST {
+            assert_eq!(l.check_at(t0), Some(0), "entry {i}");
+        }
+        for _ in 0..5 {
+            assert_eq!(l.check_at(t0 + Duration::from_secs(1)), None);
+        }
+        // The first entry of the next window reports the drops.
+        assert_eq!(l.check_at(t0 + LOG_WINDOW), Some(5));
+        assert_eq!(l.check_at(t0 + LOG_WINDOW), Some(0));
+    }
+
+    #[test]
+    fn a_full_inbound_limiter_does_not_block_the_outbound_one() {
+        let svc = lane("schemas: [a.xsd]\nmessages: {M: {}}\ninbound: {backend: 'http://b'}\noutbound: {url: 'http://p'}\n");
+        for _ in 0..LOG_BURST {
+            assert!(svc.log_limit_inbound.check().is_some());
+        }
+        assert_eq!(svc.log_limit_inbound.check(), None, "inbound is full");
+        assert_eq!(svc.log_limit_outbound.check(), Some(0), "outbound is not");
+    }
+
+    fn lane(sidecar: &str) -> XmlService {
+        XmlService {
+            group: "g".into(),
+            name: "n".into(),
+            schema: Schema::default(),
+            messages: BTreeMap::new(),
+            sidecar: serde_yaml_ng::from_str::<XmlSidecar>(sidecar).unwrap(),
+            http: None,
+            model: None,
+            log_limit_inbound: LogLimit::default(),
+            log_limit_outbound: LogLimit::default(),
+            backend_headers: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn a_backend_header_value_stays_out_of_debug_output() {
+        std::env::set_var(
+            "XTR_BACKEND_HEADER_UNIT",
+            "unit-secret-value-0123456789abcdef0123",
+        );
+        let map = BTreeMap::from([("x-token".to_string(), "XTR_BACKEND_HEADER_UNIT".to_string())]);
+        let resolved = resolve_backend_headers(&map).unwrap();
+        assert!(!format!("{resolved:?}").contains("unit-secret"));
+        assert!(!format!("{map:?}").contains("unit-secret"));
+    }
+
+    #[test]
+    fn a_quiet_lane_logs_every_entry_without_a_suppressed_count() {
+        let l = LogLimit::default();
+        let t0 = Instant::now();
+        assert_eq!(l.check_at(t0), Some(0));
+        assert_eq!(l.check_at(t0 + LOG_WINDOW * 3), Some(0));
+    }
+
+    #[test]
+    fn the_validate_summary_names_each_served_direction() {
+        let sc = |y: &str| serde_yaml_ng::from_str::<XmlSidecar>(y).unwrap();
+        let svc = |sidecar: XmlSidecar| XmlService {
+            group: "g".into(),
+            name: "n".into(),
+            schema: Schema::default(),
+            messages: BTreeMap::new(),
+            sidecar,
+            http: None,
+            model: None,
+            log_limit_inbound: LogLimit::default(),
+            log_limit_outbound: LogLimit::default(),
+            backend_headers: Vec::new(),
+        };
+        // Default is `off` on both sides — operators opt in per
+        // direction. The partial-set case below pins that outbound
+        // stays `off` when only `inbound` is named.
+        let both = svc(sc(
+            "schemas: [a.xsd]\nmessages: {M: {}}\ninbound: {backend: 'http://b'}\noutbound: {url: 'http://p'}\nvalidate: {inbound: report}\n",
+        ));
+        assert_eq!(both.validate_summary(), "inbound=report outbound=off");
+        let only_in = svc(sc(
+            "schemas: [a.xsd]\nmessages: {M: {}}\ninbound: {backend: 'http://b'}\nvalidate: {inbound: off}\n",
+        ));
+        assert_eq!(only_in.validate_summary(), "inbound=off");
+        // Both-sides enforce for the behavioural-pin direction.
+        let both_on = svc(sc(
+            "schemas: [a.xsd]\nmessages: {M: {}}\ninbound: {backend: 'http://b'}\noutbound: {url: 'http://p'}\nvalidate: {inbound: enforce, outbound: enforce}\n",
+        ));
+        assert_eq!(
+            both_on.validate_summary(),
+            "inbound=enforce outbound=enforce"
+        );
     }
 }

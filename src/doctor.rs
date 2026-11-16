@@ -91,8 +91,90 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_soap_action_missing(cfg, &mut findings);
     check_inter_service_token(&mut findings);
     check_soap_lanes_exposure(cfg, &mut findings);
+    check_xml_lane_validation(cfg, &mut findings);
+    check_xml_lane_annotate(cfg, &mut findings);
+    check_xml_lane_backend_header(cfg, &mut findings);
     add_context_info(cfg, cfg_path, &mut findings);
     findings
+}
+
+/// Raw-XML lanes whose `backend_headers_env` value is shorter than 32 bytes.
+/// The finding names the variable, never the value.
+fn check_xml_lane_backend_header(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let short = crate::xmllane::short_backend_headers(cfg.wsdl_watch_dir.as_deref());
+    if short.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Weak,
+        code: "weak-xml-lane-backend-header-short".into(),
+        field: Some("inbound.backend_headers_env".into()),
+        headline: "A backend header value of a raw-XML lane is short".into(),
+        rationale: format!(
+            "The backend uses this header to know that a request comes from XTR. A\n\
+             short value is easy to guess. Use a random value of at least {} bytes.\n\n\
+             Lane and variable:\n  {}",
+            crate::xmllane::BACKEND_HEADER_MIN_LEN,
+            short.join("\n  ")
+        ),
+        recovery: Some("Set the variable to a random value of at least 32 bytes.".into()),
+    });
+}
+
+/// Raw-XML lanes in `annotate` mode: XTR passes every request body that
+/// reaches the lane to the backend.
+fn check_xml_lane_annotate(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let lanes = crate::xmllane::annotate_lanes(cfg.wsdl_watch_dir.as_deref());
+    if lanes.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Info,
+        code: "info-xml-lane-annotate".into(),
+        field: Some("validate".into()),
+        headline: "A raw-XML lane uses `annotate`".into(),
+        rationale: format!(
+            "With `annotate`, the backend receives every request body that reaches\n\
+             the lane, also unreadable input, and it decides the answer. The backend\n\
+             must refuse a message with schemaValid=false. In production, you must\n\
+             restrict the inbound port to the peer (ingress mTLS or a network rule).\n\nLanes:\n  {}",
+            lanes.join("\n  ")
+        ),
+        recovery: None,
+    });
+}
+
+/// Raw-XML lanes whose served direction does not enforce XSD validation.
+/// `report` and `off` let a message through that breaks the XSD.
+fn check_xml_lane_validation(cfg: &AppConfig, out: &mut Vec<Finding>) {
+    let weak = crate::xmllane::weak_validation(cfg.wsdl_watch_dir.as_deref());
+    if weak.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Weak,
+        code: "weak-xml-lane-validation-not-enforced".into(),
+        field: Some("validate".into()),
+        headline: "A raw-XML lane does not enforce XSD validation".into(),
+        rationale: format!(
+            "A receiver of XML messages is expected to validate each message\n\
+             against its XSD. With `report` or `off`, a message that breaks the\n\
+             XSD reaches the backend or the peer.\n\nLanes:\n  {}",
+            weak.join("\n  ")
+        ),
+        recovery: Some(
+            "The sidecar default is `off` — you must opt in per direction:\n\
+             \n  \
+             validate:\n    \
+             inbound: enforce   # or `annotate` for application-level errors\n    \
+             outbound: enforce\n\
+             \n\
+             Use `report` only in a test environment, as the step between\n\
+             `off` and `enforce` while you run the Xerces differential test\n\
+             against your XSD corpus (see book/src/xml-lanes.md)."
+                .into(),
+        ),
+    });
 }
 
 /// Schema-aware SOAP lanes (`.soap.yaml` sidecars). `/soap-in/` must be

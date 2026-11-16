@@ -49,14 +49,17 @@ declaration. XTR refuses a message with HTTP 400 in these cases:
 
 The declaration follows XML 1.0 §2.8: `version`, then an optional
 `encoding`, then an optional `standalone`, each once, in lower case.
+`utf8` is accepted as an alias of UTF-8. A `forward` target with a strict
+XML parser can refuse it.
+
 One leading BOM is allowed. A declaration without `encoding`, or no
 declaration, is accepted.
 
 ## Layout and sidecar
 
 ```text
-wsdl/<group>/<name>.xml.yaml     # the sidecar (<group> subdirectory is required)
-wsdl/<group>/*.xsd               # entry XSDs + local includes/imports
+wsdl/<group>/<name>.xml.yaml     # the sidecar (<group> subdirectory is required; `.xml.yml` also works)
+wsdl/<group>/*.xsd               # entry XSDs + local includes (see "Supported XSD" for imports)
 ```
 
 `<group>/<name>` become the endpoint names. Nested directories are joined
@@ -87,6 +90,10 @@ outbound:
   keystore_password_env: XTR_OUTBOUND_KEYSTORE_PASSWORD
   trust_ca_path: /app/ssl/peer-ca.pem      # optional
   content_type: application/xml; charset=utf-8
+
+validate:                    # XSD validation, see "XSD validation"
+  inbound: report            # off | report | enforce (default off — opt in per deployment)
+  outbound: report           # do not copy enforce to production before "Turning on enforce or annotate"
 ```
 
 Boot is refused, and XTR prints the full list of faults, for each of
@@ -108,6 +115,12 @@ these cases:
 * A `schemas:` entry contains a path separator.
 * `outbound.content_type` is not valid.
 * `timeout_secs` is out of range.
+* The `validate:` section has an unknown key or an unknown mode.
+* `inbound.backend_headers_env` has a variable without the prefix
+  `XTR_BACKEND_HEADER_`, a forbidden or repeated header name, or a
+  variable that is not set or is empty (see "Backend headers").
+* An XSD construct is outside the supported XSD subset while validation
+  is on. This includes a construct in an imported or included file.
 * A peer URL fails the SSRF guard that also checks WSDL-declared URLs
   (`wsdl.allow_http_upstream`, `wsdl.upstream_host_allowlist`).
 
@@ -174,6 +187,10 @@ a new backend. List every message type. Give each message type that the
 old system still serves a `forward`. Give the other message types a
 backend. `forward` and `backend` are mutually exclusive per message.
 
+When inbound validation is `enforce`, XTR checks the message before it
+forwards it. An invalid message no longer reaches the old system. See
+"XSD validation".
+
 **Which answers XTR relays.**
 
 * A 2xx answer is relayed.
@@ -236,11 +253,437 @@ an error body — `upstream_timeout` 504, `upstream_unreachable` 502 (no
 URL in the response, it is logged). Once the peer has answered, its
 status is always returned, whatever the body looks like.
 
+## XSD validation
+
+XTR validates inbound messages and outbound requests against the XSD
+of the lane. The validator is written in Rust. It reads the same XSD
+files and the same element tree as the codec. XTR does not validate the
+responses of a peer.
+
+### Modes
+
+Set the mode for each direction in the sidecar:
+
+```yaml
+validate:
+  inbound: report    # off | report | annotate | enforce (default off); annotate: inbound only
+  outbound: report   # a missing key means off; see "Rolling out a version with validation"
+```
+
+**The default is `off`.** A missing `validate:` key, or a missing
+`inbound` / `outbound` field inside it, leaves that direction at
+`off` — validation is opt-in per deployment, because the differential
+test against Apache Xerces (PR #48, `xsd-oracle` workflow) runs
+against *your* XSD corpus in a manual workflow. "Zero differences"
+is a per-deployment claim, not a repo-level invariant, so an XTR
+upgrade must not silently flip a lane into `enforce` against a
+validator that has not yet been Xerces-gated on your schemas.
+
+| Mode | Behavior |
+|------|----------|
+| `off` | XTR does not validate. **Default.** `xtr doctor` reports a served direction with `off` as WEAK. |
+| `report` | XTR logs the violations and passes the message on. Use as the step between `off` and `enforce` while you run the Xerces workflow against your corpus. `xtr doctor` reports `report` as WEAK. |
+| `enforce` | XTR refuses a message that breaks the XSD with HTTP 422. |
+| `annotate` | Inbound only. XTR always calls the backend and tells it the verdict. The backend answers the peer. See "Annotate". |
+
+`enforce` answers HTTP 422. Use it only where the protocol of the peer
+accepts a 4xx answer. Some protocols need an application-level error
+message for an invalid message. The ERRU protocol is an example: the
+receiver answers 200 or 202 and sends an `ErrorNotification` with the
+status `InvalidFormat`. Use `inbound: annotate` for such a lane, so that
+the backend sends the error message (see "Annotate"). Use `report` as
+the step before `annotate`, while the backend does not yet send the
+error message. Do not use `enforce` on such a lane.
+
+`xtr doctor` reports a direction with `off` or `report` as WEAK. It
+reports a lane with `annotate` as INFO, because the backend owns the
+decision. Use
+`report` for a limited time, as a step in a roll-out. It is not a
+permanent setting for a lane that must refuse invalid messages.
+
+### Annotate
+
+`annotate` is an inbound mode for protocols where the receiver must send
+an application-level error message for an invalid message. XTR stays
+neutral to the protocol: XTR tells the backend the verdict, and the
+backend answers the peer.
+
+**What goes where.**
+
+| Input | XTR does |
+|-------|----------|
+| Valid message | `POST <backend>/<Message>` with `schemaValid: true`. |
+| Message that breaks the XSD | `POST <backend>/<Message>` with `schemaValid: false` and the violations. |
+| Not UTF-8, bad prolog or declaration, DOCTYPE, or unknown root | `POST <backend>/_invalid` with `schemaValid: false` and one code. |
+| Body over `limits.max_request_bytes` | HTTP 413. XTR does not call the backend. |
+| `XTR_OFFLINE` is set | HTTP 503 `offline`. XTR does not call the backend. |
+| The validator fails | HTTP 500 `validator_failed`. XTR does not call the backend. |
+
+The peer gets the answer of the backend, as in the other modes (see
+`success_status` and `relay_statuses`).
+
+**Body for a valid message.**
+
+```json
+{
+  "service": "erru/erru",
+  "message": "NotifyUnfitness_Request",
+  "request": { "Header": { "@technicalId": "…" } },
+  "sha256": "9f2c…",
+  "rawXml": "<?xml …",
+  "schemaValid": true,
+  "violations": []
+}
+```
+
+`rawXml` follows `include_raw`.
+
+**Body for a message that breaks the XSD.**
+
+```json
+{
+  "service": "erru/erru",
+  "message": "NotifyUnfitness_Request",
+  "sha256": "9f2c…",
+  "rawBase64": "PD94bWwg…",
+  "schemaValid": false,
+  "violations": [
+    {"path": "/NotifyUnfitness_Request/Header/@technicalId", "code": "attribute_missing",
+     "line": 1, "schemaFile": "Global_Types.xsd", "schemaLine": 12}
+  ]
+}
+```
+
+* `request` is absent. XTR does not decode an invalid message.
+* `rawXml` is absent. `rawBase64` carries the exact bytes. `include_raw`
+  has no effect on an invalid message.
+* The fields are at the top level of the JSON only. A violation never
+  holds a value from the message.
+
+**Body for `<backend>/_invalid`.**
+
+```json
+{
+  "service": "erru/erru",
+  "sha256": "9f2c…",
+  "rawBase64": "PGh0bWw+…",
+  "schemaValid": false,
+  "violations": [{"code": "malformed_xml"}]
+}
+```
+
+The `message` and `request` fields are absent, because XTR does not
+know the message type. The code is one of `malformed_xml`,
+`unsupported_encoding`, `doctype` and `unsupported_message`.
+`rawBase64` is used because the bytes can be invalid UTF-8.
+
+**Rules for the backend.**
+
+* The backend must not give the content of a message with
+  `schemaValid: false` to the business logic.
+* The backend must not parse `rawBase64` with an XML parser that
+  resolves entities or DTDs. The bytes come from an unauthenticated
+  sender.
+* The backend must read the identifiers it needs (for example a
+  workflow id) with a narrow and bounded method, and must check them.
+* The backend must not answer an invalid error message of the protocol
+  with a new error message (for example an `ErrorNotification` about an
+  `ErrorNotification`). Otherwise the two sides can loop.
+* The body of a request is about 4/3 of the size of the message, plus
+  the JSON. Check that the body limit of the backend is large enough for
+  `limits.max_request_bytes`.
+
+**Boot errors for `annotate`.**
+
+* `validate.outbound` is `annotate`.
+* A message has `forward`. `forward` sends the bytes unchanged, so the
+  old system would not learn the verdict.
+* `inbound.backend` is not set. `_invalid` needs it.
+* A message is named `_invalid`.
+
+**Exposure.** With `annotate`, every request body that reaches the lane
+goes to the backend, also input that XTR would refuse in the other modes.
+In production, restrict the inbound port to the peer (ingress mTLS or a
+network rule). `xtr doctor` reports the lane as INFO for this reason.
+
+**Roll-out.** Use `report` first. Move to `annotate` as "Turning on enforce or
+annotate" says.
+
+### Backend headers
+
+`inbound.backend_headers_env` makes XTR add headers to the calls to
+`inbound.backend`. Use it when the backend must know that a request
+comes from XTR, for example behind a gateway guard.
+
+```yaml
+inbound:
+  backend: http://backend.internal:8080/erru/xml-in
+  backend_headers_env:
+    x-backend-token: XTR_BACKEND_HEADER_ERRU   # header name: name of the variable
+```
+
+The key is the header name. The value is the name of an environment
+variable. XTR reads the variable at boot.
+
+* The variable name must start with `XTR_BACKEND_HEADER_`. A sidecar
+  must not be able to send another secret (for example a keystore
+  password) to its backend.
+* These header names are not allowed: `host`, `transfer-encoding`,
+  `connection`, `keep-alive`, `te`, `trailer`, `expect`, `upgrade`,
+  `traceparent`, `forwarded`, `content-*`, `proxy-*`, `x-xtr-*` and
+  `x-forwarded-*`. A name must be a valid HTTP header name.
+  The same name twice (not case-sensitive) is an error.
+* A variable that is not set, or is empty, stops the boot.
+* The header goes only to `inbound.backend`: to the URL of a message
+  and to `<backend>/_invalid`. It does not go to a `forward` target, to a
+  message with its own `backend` URL, or to a peer.
+* XTR marks the value as sensitive. The value is not in a log, in an
+  error message or in the output of `xtr doctor`. `xtr doctor` shows
+  WEAK when the value is shorter than 32 bytes. It names the variable and
+  never prints the value.
+* XTR does not follow redirects of the backend, so the header does not
+  go to another host.
+* Use a random value of at least 32 bytes. Do not commit it.
+
+### Rolling out a version with validation
+
+The sidecar default is `off`: an XTR upgrade does not silently flip
+an existing lane into `enforce` or `report`. Validation is opt in,
+per deployment, because the differential test against Apache Xerces
+runs against *your* XSD corpus in a manual workflow. The rollout is
+**off → report → enforce / annotate**, in that order, per direction:
+
+1. Upgrade XTR. Nothing changes for an existing lane: the missing
+   `validate:` key keeps the direction at `off`.
+2. Run `xtr doctor` on the new version. It lists each served
+   direction without an explicit `enforce` or `annotate` as WEAK
+   (`weak-xml-lane-validation-not-enforced`). That is the signal
+   that the validator is available but not in use.
+3. Add `validate: report` for both directions to every raw-XML
+   sidecar you want to validate. This applies to `.xml.yaml` and
+   `.xml.yml` files.
+4. Restart XTR. The doctor still reports WEAK on `report`; that is
+   expected during the rollout.
+5. Read the logs (see "Logs"). Decide for each violation if the
+   peer or the validator is wrong.
+6. Turn on `enforce` or `annotate` for one lane and one direction
+   at a time. See "Turning on enforce or annotate".
+
+### Turning on enforce or annotate
+
+Do this only when **all** of these conditions are true. They apply to
+`enforce` and to `annotate`:
+
+1. A differential test for the schemas of the lane shows 0 differences.
+   The test compares XTR with an independent XSD 1.0 processor (for
+   example Apache Xerces). The test uses sample messages and generated
+   invalid messages. Write down the date and the XTR version.
+2. The lane has run in `report` in production for an agreed period (for
+   example 14 days). The
+   period includes at least one real message of each message type. Every
+   logged violation is explained: it is a fault of the peer, or it is a
+   fault of the validator and the validator is fixed first.
+3. `xtr doctor` lists the lane as `report`. The boot log shows the mode.
+4. The log entries of the last period have `suppressed` equal to 0 (see
+   "Logs"). A non-zero count means that the log hides violations.
+5. For `inbound` with `enforce`: the protocol of the peer accepts an
+   HTTP 4xx answer to an invalid message (see "Modes").
+6. For `annotate`: the backend handles `schemaValid: false` and
+   `<backend>/_invalid` (see "Annotate"). A test with the synthetic
+   messages of the contract shows the answer of the backend for each
+   case.
+7. For `annotate`: the inbound port accepts only the peer (ingress mTLS
+   or a network rule). Every request body that reaches the lane goes to
+   the backend.
+
+Turn on `outbound` first. An invalid outbound request is a fault of the
+own system, and the effect stays with the own caller. Then turn on
+`inbound`. Make each direction a separate change.
+
+**What changes with `enforce`.**
+
+* Inbound: XTR answers an invalid message with HTTP 422 `schema_invalid`.
+  XTR does not call the backend and does not forward the message. XTR
+  does not store the message. A message with a `forward` no longer
+  reaches the old system when it is invalid.
+* Outbound: XTR answers the caller with HTTP 422 `schema_invalid`. XTR
+  sends nothing to the peer.
+* The WEAK finding of `xtr doctor` for this direction disappears. The boot does
+  not change, because XTR builds the model also for `report`.
+* A validator error gives HTTP 500 `validator_failed`. XTR refuses the
+  message (fail closed).
+
+**What changes with `annotate`.**
+
+* XTR no longer answers an invalid message itself. The backend answers
+  it. The backend must give the peer the answer that the protocol
+  requires (for example an `ErrorNotification`).
+* XTR also calls the backend for input that the other modes refuse with
+  HTTP 400 (see "Annotate").
+* The roll back to `report` stops the backend from getting the verdict.
+  The backend then gets an invalid message as if it were valid.
+
+**Check after the change.** Read the boot log and the output of
+`xtr doctor`. Count the 422 and 500 answers in the first days. If the
+count is not as expected, roll back.
+
+**Roll back.** Set the direction to `report` and restart XTR. The roll
+back itself loses no data. XTR did not store the messages that it
+refused during `enforce`. For an inbound lane, the peer must send again
+the messages that XTR refused during `enforce`. This applies only to a
+protocol where a 4xx answer makes the peer send again.
+
+**Review.** The change to `enforce` is a separate change with its
+own review. Attach the evidence of conditions 1 and 2 to it.
+
+### Inbound
+
+XTR validates the message after the prolog and the root checks and
+before it calls the backend and before `forward`.
+
+* With `enforce`, a message that breaks the XSD gets HTTP 422
+  `schema_invalid`. XTR does not call the backend and does not forward
+  the message.
+* With `report`, XTR writes the violations to the log. XTR then handles
+  the message as if it were valid: it calls the backend or forwards it.
+* With `annotate`, XTR calls the backend for every message that it can
+  read, and for unreadable input it calls `<backend>/_invalid`. See
+  "Annotate".
+
+The backend can also relay a 422 (see `relay_statuses`). The peer sees
+the same status for both cases. The `error` field of the body is the
+only difference: it is `schema_invalid` when XTR refuses the message.
+
+### Outbound
+
+XTR validates the serialized request, which are the bytes that go to the
+peer.
+
+* With `enforce`, a request that breaks the XSD gets HTTP 422
+  `schema_invalid` to the caller. XTR does not send it.
+* With `report`, XTR writes the violations to the log and sends the
+  request to the peer.
+
+### Answer
+
+The body of a 422 lists at most 10 violations:
+
+```json
+{
+  "error": "schema_invalid",
+  "message": "the message does not conform to its XSD",
+  "violations": [
+    {"path": "/Notify_Request/Header/@technicalId", "code": "attribute_missing",
+     "line": 1, "schemaFile": "Global_Types.xsd", "schemaLine": 12}
+  ]
+}
+```
+
+A violation holds these fields:
+
+* `path`: the element path.
+* `code`: a rule code (see "Rule codes").
+* `line`: the line in the message. For a missing element
+  (`element_missing`), it is the line of the parent element. For an
+  attribute violation, it is the line of the element that has the
+  attribute. For other codes, it is the line of the start tag of the
+  element. The value 0 means that the line is not known.
+* `schemaFile` and `schemaLine`: the file and the line in the schema.
+  The file name is relative to the schema directory. The value 0 for
+  `schemaLine` means that the line is not known.
+
+A violation never holds a value from the message.
+
+An internal error of the validator gives HTTP 500 `validator_failed`.
+The details go to the log only. This applies to `enforce` and to `report`.
+
+### Rule codes
+
+| Code | Meaning |
+|------|---------|
+| `root_unknown` | The root element is not a message of the lane. |
+| `element_missing` | A required element is missing. |
+| `element_unexpected` | An element is not allowed at this place. |
+| `attribute_missing` | A required attribute is missing. |
+| `attribute_unexpected` | An attribute is not declared. |
+| `attribute_fixed` | An attribute differs from its `fixed` value. |
+| `xsi_not_allowed` | The message has `xsi:type` or `xsi:nil`. |
+| `text_not_allowed` | An element with element-only content has text. |
+| `simple_content_expected` | An element with simple content has a child element. |
+| `type_invalid` | The value is not valid for its built-in type. |
+| `enumeration` | The value is not in the enumeration. |
+| `pattern` | The value does not match the pattern. |
+| `length` | The value does not have the required length. |
+| `min_length` | The value is shorter than `minLength`. |
+| `max_length` | The value is longer than `maxLength`. |
+| `min_inclusive` | The value is smaller than `minInclusive`. |
+
+### Supported XSD
+
+XTR supports `xs:include`, `xs:sequence`, `xs:choice`, `xs:extension`,
+`xs:restriction`, `xs:attribute`, `xs:attributeGroup`, the facets
+`enumeration`, `whiteSpace`, `length`, `minLength`, `maxLength`,
+`minInclusive` and `pattern`, `fixed`, and the types `string`, `token`,
+`boolean`, `nonNegativeInteger`, `positiveInteger`, `date` and
+`dateTime`.
+
+`xs:import` is not supported. XTR treats it as a construct outside the
+supported XSD (see "Boot errors").
+
+**`xsi` attributes.** `xsi:type` and `xsi:nil` in a message are violations.
+`xsi:schemaLocation` and `xsi:noNamespaceSchemaLocation` are ignored. XTR
+never loads a schema from a message.
+
+**Patterns.** A `pattern` follows the XSD grammar: it matches the whole value,
+`^` and `$` are plain characters, `.` excludes only line ends, and `\s`,
+`\d` and `\w` use the XSD definitions. A construct of the `regex` syntax that
+XSD does not define is an error at boot.
+
+### Boot errors
+
+A boot error stops **all of XTR**, not only one lane. The error names the
+file, the line and the construct. A boot error occurs in these cases:
+
+* A direction that the lane serves has `report` or `enforce`, and a
+  construct outside the supported XSD is reachable from a message root.
+* The content model is ambiguous. Two particles with the same qualified
+  name stand at one decision point.
+* A global definition is duplicate.
+* An `xs:include` has another `targetNamespace`, or it is a chameleon
+  include.
+* An element has `maxOccurs="0"`.
+* A type or group definition is recursive.
+* A `whiteSpace` facet is looser than the one of the base type.
+* An `enumeration` or a length facet has a base type other than `string`
+  or `token`.
+* A `minInclusive` facet has a base type or a value that does not fit
+  the base type.
+* A message name is a global element in more than one namespace.
+* A `pattern` uses a construct that XSD does not define.
+* The `validate:` section has an unknown key or an unknown mode.
+
+To start XTR without validation for a lane, set `validate:` to `off` for
+the directions of that lane.
+
+### Logs
+
+Boot logs the validation mode of each lane at info level. A violation
+writes a warn entry with the element paths and the rule codes. The entry
+never holds a value.
+
+XTR caps the warn log for each lane **and** each direction: at most 10
+entries per minute. The first entry of the next minute has a `suppressed`
+count of the entries that XTR dropped. The answer to the sender is not
+capped.
+
+The same cap applies to the log entries of `annotate`, also for input
+that goes to `_invalid`.
+
 ## Not covered
 
-* **XSD validation.** The schema is a codec hint (order, repetition,
-  namespaces). Required elements, enumerations and facets are **not**
-  checked; validate in the backend/caller if the peer requires it.
+* Validation of the responses of a peer.
+* XSD constructs outside the supported XSD. Each construct is a separate
+  piece of work. See the decision record
+  [XSD validation of raw-XML lanes](./adr-xsd-validation.md) for the
+  rules to extend the supported XSD.
 * Sync replies in the response body, SOAP, WS-Security, retries, queues.
-* `xtr doctor` only counts `.xml.yaml` lanes for the shared-listener
-  exposure check; sidecar contents are validated at boot.
