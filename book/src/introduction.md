@@ -27,7 +27,7 @@ Four lanes share one deployment:
 
 Rust reimplementation of [buerokratt/XTR](https://github.com/buerokratt/XTR).
 
-**Version:** 0.5.1-rc · **License:** Apache-2.0
+**Version:** 0.6.0-rc · **License:** Apache-2.0
 · **Repo:** [turnerrainer/XTR](https://github.com/turnerrainer/XTR)
 · **Images:** `docker.io/turnerrainer/xtr:rc`, `ghcr.io/turnerrainer/xtr:rc`
 

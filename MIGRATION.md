@@ -1,7 +1,13 @@
 # Migrating XTR
 
-Four migration guides on this page:
+Five migration guides on this page:
 
+- **`0.5.x → 0.6.0-rc`** (raw-XML lanes + XSD validation +
+  proxy-env hardening) — additive; raw-XML lanes are opt-in via
+  `.xml.yaml` sidecar, XSD validation defaults to `off`. Two
+  behavior changes to know about: reqwest clients ignore
+  `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`, and WSDL mount
+  discovery refuses boot on a symlink cycle (50 000-entry cap).
 - **`0.4.3-rc → 0.5.0-rc`** (schema-aware SOAP lanes) —
   additive; nothing changes without a `.soap.yaml` sidecar.
 - **`0.3.0-rc → 0.4.0-rc`** (audit-v2) — three small breaking
@@ -12,6 +18,120 @@ Four migration guides on this page:
   additive, `0.2.x` SOAP DSLs continue to work unchanged.
 - **`0.1.0-rc.2 → 0.2.0-rc`** (audit-v1) — original audit-v1
   migration, retained as a canonical reference.
+
+---
+
+## `0.5.x` → `0.6.0-rc`
+
+Additive for every existing SOAP + REST DSL — no config changes
+needed to keep current services running. Two behavior changes to
+know about plus two opt-in new lanes.
+
+### Behavior changes (no config needed, but visible)
+
+1. **`HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` env vars are
+   ignored** at the reqwest-client level. Every outbound client
+   now calls `.no_proxy()` (closes #44). If a parent shell /
+   systemd unit / Docker compose context sets these vars, XTR
+   silently went through them on 0.5.x — now it goes direct.
+   The doctor emits a new `info-proxy-env-ignored` finding
+   (INFO, not WEAK) when any of the three is set at boot, so
+   operators see the mismatch. **Recovery:** unset the env vars
+   in the deployment, or open an issue describing a real proxy
+   need (would land as an explicit `http.proxy` config field).
+2. **WSDL mount discovery refuses boot on a symlink cycle**
+   (closes #43). The walker caps at 50 000 entries and rejects
+   symlink targets outside the mount root. New doctor rule
+   `fatal-wsdl-watch-dir-walk-cap` names the mount and the
+   remedy (`find -type l`). **Recovery:** remove symlink loops
+   and non-lane content from the WSDL mount. Low real-world
+   blast radius — `/wsdl` ships inside the image for most
+   deployments.
+
+### New lane kind (opt-in) — raw-XML
+
+A `<name>.xml.yaml` sidecar next to XSD files publishes a
+raw-XML lane (no WSDL, no SOAP envelope) for peers that exchange
+bare XML over HTTPS. Example: the EU ERRU MOVEHUB. See
+`book/src/xml-lanes.md` for the full chapter. Nothing runs
+without a sidecar.
+
+### New feature (opt-in) — XSD validation of raw-XML lanes
+
+The sidecar carries a `validate:` section with four modes per
+direction:
+
+```yaml
+validate:
+  inbound: off     # off (default) | report | enforce | annotate
+  outbound: off    # off (default) | report | enforce
+```
+
+**Default is `off`** — validation is opt-in per deployment,
+because the differential test against Apache Xerces (the
+`xsd-oracle` GitHub workflow) runs against *your* XSD corpus,
+not the XTR repo's. "Zero differences" is therefore a
+deployment-level claim.
+
+Rollout path per direction:
+
+```
+off (default)  →  report  →  enforce  (or annotate, inbound only)
+```
+
+**Operator recipe:**
+
+1. Upgrade to `0.6.0-rc`. Nothing changes for existing lanes.
+2. Write an `.xml.yaml` sidecar for the raw-XML peer; XTR boots
+   with `validate.*` at `off` on each direction. Doctor emits
+   WEAK `weak-xml-lane-validation-not-enforced` — the
+   "validator available, not in use" signal.
+3. Set `validate: {inbound: report, outbound: report}` and
+   watch the violation logs for a week or two against real
+   traffic. Doctor still reports WEAK on `report` (expected
+   during the rollout).
+4. Run the `xsd-oracle` GitHub workflow manually against your
+   XSD + sample directories:
+
+   ```
+   XTR_ERRU_XSD_DIR=/path/to/your/xsds \
+   XTR_ORACLE_SAMPLES_DIR=/path/to/your/samples \
+   .github/workflows/xsd-oracle.yml
+   ```
+
+   The gate must show zero differences on your corpus before
+   you flip to `enforce` or `annotate`.
+5. Flip the direction to `enforce` (SOAP-style peers that
+   accept HTTP 4xx) or `annotate` (protocols that require an
+   application-level error, e.g. ERRU `ErrorNotification` with
+   `InvalidFormat`). WEAK disappears; `annotate` emits
+   `info-xml-lane-annotate` instead.
+
+Rolling back from `enforce` → `report` loses no data. Rolling
+back from `annotate` means the backend stops receiving the
+`schemaValid` verdict.
+
+### Recovery commands
+
+```bash
+# Verify the upgrade before deploying
+docker run --rm -v "$(pwd)/xtr.yaml:/app/xtr.yaml:ro" \
+  turnerrainer/xtr:0.6.0-rc doctor --strict
+
+# If HTTP_PROXY was intentional on 0.5.x and you need it now:
+#   — open a GitHub issue; the config field is TBD.
+#   — meanwhile, no workaround short of patching reqwest.
+```
+
+### Doctor rules you may see change
+
+| Rule | Behavior |
+|------|----------|
+| `info-proxy-env-ignored` | New INFO when `HTTP(S)_PROXY` / `ALL_PROXY` set. |
+| `fatal-wsdl-watch-dir-walk-cap` | New FATAL when the WSDL walker hits 50 000 entries. |
+| `weak-xml-lane-validation-not-enforced` | New WEAK per raw-XML lane direction while `validate` is `off` or `report`. |
+| `info-xml-lane-annotate` | New INFO for any raw-XML lane in `annotate` mode. |
+| `weak-xml-lane-backend-header-short` | New WEAK when `inbound.backend_headers_env` names a variable whose value is < 32 bytes. |
 
 ---
 
