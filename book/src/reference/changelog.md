@@ -5,6 +5,151 @@ All notable changes to XTR-on-Rust will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **Every reqwest client now calls `.no_proxy()`** (closes #44).
+  reqwest's default was to honour `HTTP_PROXY` / `HTTPS_PROXY` /
+  `ALL_PROXY` from the process env on every `Client::build()`, so a
+  proxy env var set by a parent shell, systemd unit, Docker compose
+  context, or Kubernetes ConfigMap could silently redirect XTR's
+  outbound — including the mTLS call to the X-Road Security Server
+  that carries the operator's identity — through an attacker-
+  controlled host. All four current ClientBuilder sites are patched
+  uniformly: `src/executor/plain.rs` (plain-HTTPS SOAP executor),
+  `src/executor/mod.rs::build_mtls_client` (shared by the SOAP
+  Security Server and REST passthrough lanes), `src/inbound/outbound.rs`
+  (SOAP-lane `/soap-out/` without SS identity), and
+  `src/inbound/handler.rs` (SOAP-lane backend client). The gap was
+  pre-existing, not introduced by any audit; the two prior audits
+  (v1 M2 gzip-vs-cap, v2 FN-LOG-* and FN2-5) did not cover the
+  proxy env surface. Regression tests in
+  `tests/no_proxy_env_ignored.rs`: a behavioural test that spins up
+  a local axum mock, sets `HTTP_PROXY=http://127.0.0.1:1` before
+  `PlainExecutor::new`, asserts the executor reaches the mock in
+  under 2s (would ECONNREFUSE on the dead proxy if the env were
+  honoured); plus a static grep pin that asserts every ClientBuilder
+  site in `src/` still calls `.no_proxy()` so a future refactor can't
+  silently re-open the surface.
+- **New doctor rule `info-proxy-env-ignored`** — fires when any of
+  `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` (either case) is set at
+  boot. INFO (not WEAK) because the env alone is not a defect — XTR
+  already ignores it; the finding short-circuits the "why doesn't my
+  proxy work?" operator question before it becomes a ticket.
+  `--strict` is unaffected. The `field:` surface names the detected
+  variable(s). Three new tests in `tests/doctor_integration.rs`
+  cover fires-when-set, silent-when-absent, and no-flip-under-strict.
+- **`SECURITY.md`** gains an "Operator recipe — proxy env vars are
+  ignored by design" section with the threat model and the note
+  that a legitimate proxy need will go through an explicit config
+  field, never process-level env.
+- **`book/src/configuration.md`** env var table and
+  **`book/src/doctor.md`** rule catalogue updated.
+- **Symlink-safe WSDL / sidecar discovery walk** (closes #43).
+  The two pre-existing walks in `src/inbound/mod.rs::sidecar_files`
+  and `src/doctor.rs::count_dsl_generating_wsdls` used
+  `std::fs::read_dir` without guarding against symlink cycles or
+  out-of-root escapes. A single `loop -> .` under a group directory
+  yielded ~33 phantom lanes before the OS broke the walk with
+  `ELOOP`; two cycles stalled boot at ~2^32 paths. A symlink to the
+  filesystem root (or any operator-sensitive dir outside the WSDL
+  mount) was happily followed. Low real-world blast radius —
+  `/wsdl` ships inside the image for most deployments — but a
+  hostile WSDL mount could stall boot or trick the schema loader
+  into reading files it shouldn't touch. Fixed via a new
+  `src/fswalk.rs` module with four guarantees:
+  1. Directories tracked by canonical path — a cycle adds nothing.
+  2. A symlink (dir or file) is followed only when its target is
+     inside the root. `x -> /`, `x -> ../../etc` are ignored.
+  3. The walk fails after `MAX_ENTRIES = 50 000` directories +
+     files — fail-closed so lanes are never silently dropped.
+  4. Dotfile directories (`..data`, `..<ts>`) are skipped, so
+     Kubernetes ConfigMap mounts don't double-count.
+  Both callers now propagate the walk error: `check_all` surfaces
+  it as a fatal `Problem` keyed on the root path (boot refuses);
+  the doctor emits a new `fatal-wsdl-watch-dir-walk-cap` finding
+  with the mount name and the operator remedy (`find -type l`).
+  Regression coverage: 9 inline unit tests in `fswalk.rs` (one
+  cycle, many cycles, two-dir cycles, out-of-root escape, file
+  symlink leaks, root-symlink, entry cap, symlinked files that are
+  legitimate, Kubernetes ConfigMap layout) + 3 seam tests in
+  `tests/discovery_symlink_cycle.rs` that drive `inbound::check_all`
+  end-to-end with a symlink cycle and an out-of-root escape.
+
+### Attribution
+- The symlink-safe walker design is ported verbatim from @sviljus's
+  PR #41 (raw-XML lanes arc), stripped of its feature-level changes
+  and split into this standalone PR so the security fix is not
+  blocked on the raw-XML lane review. All credit for the walker
+  design and its test set to @sviljus.
+
+### Added
+- Raw-XML inbound refuses an XML declaration whose `encoding` is not UTF-8
+  (HTTP 400 `unsupported_encoding`), also before `forward`. Docs: the `sha256`
+  digest is for integrity and audit, not for duplicate detection.
+- **Raw-XML lanes** (`<name>.xml.yaml` sidecar next to XSD files, no WSDL,
+  no SOAP envelope) for peers that exchange bare XML over HTTP(S), e.g.
+  the EU ERRU MOVEHUB. Inbound `POST /xml-in/<group>/<name>` (optional
+  `inbound.path` alias): raw XML → XSD-guided JSON → backend, handing
+  the backend the received bytes (`rawXml`) and their SHA-256; the
+  backend's status decides the peer's answer. Outbound
+  `POST /xml-out/<group>/<name>/<message>` (token-gated): JSON → raw XML
+  → peer, with per-message timeout, optional own client certificate and
+  the upstream status returned as data. `messages.X.forward` relays
+  received bytes unchanged to another receiver for staged migrations.
+  Reuses the SOAP lanes' codec and SSRF guard; stateless by design. No
+  XSD validation. Backend 4xx codes reach the peer only when listed in
+  `inbound.relay_statuses` (default 400/409/422), `messages.X.direction`
+  (`in`/`out`/`both`) scopes a message to one side. A `forward` loop
+  guard (`x-xtr-forwarded` request header) makes XTR answer 508
+  `loop_detected` when a message that arrives with this header must be
+  forwarded again. A forwarded message that goes to a backend is
+  accepted. `/xml-in` and `/xml-out` are reserved paths, also without a
+  trailing path. The alias clash check with DSL endpoints runs only on a
+  shared listener. See `book/src/xml-lanes.md`.
+
+## [0.5.1-rc] - 2026-10-22
+
+Patch release — one upstream-parsing bug fix contributed by
+@sviljus (PR #37). Unblocks e-Toimik SOAP responses in LJVIS that
+contain `&quot;`, `&amp;`, `&lt;`, `&gt;`, or `&apos;`.
+
+### Fixed
+- **Predefined XML entities decoded in upstream SOAP responses and
+  faults.** `quick-xml 0.41` emits `Event::GeneralRef` for the five
+  XML-predefined entities too, not only for custom ones. The existing
+  `GeneralRef` handler only decoded numeric character references, so
+  valid upstream SOAP containing `&quot;` was rejected with
+  `upstream_xml_parse_error`. The handler now resolves the five
+  predefined entities in both `translate_soap` and
+  `try_extract_soap_fault`; custom entities (anything requiring a
+  DTD) are still rejected explicitly as an XXE guard, and the
+  `audit_c2_billion_laughs_rejected_no_expansion` regression pin
+  remains green. Event-level `trim_text` turned off so inner spaces
+  around entity references survive — single `.trim()` still runs on
+  the full leaf text at the `End` event. Covered by 3 new tests
+  (all five predefined entities round-trip, escaped `&amp;quot;`
+  decodes exactly once, SOAP fault preserves spaces around
+  entities through both parsing entry points). Fixes real-world
+  blockage of e-Toimik SOAP responses in LJVIS.
+
+Full test suite: **324 passed** (was 321 on `0.5.0-rc`).
+
+### Attribution
+- PR #37 contributed by @sviljus. Maintainer-side hardening added a
+  `[Unreleased]` reference link in CHANGELOG.md (unblocks
+  mdbook-linkcheck) and merged in #38's `rustls-webpki 0.103.16`
+  lockfile bump (RUSTSEC-2026-0382, Certificate verification may
+  accept distrusted intermediates) so CI goes green on the branch.
+
+### Security
+- **`rustls-webpki` bumped 0.103.15 → 0.103.16** (PR #38). Closes
+  RUSTSEC-2026-0382: affected versions may accept certificate paths
+  containing distrusted emSign intermediate public keys when
+  configured trust anchors allow such paths. Private keys for the
+  affected intermediates are now well-known. Semver-compatible
+  `Cargo.lock`-only bump.
+
 ## [0.5.0-rc] - 2026-10-05
 
 Fifth minor release. Adds schema-aware SOAP lanes — a `.soap.yaml`
@@ -1000,6 +1145,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.5.1-rc...HEAD
+[0.5.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...v0.5.1-rc
 [0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc
 [0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
 [0.4.2-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.1-rc...v0.4.2-rc

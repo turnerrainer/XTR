@@ -88,6 +88,9 @@ the path renders as escape sequences (audit-v2 FN-LOG-1).
 |---|---|---|
 | `200` | Successful SOAP/REST call | (n/a) |
 | `400` | Malformed JSON body (audit-v2 FN3) | `invalid_json_body` |
+| `400` | Raw-XML: declared encoding not UTF-8 | `unsupported_encoding` |
+| `400` | Raw-XML: prolog not well-formed (declaration not first, repeated, bad version, text outside root) | `malformed_xml` |
+| `401` | `XTR_INTER_SERVICE_TOKEN` set and bearer missing/wrong on a gated route | `unauthorized` |
 | `404` | Unknown group/service | `template_not_found` |
 | `404` | `/api` when `observability.expose_openapi=false` (audit-v2 F-XTR-1) | `not_found` |
 | `405` | Method mismatch vs DSL contract | `method_not_allowed` |
@@ -95,6 +98,7 @@ the path renders as escape sequences (audit-v2 FN-LOG-1).
 | `500` | Handlebars expansion / internal | `template_expansion_failed`, `internal_error`, `keystore_load_failed` |
 | `502` | Upstream returned SOAP Fault, unrecognised HTTP error, XML parse error, or oversized body | `upstream_soap_fault`, `upstream_http_error`, `upstream_xml_parse_error`, `upstream_body_too_large` |
 | `504` | Upstream timeout OR handler-level TimeoutLayer fired | `upstream_timeout` / (bare) |
+| `508` | Raw-XML: `x-xtr-forwarded: 1` header on a request that would forward again | `loop_detected` |
 | `599` | `XTR_OFFLINE=true` short-circuit (audit-v2 FN-LOG-3) | `xtr_offline` |
 
 ## JSON error body shape
@@ -181,6 +185,46 @@ Gated by `XTR_INTER_SERVICE_TOKEN` when set (`401`).
 | peer SOAP Fault | `502` | `upstream_soap_fault` (detail gated by `expose_soap_fault_detail`) |
 | peer non-2xx without Fault | `502` | `upstream_http_error` |
 | timeout | `504` | `upstream_timeout` |
+| `XTR_OFFLINE` | `599` | `xtr_offline` |
+
+## Raw-XML lanes
+
+Details: [Raw-XML lanes](./xml-lanes.md). Same middleware stack
+(security headers, access log, timeout) as the other lanes.
+Peers exchange bare XML over HTTPS — no SOAP envelope — so the
+inbound side does **not** emit SOAP Faults for its errors; it
+emits the regular [JSON error body](#json-error-body-shape).
+
+### Inbound — `/xml-in/<group>/<name>` (or the `inbound.path` alias)
+
+Peers push XML; XTR decodes to JSON and POSTs to the configured
+backend (or relays the bytes to a `forward:` target). The lane has
+**no authentication** at the XTR layer — gate it at the ingress
+(IP allowlist or mTLS).
+
+| Request | Status | Body |
+|---|---|---|
+| valid XML, backend 2xx | `202` (or `inbound.success_status`) | empty |
+| valid XML, backend 4xx on `relay_statuses` (default 400/409/422) | relayed status | backend's body as `application/json`, cut at `limits.max_response_bytes` |
+| valid XML, backend 4xx not on the list, or 5xx | `502` | `upstream_http_error` |
+| valid XML, `forward:` configured, target 2xx/4xx | relayed status | empty on target over limit / unreadable |
+| declared encoding not UTF-8 / utf8 | `400` | `unsupported_encoding` |
+| prolog not well-formed, `DOCTYPE`, root element in a foreign namespace, body over the limit | `400` / `413` | `malformed_xml` / `request_too_large` |
+| `x-xtr-forwarded: 1` and the lane would forward again | `508` | `loop_detected` |
+| `XTR_OFFLINE` | `599` | `xtr_offline` |
+
+### Outbound — `/xml-out/<group>/<name>/<message>`
+
+JSON in, peer's raw XML answer surfaced as a JSON envelope. Gated
+by `XTR_INTER_SERVICE_TOKEN` when set (`401`). Per-message
+timeout override via `messages.<M>.timeout_secs`.
+
+| Outcome | Status | Body |
+|---|---|---|
+| peer replied | `200` | `{"status": <peer status>, "body": …, "contentType": …}` |
+| body not a JSON object | `400` | `invalid_json_body` |
+| unknown service / unknown message / no `outbound:` | `404` | `template_not_found` |
+| peer refused / unreachable / empty / timeout | `502` / `504` | peer URL is not leaked |
 | `XTR_OFFLINE` | `599` | `xtr_offline` |
 
 ## Handler timeout (audit-v2 §6.2)
