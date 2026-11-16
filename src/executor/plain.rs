@@ -32,6 +32,14 @@ impl PlainExecutor {
             .no_gzip()
             .no_brotli()
             .no_deflate()
+            // Audit follow-up #44: ignore HTTP(S)_PROXY / ALL_PROXY
+            // from the process env. reqwest's default is to honor
+            // them, which lets a hostile or misconfigured env var
+            // divert XTR's outbound traffic (including mTLS to the
+            // X-Road Security Server on the mTLS builder) through
+            // an attacker-controlled host. XTR's proxy posture is
+            // "never" until an operator config field is added.
+            .no_proxy()
             .build()
             .map_err(|e| XtrError::Internal(format!("reqwest builder: {e}")))?;
         Ok(Self {

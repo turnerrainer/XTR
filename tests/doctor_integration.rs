@@ -32,8 +32,32 @@ fn tmp_with_config(contents: &str) -> TempDir {
 /// Run `xtr-on-rust doctor` in `cwd` with the given extra args
 /// and return `(exit_code, stdout, stderr)`.
 fn run_doctor(cwd: &Path, extra_args: &[&str]) -> (i32, String, String) {
+    run_doctor_with_env(cwd, extra_args, &[])
+}
+
+/// Same as [`run_doctor`] but injects additional env vars into
+/// the child process. The child's env starts from `env_clear()`
+/// plus `PATH`, so a HTTP_PROXY set in the test runner's own env
+/// doesn't bleed through and confuse the assertions.
+fn run_doctor_with_env(
+    cwd: &Path,
+    extra_args: &[&str],
+    extra_env: &[(&str, &str)],
+) -> (i32, String, String) {
     let mut cmd = Command::new(BIN);
     cmd.arg("doctor").args(extra_args).current_dir(cwd);
+    // Scrub proxy env from the test runner's environment so this
+    // helper gives deterministic results regardless of where the
+    // test suite is invoked.
+    cmd.env_remove("HTTP_PROXY")
+        .env_remove("HTTPS_PROXY")
+        .env_remove("ALL_PROXY")
+        .env_remove("http_proxy")
+        .env_remove("https_proxy")
+        .env_remove("all_proxy");
+    for (k, v) in extra_env {
+        cmd.env(k, v);
+    }
     let out = cmd.output().expect("doctor binary must be runnable");
     (
         out.status.code().unwrap_or(-1),
@@ -259,4 +283,78 @@ client_data:
     let tmp3 = tmp_with_config(fatal);
     assert_eq!(run_doctor(tmp3.path(), &[]).0, 1);
     assert_eq!(run_doctor(tmp3.path(), &["--strict"]).0, 1);
+}
+
+// ---------- audit follow-up #44 — proxy env surface ----------
+
+#[test]
+fn info_proxy_env_ignored_fires_when_http_proxy_is_set() {
+    // Minimal config — we just need the doctor to run its full
+    // ruleset. `HTTP_PROXY` is set in the child's env only.
+    let cfg = r#"xroad_protocol_version: "4.0""#;
+    let tmp = tmp_with_config(cfg);
+    let (_, stdout, _) = run_doctor_with_env(
+        tmp.path(),
+        &["--format", "json"],
+        &[("HTTP_PROXY", "http://proxy.example:3128")],
+    );
+    let parsed: serde_json::Value =
+        serde_json::from_str(&stdout).expect("--format json must parse");
+    let arr = parsed.as_array().expect("top-level must be array");
+    let codes: Vec<&str> = arr.iter().filter_map(|f| f["code"].as_str()).collect();
+    assert!(
+        codes.contains(&"info-proxy-env-ignored"),
+        "expected info-proxy-env-ignored in: {codes:?}"
+    );
+    // The field names the variable so the operator sees which one.
+    let finding = arr
+        .iter()
+        .find(|f| f["code"] == "info-proxy-env-ignored")
+        .unwrap();
+    assert!(
+        finding["field"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("HTTP_PROXY"),
+        "field should name the detected env var, got: {}",
+        finding["field"]
+    );
+    // INFO severity only — must never flip --strict to exit 1.
+    assert_eq!(finding["severity"], "INFO");
+}
+
+#[test]
+fn info_proxy_env_ignored_is_silent_without_proxy_env() {
+    let cfg = r#"xroad_protocol_version: "4.0""#;
+    let tmp = tmp_with_config(cfg);
+    // run_doctor() scrubs any inherited proxy env.
+    let (_, stdout, _) = run_doctor(tmp.path(), &["--format", "json"]);
+    assert!(
+        !stdout.contains("info-proxy-env-ignored"),
+        "rule must not fire without proxy env: {stdout}"
+    );
+}
+
+#[test]
+fn info_proxy_env_ignored_does_not_flip_strict_exit_code() {
+    let cfg = r#"
+xroad_protocol_version: "4.0"
+client_data:
+  member_class: GOV
+  member_code: "70000000"
+  subsystem_code: "myservice"
+wsdl:
+  upstream_host_allowlist: [ariregxmlv6.rik.ee]
+"#;
+    let tmp = tmp_with_config(cfg);
+    // `weak-paths-dsl-missing` fires on `./DSL` absent; make it so
+    // that no unrelated WEAK pollutes the exit-code assertion.
+    std::fs::create_dir_all(tmp.path().join("DSL")).unwrap();
+    let (code, stdout, stderr) = run_doctor_with_env(
+        tmp.path(),
+        &["--strict"],
+        &[("HTTPS_PROXY", "http://proxy.example:3128")],
+    );
+    // All-clean + one INFO finding → still exit 0 under --strict.
+    assert_eq!(code, 0, "stdout:\n{stdout}\n---stderr---\n{stderr}");
 }

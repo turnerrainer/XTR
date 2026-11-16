@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Every reqwest client now calls `.no_proxy()`** (closes #44).
+  reqwest's default was to honour `HTTP_PROXY` / `HTTPS_PROXY` /
+  `ALL_PROXY` from the process env on every `Client::build()`, so a
+  proxy env var set by a parent shell, systemd unit, Docker compose
+  context, or Kubernetes ConfigMap could silently redirect XTR's
+  outbound — including the mTLS call to the X-Road Security Server
+  that carries the operator's identity — through an attacker-
+  controlled host. All four current ClientBuilder sites are patched
+  uniformly: `src/executor/plain.rs` (plain-HTTPS SOAP executor),
+  `src/executor/mod.rs::build_mtls_client` (shared by the SOAP
+  Security Server and REST passthrough lanes), `src/inbound/outbound.rs`
+  (SOAP-lane `/soap-out/` without SS identity), and
+  `src/inbound/handler.rs` (SOAP-lane backend client). The gap was
+  pre-existing, not introduced by any audit; the two prior audits
+  (v1 M2 gzip-vs-cap, v2 FN-LOG-* and FN2-5) did not cover the
+  proxy env surface. Regression tests in
+  `tests/no_proxy_env_ignored.rs`: a behavioural test that spins up
+  a local axum mock, sets `HTTP_PROXY=http://127.0.0.1:1` before
+  `PlainExecutor::new`, asserts the executor reaches the mock in
+  under 2s (would ECONNREFUSE on the dead proxy if the env were
+  honoured); plus a static grep pin that asserts every ClientBuilder
+  site in `src/` still calls `.no_proxy()` so a future refactor can't
+  silently re-open the surface.
+- **New doctor rule `info-proxy-env-ignored`** — fires when any of
+  `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` (either case) is set at
+  boot. INFO (not WEAK) because the env alone is not a defect — XTR
+  already ignores it; the finding short-circuits the "why doesn't my
+  proxy work?" operator question before it becomes a ticket.
+  `--strict` is unaffected. The `field:` surface names the detected
+  variable(s). Three new tests in `tests/doctor_integration.rs`
+  cover fires-when-set, silent-when-absent, and no-flip-under-strict.
+- **`SECURITY.md`** gains an "Operator recipe — proxy env vars are
+  ignored by design" section with the threat model and the note
+  that a legitimate proxy need will go through an explicit config
+  field, never process-level env.
+- **`book/src/configuration.md`** env var table and
+  **`book/src/doctor.md`** rule catalogue updated.
+
 ## [0.5.1-rc] - 2026-10-22
 
 Patch release — one upstream-parsing bug fix contributed by

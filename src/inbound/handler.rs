@@ -51,6 +51,14 @@ impl LaneState {
             .no_gzip()
             .no_brotli()
             .no_deflate()
+            // Audit follow-up #44: the SOAP-lane backend client
+            // reaches internal services on the operator's network.
+            // HTTP(S)_PROXY / ALL_PROXY env must never divert that
+            // traffic — a proxy env set anywhere in the deployment
+            // chain would otherwise reroute inbound-to-backend
+            // calls to an attacker-controlled host. Reqwest's
+            // default is to honor the env; .no_proxy() opts out.
+            .no_proxy()
             .build()?;
         Ok(Self {
             registry: Arc::new(registry),

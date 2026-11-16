@@ -191,3 +191,28 @@ in front and swap tokens at that layer instead of at XTR.
 Combine with `observability.expose_openapi: false` on public
 deployments so `/api` doesn't advertise the DSL surface to
 anyone who can reach the port.
+
+## Operator recipe — proxy env vars are ignored by design
+
+Every reqwest client in XTR is built with `.no_proxy()`. The
+`HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` env vars (either
+case) **do not** divert XTR's outbound traffic — not for the
+plain-HTTPS SOAP executor, not for the mTLS Security Server
+executor, not for the REST passthrough lane, not for the SOAP
+lane's backend client. This is deliberate hardening against a
+process-level env (set by a parent shell, systemd unit, Docker
+compose context, Kubernetes ConfigMap, …) silently rerouting
+XTR's mTLS traffic through an attacker-controlled host.
+The attacker couldn't read the symmetric key, but they would
+see the operator's X-Road peer certificate on every connect
+and could tamper with CONNECT envelopes.
+
+If any of those env vars is set at boot, the doctor emits INFO
+`info-proxy-env-ignored` with the detected variable name so the
+mismatch between "env says proxy" and "XTR's actual posture is
+direct" is visible on every doctor run.
+
+If you have a legitimate proxy need for a specific deployment
+(not just inherited env), open an issue describing the setup —
+the path forward is an explicit `http.proxy` config field with
+its own doctor rule, never process-level env.

@@ -226,6 +226,17 @@ pub(crate) fn build_mtls_client(
         .no_gzip()
         .no_brotli()
         .no_deflate()
+        // Audit follow-up #44: HTTP(S)_PROXY / ALL_PROXY env vars
+        // must not divert XTR's mTLS outbound. The client cert is
+        // our operator's identity to the Security Server; routing
+        // through an attacker-controlled proxy lets the proxy
+        // observe the mTLS peer-cert chain (not the symmetric key,
+        // but still exposes the operator's X-Road identity to a
+        // third party) and tamper with the plain-HTTP CONNECT
+        // envelope. Keep this on even if a legitimate proxy need
+        // ever lands — then it goes through an explicit config
+        // field, never an env var.
+        .no_proxy()
         .redirect(Policy::none());
 
     if let Some(ca_path) = &ss.trust_ca_path {

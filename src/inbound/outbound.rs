@@ -58,7 +58,11 @@ impl Client {
                     .redirect(reqwest::redirect::Policy::none())
                     .no_gzip()
                     .no_brotli()
-                    .no_deflate();
+                    .no_deflate()
+                    // Audit follow-up #44: ignore HTTP(S)_PROXY /
+                    // ALL_PROXY env. See src/executor/plain.rs for
+                    // the full rationale.
+                    .no_proxy();
                 if let Some(ca) = trust_ca {
                     let bytes =
                         std::fs::read(ca).map_err(|e| format!("reading {}: {e}", ca.display()))?;

@@ -87,6 +87,7 @@ pub fn run(cfg: &AppConfig, cfg_path: Option<&Path>) -> Vec<Finding> {
     check_wsdl_watch_dir_writable_rootfs(cfg, &mut findings);
     check_no_caller_auth(&mut findings);
     check_offline_mode(&mut findings);
+    check_proxy_env_ignored(&mut findings);
     check_soap_action_missing(cfg, &mut findings);
     check_inter_service_token(&mut findings);
     check_soap_lanes_exposure(cfg, &mut findings);
@@ -339,6 +340,58 @@ fn check_offline_mode(out: &mut Vec<Finding>) {
         });
     }
 }
+/// Audit follow-up #44 — surface the HTTP(S)_PROXY / ALL_PROXY env
+/// vars so operators don't silently expect XTR to route outbound
+/// through a proxy. Every reqwest client in `src/` calls
+/// `.no_proxy()`, which makes the env vars no-ops. Emit INFO when
+/// any of them is set so the operator sees the mismatch between
+/// "env says proxy" and "XTR's actual posture is direct" explicitly.
+///
+/// INFO, not WEAK: the env var alone is not a security defect —
+/// XTR already ignores it. The finding exists to short-circuit the
+/// "why doesn't my proxy work?" operator question before it becomes
+/// a ticket.
+fn check_proxy_env_ignored(out: &mut Vec<Finding>) {
+    let present: Vec<&'static str> = [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+    ]
+    .into_iter()
+    .filter(|name| std::env::var(name).is_ok_and(|v| !v.trim().is_empty()))
+    .collect();
+    if present.is_empty() {
+        return;
+    }
+    out.push(Finding {
+        severity: Severity::Info,
+        code: "info-proxy-env-ignored".into(),
+        field: Some(format!("env:{}", present.join(","))),
+        headline: "HTTP(S)_PROXY / ALL_PROXY env is set — XTR ignores it by design".into(),
+        rationale: "XTR's reqwest clients are built with `.no_proxy()` so that\n\
+                    a process-level proxy env var (set by a parent shell,\n\
+                    systemd unit, or compose context) cannot divert XTR's\n\
+                    outbound traffic — including the mTLS call to the\n\
+                    X-Road Security Server that carries the operator's\n\
+                    identity. A proxy env present at boot therefore has\n\
+                    no effect; this finding exists to tell operators\n\
+                    that intentionally."
+            .into(),
+        recovery: Some(
+            "If you do not need a proxy: unset the env var in the\n\
+             deployment (compose / systemd / shell) to remove the\n\
+             mismatch between expectation and behaviour.\n\
+             If you do need a proxy: open an issue describing the\n\
+             deployment — a legitimate proxy will go through an\n\
+             explicit `http.proxy` config field, not through env."
+                .into(),
+        ),
+    });
+}
+
 /// h2ck.me T-8 — surface the `XTR_INTER_SERVICE_TOKEN` posture so
 /// operators know whether `/:group/:service` is bearer-gated. Three
 /// outcomes:
