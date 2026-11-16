@@ -95,7 +95,8 @@ the path renders as escape sequences (audit-v2 FN-LOG-1).
 | `404` | `/api` when `observability.expose_openapi=false` (audit-v2 F-XTR-1) | `not_found` |
 | `405` | Method mismatch vs DSL contract | `method_not_allowed` |
 | `413` | Request body over `limits.max_request_bytes` | `request_too_large` |
-| `500` | Handlebars expansion / internal | `template_expansion_failed`, `internal_error`, `keystore_load_failed` |
+| `422` | Raw-XML: message or request fails XSD validation when the direction is `enforce` | `schema_invalid` |
+| `500` | Handlebars expansion / internal / XSD validator error (fail-closed) | `template_expansion_failed`, `internal_error`, `keystore_load_failed`, `validator_failed` |
 | `502` | Upstream returned SOAP Fault, unrecognised HTTP error, XML parse error, or oversized body | `upstream_soap_fault`, `upstream_http_error`, `upstream_xml_parse_error`, `upstream_body_too_large` |
 | `504` | Upstream timeout OR handler-level TimeoutLayer fired | `upstream_timeout` / (bare) |
 | `508` | Raw-XML: `x-xtr-forwarded: 1` header on a request that would forward again | `loop_detected` |
@@ -202,6 +203,12 @@ backend (or relays the bytes to a `forward:` target). The lane has
 **no authentication** at the XTR layer — gate it at the ingress
 (IP allowlist or mTLS).
 
+XSD validation runs between the parser and the backend when
+`validate.inbound` is set. See
+[xml-lanes.md → Modes](./xml-lanes.md#modes) for the full state
+machine; the status table below covers the response shape per
+mode.
+
 | Request | Status | Body |
 |---|---|---|
 | valid XML, backend 2xx | `202` (or `inbound.success_status`) | empty |
@@ -210,6 +217,10 @@ backend (or relays the bytes to a `forward:` target). The lane has
 | valid XML, `forward:` configured, target 2xx/4xx | relayed status | empty on target over limit / unreadable |
 | declared encoding not UTF-8 / utf8 | `400` | `unsupported_encoding` |
 | prolog not well-formed, `DOCTYPE`, root element in a foreign namespace, body over the limit | `400` / `413` | `malformed_xml` / `request_too_large` |
+| XML breaks the XSD, `validate.inbound: enforce` | `422` | `schema_invalid` with up to 10 `{path, rule, line, schemaFile, schemaLine}` violations (no message values) |
+| XML breaks the XSD, `validate.inbound: report` | passthrough (backend decides) | violations logged, message still forwarded |
+| XML breaks the XSD, `validate.inbound: annotate` | backend decides | backend receives `schemaValid: false` + `violations` + `rawBase64`; unreadable input routes to `<backend>/_invalid` |
+| internal validator error (any mode) | `500` | `validator_failed` — XTR fails closed: no backend call, no forward, no outbound |
 | `x-xtr-forwarded: 1` and the lane would forward again | `508` | `loop_detected` |
 | `XTR_OFFLINE` | `599` | `xtr_offline` |
 
@@ -224,6 +235,8 @@ timeout override via `messages.<M>.timeout_secs`.
 | peer replied | `200` | `{"status": <peer status>, "body": …, "contentType": …}` |
 | body not a JSON object | `400` | `invalid_json_body` |
 | unknown service / unknown message / no `outbound:` | `404` | `template_not_found` |
+| serialised request breaks the XSD, `validate.outbound: enforce` | `422` | `schema_invalid` (no bytes leave XTR) |
+| internal validator error (any mode) | `500` | `validator_failed` |
 | peer refused / unreachable / empty / timeout | `502` / `504` | peer URL is not leaked |
 | `XTR_OFFLINE` | `599` | `xtr_offline` |
 
