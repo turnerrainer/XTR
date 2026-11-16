@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0-rc] - 2026-11-16
+
+Sixth minor release. Opens XTR beyond X-Road to adjacent
+government integration lanes (ERRU MOVEHUB first, eDelivery
+next). Two security fixes land alongside the feature arc.
+
+**Headline features (all opt-in — nothing changes without a
+sidecar):**
+
+- Raw-XML lanes (`.xml.yaml` sidecar next to XSD files, no WSDL,
+  no SOAP envelope) for peers that exchange bare XML over HTTPS
+  (e.g. the EU ERRU MOVEHUB). Both directions, loop guard,
+  per-message timeout, optional own client certificate.
+- XSD validation for raw-XML lanes in pure Rust (declared XSD 1.0
+  subset covering ERRU 3.5). Four modes: `off` (default) /
+  `report` / `enforce` / `annotate`. Opt-in per deployment —
+  rollout is `off → report → enforce` after the Xerces oracle
+  differential test shows zero differences on the operator's
+  own XSD corpus.
+- Xerces oracle (`xsd-oracle` GitHub workflow) — manual-run
+  differential test against Apache Xerces for operators who want
+  to turn on `enforce` or `annotate`.
+
+**Security fixes:**
+
+- `.no_proxy()` on every reqwest client (`HTTP_PROXY` /
+  `HTTPS_PROXY` / `ALL_PROXY` env vars can no longer divert
+  outbound mTLS — closes #44).
+- Symlink-safe WSDL + sidecar discovery walker (50 000-entry cap,
+  out-of-root symlink rejection — closes #43).
+
 ### Security
 - **Every reqwest client now calls `.no_proxy()`** (closes #44).
   reqwest's default was to honour `HTTP_PROXY` / `HTTPS_PROXY` /
@@ -1173,7 +1204,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.5.1-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.6.0-rc...HEAD
+[0.6.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.1-rc...v0.6.0-rc
 [0.5.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...v0.5.1-rc
 [0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc
 [0.4.3-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.2-rc...v0.4.3-rc
