@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1-rc] - 2026-11-22
+
+Patch release. Dependency security fix only, no source change.
+
+### Security
+
+- `url` 2.5.8 → 2.5.9 (and `form_urlencoded` 1.2.2 → 1.2.3) for
+  RUSTSEC-2026-0592: stack overflow in `Url::origin()` on nested
+  `blob:` URLs (PR #54).
+
 ## [0.6.0-rc] - 2026-11-16
 
 Sixth minor release. Opens XTR beyond X-Road to adjacent
@@ -1176,7 +1186,8 @@ domain functionality yet. Every rule from Ruuter-on-Rust's
   first task on the roadmap: analyse the original
   `buerokratt/XTR` and define XTR-on-Rust's domain surface.
 
-[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.6.0-rc...HEAD
+[Unreleased]: https://github.com/turnerrainer/XTR/compare/v0.6.1-rc...HEAD
+[0.6.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.6.0-rc...v0.6.1-rc
 [0.6.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.1-rc...v0.6.0-rc
 [0.5.1-rc]: https://github.com/turnerrainer/XTR/compare/v0.5.0-rc...v0.5.1-rc
 [0.5.0-rc]: https://github.com/turnerrainer/XTR/compare/v0.4.3-rc...v0.5.0-rc

@@ -26,11 +26,11 @@ their behalf. Four lanes share one deployment:
   with `off` / `report` / `enforce` / `annotate` modes. See
   [`book/src/xml-lanes.md`](./book/src/xml-lanes.md).
 
-**Version:** 0.6.0-rc · **License:** Apache-2.0
+**Version:** 0.6.1-rc · **License:** Apache-2.0
 · **Docs:** [turnerrainer.github.io/XTR](https://turnerrainer.github.io/XTR/)
 · **Images:** `docker.io/turnerrainer/xtr:rc`, `ghcr.io/turnerrainer/xtr:rc`
 (the `:rc` tag always floats to the latest release-candidate;
-pin to `:0.6.0-rc` for reproducible deploys).
+pin to `:0.6.1-rc` for reproducible deploys).
 
 > **Upgrading from `0.5.x`?** Fully backward-compatible for
 > existing SOAP + REST DSLs. The new lanes (`.soap.yaml` /
